@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fingerprint Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 24px;
+    }
+    h1 { font-size: 22px; color: #58a6ff; }
+    p { color: #8b949e; font-size: 14px; }
+    a { color: #58a6ff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 24px 32px;
+      max-width: 480px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .status {
+      font-size: 12px;
+      color: #3fb950;
+      background: #1a3a24;
+      border-radius: 4px;
+      padding: 4px 10px;
+      display: inline-block;
+      width: fit-content;
+    }
+    code {
+      font-family: monospace;
+      background: #21262d;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #79c0ff;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Fingerprint Demo</h1>
+    <span class="status" id="status">Collecting fingerprint...</span>
+    <p>
+      This page loads <code>fingerprint.js</code> and sends your browser's
+      fingerprint to the backend for analysis.
+    </p>
+    <p>
+      Open the <a href="http://localhost:3000" target="_blank">dashboard</a> to
+      see your session appear in real time.
+    </p>
+    <p>
+      The script collects: hardware capabilities, canvas and WebGL fingerprints,
+      audio fingerprint, bot signals, operating system, device type, public IP,
+      and behavioral events (mouse, keyboard, copy/paste, navigation).
+    </p>
+  </div>
+
+  <!--
+    fingerprint.js is served by the backend at http://localhost:5000/fingerprint.js.
+    The CRA dev server proxies unknown requests to the backend (see package.json "proxy"),
+    so this src path works both in development and when the backend serves this file directly.
+  -->
+  <script src="/fingerprint.js"></script>
+  <script>
+    // Update status once the script has loaded and sent the fingerprint
+    window.addEventListener("load", function () {
+      setTimeout(function () {
+        document.getElementById("status").textContent = "Fingerprint sent";
+      }, 2000);
+    });
+  </script>
+</body>
+</html>

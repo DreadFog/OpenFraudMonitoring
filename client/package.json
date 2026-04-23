@@ -1,0 +1,12 @@
+{
+  "name": "fraud-monitoring-client",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "build": "vite build",
+    "watch": "vite build --watch"
+  },
+  "devDependencies": {
+    "vite": "^5.2.0"
+  }
+}

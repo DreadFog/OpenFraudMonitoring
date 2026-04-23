@@ -1,0 +1,249 @@
+.sd-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 0 48px;
+  color: var(--text);
+}
+
+/* Header */
+.sd-header {
+  padding: 16px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.sd-header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  flex: 1;
+}
+
+.back-btn {
+  padding: 6px 14px;
+  background: #21262d;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+
+.back-btn:hover {
+  background: var(--border);
+}
+
+.sd-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Section */
+.sd-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+}
+
+.sd-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 12px;
+}
+
+.sd-section-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 24px;
+}
+
+/* Fields */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.field-label {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.field-value {
+  font-size: 13px;
+  word-break: break-all;
+}
+
+/* Flags */
+.flags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.flag-item {
+  background: #1a2b4a;
+  border: 1px solid #1f3a6e;
+  color: #79c0ff;
+  font-family: monospace;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+/* URLs */
+.urls-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  grid-column: 1 / -1;
+}
+
+.url-item {
+  background: #0d1117;
+  border: 1px solid var(--border);
+  color: var(--accent);
+  font-family: monospace;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  word-break: break-all;
+}
+
+/* IPs */
+.ip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ip-item {
+  background: #21262d;
+  border: 1px solid var(--border);
+  font-family: monospace;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  color: #f0883e;
+}
+
+/* Heartbeats table */
+.hb-table-wrapper {
+  overflow-x: auto;
+  grid-column: 1 / -1;
+}
+
+.hb-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.hb-table th {
+  background: #21262d;
+  padding: 6px 10px;
+  text-align: left;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.hb-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid #21262d;
+}
+
+.hb-table tr:last-child td {
+  border-bottom: none;
+}
+
+.hb-table .mono {
+  font-family: monospace;
+}
+
+.hb-table .url-cell {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Raw JSON toggle */
+.toggle-btn {
+  background: #21262d;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-bottom: 12px;
+  transition: background 0.15s;
+}
+
+.toggle-btn:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
+.json-viewer {
+  font: 11px/1.5 monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: #0d1117;
+  padding: 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  max-height: 500px;
+  overflow-y: auto;
+  color: #79c0ff;
+  margin-top: 8px;
+}
+
+/* States */
+.sd-loading, .sd-error, .empty-note {
+  color: var(--muted);
+  padding: 40px;
+  text-align: center;
+}
+
+.sd-error {
+  color: var(--risk-high);
+}
+
+/* Details button in dashboard table */
+.details-btn {
+  padding: 4px 10px;
+  background: #21262d;
+  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.details-btn:hover {
+  background: var(--border);
+}
+
+@media (max-width: 640px) {
+  .sd-section-body {
+    grid-template-columns: 1fr;
+  }
+}
