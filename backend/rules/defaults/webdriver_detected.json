@@ -1,0 +1,8 @@
+{
+  "name": "WEBDRIVER_DETECTED",
+  "description": "navigator.webdriver is true",
+  "rule_type": "realtime",
+  "logic": "AND",
+  "conditions": [{"field": "has_webdriver", "op": "eq", "value": "true"}],
+  "score_modifier": 40
+}

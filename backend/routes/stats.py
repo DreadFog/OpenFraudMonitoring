@@ -4,18 +4,9 @@ Stats endpoint - overall statistics
 
 from flask import Blueprint, jsonify
 from datetime import datetime
+from models import Session
 
 stats_bp = Blueprint("stats", __name__, url_prefix="/api")
-
-# Shared session storage
-sessions_store = {}
-
-
-def init_stats_routes(app, sessions):
-    """Initialize stats routes with shared storage"""
-    global sessions_store
-    sessions_store = sessions
-    app.register_blueprint(stats_bp)
 
 
 @stats_bp.route("/stats", methods=["GET"])
@@ -23,14 +14,17 @@ def get_stats():
     """
     Get overall statistics
     """
-    total = len(sessions_store)
-    high_risk = sum(1 for s in sessions_store.values() if s.risk_score >= 60)
+    total = Session.query.count()
+    high_risk = Session.query.filter(Session.risk_score >= 60).count()
     low_risk = total - high_risk
 
+    # Count sessions with bot-related flags using JSONB contains
+    bot_keywords = ["DETECTED", "WEBDRIVER", "DRIVER"]
     bots = 0
-    for sess in sessions_store.values():
-        for flag in sess.flags:
-            if "DETECTED" in flag or "WEBDRIVER" in flag or "DRIVER" in flag:
+    bot_sessions = Session.query.filter(Session.flags != None).all()  # noqa: E711
+    for sess in bot_sessions:
+        for flag in (sess.flags or []):
+            if any(kw in flag for kw in bot_keywords):
                 bots += 1
                 break
 

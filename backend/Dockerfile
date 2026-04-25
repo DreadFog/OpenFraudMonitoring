@@ -1,4 +1,6 @@
 FROM node:18-alpine AS client-build
+ARG OFM_SERVER_URL=""
+ENV OFM_SERVER_URL=${OFM_SERVER_URL}
 WORKDIR /client
 COPY client/package.json ./
 RUN npm install

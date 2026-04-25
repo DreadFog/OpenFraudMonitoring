@@ -1,0 +1,8 @@
+{
+  "name": "ZERO_CPU_CORES",
+  "description": "hardwareConcurrency is zero",
+  "rule_type": "realtime",
+  "logic": "AND",
+  "conditions": [{"field": "hardware_concurrency", "op": "eq", "value": "0"}],
+  "score_modifier": 20
+}

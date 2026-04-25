@@ -1,0 +1,154 @@
+/* ── Filter Builder ──────────────────────────────────────────────────── */
+
+.filter-builder {
+  padding: 0 24px;
+  margin-bottom: 16px;
+}
+
+.filter-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.filter-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Buttons */
+.filter-add-btn,
+.filter-apply-btn,
+.filter-clear-btn {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.filter-add-btn:hover {
+  background: #21262d;
+}
+
+.filter-apply-btn {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.filter-apply-btn:hover {
+  opacity: 0.8;
+}
+
+.filter-clear-btn:hover {
+  background: #3a0f0f;
+  border-color: var(--risk-high);
+  color: var(--risk-high);
+}
+
+/* Filter row */
+.filter-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+  align-items: center;
+}
+
+.filter-select,
+.filter-input {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.filter-select:focus,
+.filter-input:focus {
+  border-color: var(--accent);
+}
+
+.filter-select {
+  min-width: 140px;
+}
+
+.filter-op {
+  min-width: 110px;
+}
+
+/* Value wrapper (for autocomplete dropdown) */
+.filter-value-wrapper {
+  position: relative;
+  flex: 1;
+  min-width: 150px;
+}
+
+.filter-value-wrapper .filter-input {
+  width: 100%;
+}
+
+/* Suggestions dropdown */
+.suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 20;
+}
+
+.suggestion-item {
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suggestion-item:hover {
+  background: rgba(88, 166, 255, 0.1);
+}
+
+/* Remove button */
+.filter-remove {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  transition: all 0.15s;
+}
+
+.filter-remove:hover {
+  background: #3a0f0f;
+  border-color: var(--risk-high);
+  color: var(--risk-high);
+}
+
+/* Disabled state */
+.filter-select:disabled,
+.filter-input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

@@ -5,33 +5,26 @@ Main application entry point
 
 from flask import Flask, send_from_directory
 from flask_cors import CORS
-from collections import defaultdict
 import os
 
-from routes import init_collect_routes
-from routes.heartbeat import init_heartbeat_routes
-from routes.sessions import init_sessions_routes
-from routes.stats import init_stats_routes
+from config import Config
+from services.database import init_db
+from routes import register_routes
+from rules import seed_default_rules
 
 app = Flask(__name__)
+app.config.from_object(Config)
 CORS(app)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# In-memory storage
+# Database + Routes + Default Rules
 # ─────────────────────────────────────────────────────────────────────────────
 
-sessions = {}
-url_sessions = defaultdict(list)
+init_db(app)
+register_routes(app)
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Initialize routes with shared storage
-# ─────────────────────────────────────────────────────────────────────────────
-
-init_collect_routes(app, sessions, url_sessions)
-init_heartbeat_routes(app, sessions, url_sessions)
-init_sessions_routes(app, sessions)
-init_stats_routes(app, sessions)
+with app.app_context():
+    seed_default_rules()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -67,7 +60,8 @@ def index():
 
 @app.route("/health", methods=["GET"])
 def health():
-    return {"status": "ok", "sessions_count": len(sessions)}, 200
+    from models import Session
+    return {"status": "ok", "sessions_count": Session.query.count()}, 200
 
 
 if __name__ == "__main__":
@@ -77,4 +71,4 @@ if __name__ == "__main__":
     print("  Sessions:           http://localhost:5000/api/sessions")
     print("  Stats:              http://localhost:5000/api/stats")
     print("  Fingerprint script: http://localhost:5000/fingerprint.js")
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=Config.DEBUG, host=Config.HOST, port=Config.PORT)

@@ -1,0 +1,11 @@
+{
+  "name": "ZERO_SCREEN",
+  "description": "Screen width or height is zero — likely headless environment",
+  "rule_type": "realtime",
+  "logic": "OR",
+  "conditions": [
+    {"field": "screen_width", "op": "eq", "value": "0"},
+    {"field": "screen_height", "op": "eq", "value": "0"}
+  ],
+  "score_modifier": 25
+}

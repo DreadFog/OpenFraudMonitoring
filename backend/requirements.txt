@@ -1,3 +1,7 @@
 Flask==2.3.2
 flask-cors==4.0.0
 Werkzeug==2.3.6
+SQLAlchemy==2.0.23
+psycopg2-binary==2.9.9
+Flask-SQLAlchemy==3.1.1
+redis==5.0.1

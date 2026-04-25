@@ -2,55 +2,58 @@
 Sessions endpoints - list and detail views
 """
 
-from flask import Blueprint, jsonify
-from utils import get_time_ago_string
+import json
+from flask import Blueprint, request, jsonify
+from models import Session, Fingerprint, Heartbeat
+from rules.engine import build_session_query
 
 sessions_bp = Blueprint("sessions", __name__, url_prefix="/api")
-
-# Shared session storage
-sessions_store = {}
-
-
-def init_sessions_routes(app, sessions):
-    """Initialize sessions routes with shared storage"""
-    global sessions_store
-    sessions_store = sessions
-    app.register_blueprint(sessions_bp)
 
 
 @sessions_bp.route("/sessions", methods=["GET"])
 def get_sessions():
     """
-    Get all sessions with basic info
+    Get all sessions with basic info.
+    Accepts an optional `filters` query param (JSON array of conditions).
     """
+    filters_raw = request.args.get("filters", "[]")
+    try:
+        filters = json.loads(filters_raw)
+    except (json.JSONDecodeError, TypeError):
+        filters = []
+
+    query = build_session_query(filters)
+    all_sessions = query.order_by(Session.risk_score.desc()).limit(200).all()
     sessions_list = []
 
-    for device_id, sess in sessions_store.items():
-        fps = sess.fingerprints
-        last_fp = fps[-1] if fps else {}
+    for sess in all_sessions:
+        last_fp_row = sess.fingerprints.order_by(Fingerprint.timestamp.desc()).first()
+        last_fp = last_fp_row.data if last_fp_row else {}
         nav = last_fp.get("navigator", {})
+        urls = [u.url for u in sess.urls.limit(3).all()]
+        urls_count = sess.urls.count()
+        heartbeats_count = sess.heartbeats.count()
+        session_ids = [bs.browser_session_id for bs in sess.browser_sessions.limit(2).all()]
+        device_id = sess.device_id
 
         sessions_list.append({
             "device_id": device_id[:16] + "..." if len(device_id) > 16 else device_id,
             "full_device_id": device_id,
             "client_ip": sess.client_ip or "unknown",
             "risk_score": sess.risk_score,
-            "flags": sess.flags[:5],
+            "flags": (sess.flags or [])[:5],
             "first_seen": sess.first_seen,
             "last_seen": sess.last_seen,
-            "heartbeats": len(sess.heartbeats),
-            "urls": list(sess.urls)[:3],
+            "heartbeats": heartbeats_count,
+            "urls": urls,
             "user_agent": nav.get("userAgent", "unknown")[:60],
             "platform": nav.get("platform", "unknown"),
             "is_workstation": nav.get("isWorkstation", False),
             "is_mobile": nav.get("isMobile", False),
             "language": nav.get("language", "unknown"),
-            "urls_count": len(sess.urls),
-            "session_ids": list(sess.session_ids)[:2],
+            "urls_count": urls_count,
+            "session_ids": session_ids,
         })
-
-    # Sort by risk score descending
-    sessions_list.sort(key=lambda x: x["risk_score"], reverse=True)
 
     return jsonify(sessions_list), 200
 
@@ -60,21 +63,33 @@ def get_session_detail(device_id):
     """
     Get detailed session information
     """
-    sess = sessions_store.get(device_id)
+    sess = Session.query.filter_by(device_id=device_id).first()
     if not sess:
         return jsonify({"error": "session not found"}), 404
+
+    urls = [u.url for u in sess.urls.all()]
+    session_ids = [bs.browser_session_id for bs in sess.browser_sessions.all()]
+    heartbeats_count = sess.heartbeats.count()
+    fingerprints_count = sess.fingerprints.count()
+
+    last_fp_row = sess.fingerprints.order_by(Fingerprint.timestamp.desc()).first()
+    latest_fingerprint = last_fp_row.data if last_fp_row else None
+
+    recent_heartbeats = sess.heartbeats.order_by(
+        Heartbeat.timestamp.desc()
+    ).limit(20).all()
 
     return jsonify({
         "device_id": device_id,
         "client_ip": sess.client_ip,
         "risk_score": sess.risk_score,
-        "flags": sess.flags,
+        "flags": sess.flags or [],
         "first_seen": sess.first_seen,
         "last_seen": sess.last_seen,
-        "urls": list(sess.urls),
-        "session_ids": list(sess.session_ids),
-        "heartbeats_count": len(sess.heartbeats),
-        "fingerprints_count": len(sess.fingerprints),
-        "latest_fingerprint": sess.fingerprints[-1] if sess.fingerprints else None,
-        "heartbeats": sess.heartbeats[:20],
+        "urls": urls,
+        "session_ids": session_ids,
+        "heartbeats_count": heartbeats_count,
+        "fingerprints_count": fingerprints_count,
+        "latest_fingerprint": latest_fingerprint,
+        "heartbeats": [hb.to_summary() for hb in recent_heartbeats],
     }), 200

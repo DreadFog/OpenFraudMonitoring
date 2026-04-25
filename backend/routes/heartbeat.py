@@ -3,22 +3,12 @@ Heartbeat endpoint - receives behavioral updates
 """
 
 from flask import Blueprint, request, jsonify
-from utils import clean_old_url_entries, extract_behavior_summary
-from collections import defaultdict
+from services.database import db
+from models import Session, Heartbeat, SessionURL, BrowserSession
+from utils import extract_behavior_summary
+from services.event_queue import enqueue_event
 
 heartbeat_bp = Blueprint("heartbeat", __name__, url_prefix="/api")
-
-# Shared session storage
-sessions_store = {}
-url_sessions_store = defaultdict(list)
-
-
-def init_heartbeat_routes(app, sessions, url_sessions):
-    """Initialize heartbeat routes with shared storage"""
-    global sessions_store, url_sessions_store
-    sessions_store = sessions
-    url_sessions_store = url_sessions
-    app.register_blueprint(heartbeat_bp)
 
 
 @heartbeat_bp.route("/heartbeat", methods=["POST"])
@@ -33,38 +23,52 @@ def heartbeat():
     timestamp = hb.get("timestamp", 0)
     behavior = hb.get("behavior", {})
 
-    # Find device_id by session_id
-    device_id = None
-    for did, sess in sessions_store.items():
-        if session_id in sess.session_ids:
-            device_id = did
-            break
+    # Find session by browser session ID
+    browser_sess = BrowserSession.query.filter_by(
+        browser_session_id=session_id
+    ).first()
+    if not browser_sess:
+        return jsonify({"ok": False, "error": "session not found"}), 404
 
-    if not device_id:
+    session_obj = Session.query.get(browser_sess.session_id)
+    if not session_obj:
         return jsonify({"ok": False, "error": "session not found"}), 404
 
     # Extract behavior summary
     behavior_summary = extract_behavior_summary(behavior)
 
-    # Create heartbeat record
-    summary = {
-        "timestamp": timestamp,
-        "url": url,
-        **behavior_summary,
-        "raw": behavior,
-    }
+    # Store heartbeat with denormalized counts
+    hb_record = Heartbeat(
+        session_id=session_obj.id,
+        timestamp=timestamp,
+        url=url,
+        mouse_moves=behavior_summary["mouseMoves"],
+        clicks=behavior_summary["clicks"],
+        keydowns=behavior_summary["keydowns"],
+        touches=behavior_summary["touches"],
+        scrolls=behavior_summary["scrolls"],
+        copy_pastes=behavior_summary["copyPastes"],
+        navigation_events=behavior_summary["navigationEvents"],
+        raw_behavior=behavior,
+    )
+    db.session.add(hb_record)
 
     # Update session
-    session_obj = sessions_store[device_id]
-    session_obj.add_heartbeat(summary)
     session_obj.last_seen = timestamp
 
     # Track URL
     if url:
-        session_obj.urls.add(url)
-        url_sessions_store[device_id].append({"url": url, "timestamp": timestamp})
-        clean_old_url_entries(url_sessions_store, device_id)
+        existing_url = SessionURL.query.filter_by(
+            session_id=session_obj.id, url=url
+        ).first()
+        if not existing_url:
+            db.session.add(SessionURL(session_id=session_obj.id, url=url))
 
-    print(f"[HEARTBEAT] device_id={device_id[:16]} url={url} moves={behavior_summary['mouseMoves']} clicks={behavior_summary['clicks']}")
+    db.session.commit()
+
+    # Enqueue for rule evaluation (best-effort)
+    enqueue_event(session_obj.id, "heartbeat")
+
+    print(f"[HEARTBEAT] device_id={session_obj.device_id[:16]} url={url} moves={behavior_summary['mouseMoves']} clicks={behavior_summary['clicks']}")
 
     return jsonify({"ok": True}), 200

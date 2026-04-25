@@ -1,0 +1,8 @@
+{
+  "name": "CHROMEDRIVER_PROPS",
+  "description": "ChromeDriver properties detected on the page",
+  "rule_type": "realtime",
+  "logic": "AND",
+  "conditions": [{"field": "has_chromedriver", "op": "eq", "value": "true"}],
+  "score_modifier": 45
+}

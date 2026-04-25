@@ -1,0 +1,8 @@
+{
+  "name": "PUPPETEER_DETECTED",
+  "description": "Puppeteer automation framework detected",
+  "rule_type": "realtime",
+  "logic": "AND",
+  "conditions": [{"field": "has_puppeteer", "op": "eq", "value": "true"}],
+  "score_modifier": 35
+}

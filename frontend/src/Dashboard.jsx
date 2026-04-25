@@ -1,36 +1,53 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "./api";
+import FilterBuilder from "./FilterBuilder";
 import "./Dashboard.css";
 
 export default function Dashboard() {
   const [sessions, setSessions] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [schema, setSchema] = useState([]);
+  const [filters, setFilters] = useState([]);
+  const [activeFilters, setActiveFilters] = useState([]);
   const navigate = useNavigate();
 
-  // Fetch data
-  const loadData = async () => {
-    try {
-      const [sessionsData, statsData] = await Promise.all([
-        api.getSessions(),
-        api.getStats(),
-      ]);
-      setSessions(sessionsData);
-      setStats(statsData);
-      setLoading(false);
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
-    }
+  // Fetch schema once on mount
+  useEffect(() => {
+    api.getSchema().then(setSchema).catch(console.error);
+  }, []);
+
+  // Fetch data (reacts to activeFilters changes)
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [sessionsData, statsData] = await Promise.all([
+          api.getSessions(activeFilters),
+          api.getStats(),
+        ]);
+        setSessions(sessionsData);
+        setStats(statsData);
+        setLoading(false);
+      } catch (err) {
+        console.error(err);
+        setLoading(false);
+      }
+    };
+
+    load();
+    const interval = setInterval(load, 10000);
+    return () => clearInterval(interval);
+  }, [activeFilters]);
+
+  const applyFilters = () => {
+    setActiveFilters([...filters]);
   };
 
-  // Initial load and polling
-  useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 10000); // Refresh every 10s
-    return () => clearInterval(interval);
-  }, []);
+  const clearFilters = () => {
+    setFilters([]);
+    setActiveFilters([]);
+  };
 
   if (loading) {
     return <div className="container"><p>Loading...</p></div>;
@@ -42,7 +59,7 @@ export default function Dashboard() {
       <header className="header">
         <h1>Anti-Fraud Fingerprint Dashboard</h1>
         <span className="badge">LIVE</span>
-        <button className="refresh-btn" onClick={loadData}>
+        <button className="refresh-btn" onClick={applyFilters}>
           ↻ Refresh
         </button>
       </header>
@@ -76,6 +93,15 @@ export default function Dashboard() {
           </>
         )}
       </div>
+
+      {/* Filters */}
+      <FilterBuilder
+        schema={schema}
+        filters={filters}
+        onChange={setFilters}
+        onApply={applyFilters}
+        onClear={clearFilters}
+      />
 
       {/* Sessions Table */}
       <div className="table-wrapper">

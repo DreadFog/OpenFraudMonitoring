@@ -1,13 +1,62 @@
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ofm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ofm}
+      POSTGRES_DB: ${POSTGRES_DB:-ofm}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ofm}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
+      args:
+        OFM_SERVER_URL: ${OFM_SERVER_URL:-}
     ports:
-      - "5000:5000"
+      - "${PORT:-5000}:5000"
     environment:
-      FLASK_ENV: production
-      FLASK_APP: app.py
+      FLASK_DEBUG: ${FLASK_DEBUG:-0}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://ofm:ofm@db:5432/ofm}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: python worker.py
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://ofm:ofm@db:5432/ofm}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      PERIODIC_INTERVAL_SECONDS: ${PERIODIC_INTERVAL_SECONDS:-60}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   frontend:
     build:
@@ -15,7 +64,8 @@ services:
       dockerfile: frontend/Dockerfile
     ports:
       - "3000:3000"
-    environment:
-      REACT_APP_API_URL: http://localhost:5000
     depends_on:
       - backend
+
+volumes:
+  pgdata:
