@@ -7,7 +7,7 @@ Run this script whenever FPScanner updates their types:
     python generate_schema.py
 
 It reads:
-    fpscanner_ref/types.ts   (symlink → fpscanner/src/types.ts)
+    ../fpscanner/src/types.ts   (from the fpscanner git submodule)
 
 It produces:
     _generated_schema.py     (auto-generated, do not edit manually)
@@ -19,7 +19,7 @@ import json
 from pathlib import Path
 from datetime import datetime, timezone
 
-TYPES_TS = Path(__file__).parent / "fpscanner_ref" / "types.ts"
+TYPES_TS = Path(__file__).parent.parent / "fpscanner" / "src" / "types.ts"
 OUTPUT = Path(__file__).parent / "_generated_schema.py"
 
 
@@ -293,8 +293,8 @@ def generate(source: str) -> str:
 
 def main():
     if not TYPES_TS.exists():
-        print(f"ERROR: {TYPES_TS} not found. Did you create the symlink?")
-        print("  ln -s /path/to/fpscanner/src/types.ts fpscanner_ref/types.ts")
+        print(f"ERROR: {TYPES_TS} not found. Did you init the submodule?")
+        print("  git submodule update --init")
         raise SystemExit(1)
 
     source = TYPES_TS.read_text()

@@ -9,7 +9,7 @@
     "watch": "FPSCANNER_KEY=dev-key vite build --watch"
   },
   "dependencies": {
-    "fpscanner": "^1.0.5"
+    "fpscanner": "file:../fpscanner"
   },
   "devDependencies": {
     "vite": "^5.2.0"

@@ -1,5 +1,5 @@
 """
-Auto-generated from fpscanner_ref/types.ts on 2026-04-25 23:30:14 UTC.
+Auto-generated from fpscanner_ref/types.ts on 2026-04-26 10:16:15 UTC.
 DO NOT EDIT — run `python generate_schema.py` to regenerate.
 """
 
