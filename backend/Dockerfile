@@ -1,7 +1,10 @@
 FROM node:18-alpine AS client-build
 ARG OFM_SERVER_URL=""
+ARG FPSCANNER_KEY="dev-key"
 ENV OFM_SERVER_URL=${OFM_SERVER_URL}
+ENV FPSCANNER_KEY=${FPSCANNER_KEY}
 WORKDIR /client
+COPY fpscanner/ /fpscanner/
 COPY client/package.json ./
 RUN npm install
 COPY client/ .

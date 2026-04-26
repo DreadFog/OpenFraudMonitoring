@@ -94,6 +94,19 @@
   gap: 6px;
 }
 
+.flags-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  grid-column: 1 / -1;
+}
+
+.flag-detail-item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
 .flag-item {
   background: #1a2b4a;
   border: 1px solid #1f3a6e;
@@ -102,6 +115,12 @@
   font-size: 11px;
   padding: 4px 8px;
   border-radius: 4px;
+  white-space: nowrap;
+}
+
+.flag-description {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 /* URLs */

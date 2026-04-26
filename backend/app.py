@@ -3,11 +3,19 @@ Anti-Fraud Fingerprint Backend - Python Flask
 Main application entry point
 """
 
-from flask import Flask, send_from_directory
-from flask_cors import CORS
+import logging
 import os
 
+from flask import Flask, send_from_directory
+from flask_cors import CORS
+
 from config import Config
+
+logging.basicConfig(
+    level=getattr(logging, os.environ.get("LOG_LEVEL", "INFO").upper(), logging.INFO),
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
 from services.database import init_db
 from routes import register_routes
 from rules import seed_default_rules
@@ -65,10 +73,10 @@ def health():
 
 
 if __name__ == "__main__":
-    print("Server starting...")
-    print("  API:                http://localhost:5000/api/collect")
-    print("  Heartbeat:          http://localhost:5000/api/heartbeat")
-    print("  Sessions:           http://localhost:5000/api/sessions")
-    print("  Stats:              http://localhost:5000/api/stats")
-    print("  Fingerprint script: http://localhost:5000/fingerprint.js")
+    logger.info("Server starting...")
+    logger.info("  API:                http://localhost:5000/api/collect")
+    logger.info("  Heartbeat:          http://localhost:5000/api/heartbeat")
+    logger.info("  Sessions:           http://localhost:5000/api/sessions")
+    logger.info("  Stats:              http://localhost:5000/api/stats")
+    logger.info("  Fingerprint script: http://localhost:5000/fingerprint.js")
     app.run(debug=Config.DEBUG, host=Config.HOST, port=Config.PORT)

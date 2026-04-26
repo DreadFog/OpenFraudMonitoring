@@ -51,7 +51,7 @@ def get_sessions():
             "urls": urls,
             "user_agent": str(browser.get("userAgent", "unknown"))[:60],
             "platform": str(device.get("platform", "unknown")),
-            "is_mobile": bool(browser.get("highEntropyValues", {}).get("mobile")),
+            "is_mobile": browser.get("highEntropyValues", {}).get("mobile") is True,
             "language": str(locale.get("languages", {}).get("language", "unknown")),
             "urls_count": urls_count,
             "session_ids": session_ids,

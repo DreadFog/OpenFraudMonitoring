@@ -10,7 +10,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [schema, setSchema] = useState([]);
   const [filters, setFilters] = useState([]);
-  const [activeFilters, setActiveFilters] = useState([]);
+  const [connected, setConnected] = useState(true);
   const navigate = useNavigate();
 
   // Fetch schema once on mount
@@ -18,35 +18,39 @@ export default function Dashboard() {
     api.getSchema().then(setSchema).catch(console.error);
   }, []);
 
-  // Fetch data (reacts to activeFilters changes)
+  // Compute complete filters (all 3 fields filled)
+  const completeFilters = filters.filter(
+    (f) => f.field && f.op && f.value
+  );
+
+  // Fetch data — reacts to completed filter changes
   useEffect(() => {
     const load = async () => {
       try {
         const [sessionsData, statsData] = await Promise.all([
-          api.getSessions(activeFilters),
+          api.getSessions(completeFilters),
           api.getStats(),
         ]);
         setSessions(sessionsData);
         setStats(statsData);
         setLoading(false);
+        setConnected(true);
       } catch (err) {
         console.error(err);
+        setSessions([]);
+        setStats(null);
         setLoading(false);
+        setConnected(false);
       }
     };
 
     load();
     const interval = setInterval(load, 10000);
     return () => clearInterval(interval);
-  }, [activeFilters]);
-
-  const applyFilters = () => {
-    setActiveFilters([...filters]);
-  };
+  }, [JSON.stringify(completeFilters)]);
 
   const clearFilters = () => {
     setFilters([]);
-    setActiveFilters([]);
   };
 
   if (loading) {
@@ -58,8 +62,10 @@ export default function Dashboard() {
       {/* Header */}
       <header className="header">
         <h1>Anti-Fraud Fingerprint Dashboard</h1>
-        <span className="badge">LIVE</span>
-        <button className="refresh-btn" onClick={applyFilters}>
+        <span className={`badge ${connected ? 'badge-live' : 'badge-offline'}`}>
+          {connected ? 'LIVE' : 'OFFLINE'}
+        </span>
+        <button className="refresh-btn" onClick={() => setLoading(true)}>
           ↻ Refresh
         </button>
       </header>
@@ -99,7 +105,6 @@ export default function Dashboard() {
         schema={schema}
         filters={filters}
         onChange={setFilters}
-        onApply={applyFilters}
         onClear={clearFilters}
       />
 
@@ -122,7 +127,6 @@ export default function Dashboard() {
                 <th>URLs Visited</th>
                 <th>Heartbeats</th>
                 <th>Last Seen</th>
-                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -149,7 +153,7 @@ export default function Dashboard() {
                     : `${Math.round(timeSinceLastSeen / 60)}m ago`;
 
                 return (
-                  <tr key={session.full_fsid}>
+                  <tr key={session.full_fsid} onClick={() => navigate(`/session/${session.full_fsid}`)}>
                     <td className="device-id">{session.fsid}</td>
                     <td>{session.client_ip}</td>
                     <td>
@@ -172,14 +176,6 @@ export default function Dashboard() {
                     <td>{session.urls_count}</td>
                     <td>{session.heartbeats}</td>
                     <td className="time-ago">{timeStr}</td>
-                    <td>
-                      <button
-                        className="details-btn"
-                        onClick={() => navigate(`/session/${session.full_fsid}`)}
-                      >
-                        Details
-                      </button>
-                    </td>
                   </tr>
                 );
               })}

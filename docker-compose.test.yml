@@ -1,0 +1,119 @@
+# Test traffic generator
+#
+# Usage:
+#   # Start the main stack + Selenium hub first:
+#   docker compose -f docker-compose.yml -f docker-compose.test.yml up -d db redis backend worker frontend selenium-hub selenium-chrome
+#
+#   # Then spin up individual scenarios:
+#   docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-headless
+#   docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-tiny-screen
+#
+#   # Or run all at once:
+#   docker compose -f docker-compose.yml -f docker-compose.test.yml up test-all
+#
+#   # Customize dwell time / repetitions:
+#   DWELL=20 REPEAT=3 docker compose ... run --rm test-vanilla
+
+x-scenario: &scenario-base
+  build:
+    context: tests/traffic
+  depends_on:
+    - backend
+    - selenium-hub
+    - selenium-chrome
+  environment: &scenario-env
+    BACKEND_URL: http://backend:5000
+    SELENIUM_HUB: http://selenium-hub:4444/wd/hub
+    DWELL: ${DWELL:-10}
+    REPEAT: ${REPEAT:-1}
+
+services:
+  # ── Selenium Grid ──
+
+  selenium-hub:
+    image: selenium/hub:4.20
+    ports:
+      - "4442:4442"
+      - "4443:4443"
+      - "4444:4444"
+
+  selenium-chrome:
+    image: selenium/node-chrome:4.20
+    shm_size: 2gb
+    environment:
+      SE_EVENT_BUS_HOST: selenium-hub
+      SE_EVENT_BUS_PUBLISH_PORT: 4442
+      SE_EVENT_BUS_SUBSCRIBE_PORT: 4443
+      SE_NODE_MAX_SESSIONS: 4
+      SE_NODE_OVERRIDE_MAX_SESSIONS: "true"
+    depends_on:
+      - selenium-hub
+
+  # ── Individual scenario services ──
+  # Use: docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-<name>
+
+  test-vanilla:
+    <<: *scenario-base
+    environment:
+      <<: *scenario-env
+      SCENARIO: vanilla
+
+  test-headless:
+    <<: *scenario-base
+    environment:
+      <<: *scenario-env
+      SCENARIO: headless
+
+  test-tiny-screen:
+    <<: *scenario-base
+    environment:
+      <<: *scenario-env
+      SCENARIO: tiny_screen
+
+  test-zero-screen:
+    <<: *scenario-base
+    environment:
+      <<: *scenario-env
+      SCENARIO: zero_screen
+
+  test-mobile:
+    <<: *scenario-base
+    environment:
+      <<: *scenario-env
+      SCENARIO: mobile
+
+  test-bot-ua:
+    <<: *scenario-base
+    environment:
+      <<: *scenario-env
+      SCENARIO: bot_ua
+
+  test-utc-timezone:
+    <<: *scenario-base
+    environment:
+      <<: *scenario-env
+      SCENARIO: utc_timezone
+
+  test-swiftshader:
+    <<: *scenario-base
+    environment:
+      <<: *scenario-env
+      SCENARIO: swiftshader
+
+  test-multi-page:
+    <<: *scenario-base
+    environment:
+      <<: *scenario-env
+      SCENARIO: multi_page
+
+  test-rapid:
+    <<: *scenario-base
+    environment:
+      <<: *scenario-env
+      SCENARIO: rapid
+
+  # ── Run all scenarios sequentially ──
+
+  test-all:
+    <<: *scenario-base
+    command: ["--all"]

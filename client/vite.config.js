@@ -18,7 +18,7 @@ export default defineConfig({
       entry: "src/index.js",
       name: "OFMClient",
       formats: ["iife"],
-      fileName: () => "ofm.js",
+      fileName: () => "fingerprint.js",
     },
     outDir: "dist",
     minify: false,

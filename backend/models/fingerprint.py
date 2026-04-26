@@ -10,7 +10,11 @@ _SENTINEL_VALUES = {"ERROR", "INIT", "NA", "SKIPPED"}
 
 def _is_valid(value):
     """Return True if the value is actual data (not an FPScanner sentinel)."""
-    return value not in _SENTINEL_VALUES and value is not None
+    if value is None:
+        return False
+    if isinstance(value, (list, dict)):
+        return True
+    return value not in _SENTINEL_VALUES
 
 
 class Fingerprint(db.Model):

@@ -43,11 +43,21 @@ export default function SessionDetail() {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const [ruleDescriptions, setRuleDescriptions] = useState({});
 
   useEffect(() => {
     api.getSessionDetail(fsid)
       .then(setData)
       .catch(() => setError("Failed to load session."));
+    api.getRules()
+      .then((rules) => {
+        const map = {};
+        for (const r of rules) {
+          map[r.name] = r.description || "";
+        }
+        setRuleDescriptions(map);
+      })
+      .catch(() => {});
   }, [fsid]);
 
   if (error) {
@@ -122,9 +132,14 @@ export default function SessionDetail() {
         {/* Risk Flags */}
         {data.flags.length > 0 && (
           <Section title={`Risk Flags (${data.flags.length})`}>
-            <div className="flags-list">
+            <div className="flags-detail-list">
               {data.flags.map((flag, i) => (
-                <span key={i} className="flag-item">{flag}</span>
+                <div key={i} className="flag-detail-item">
+                  <span className="flag-item">{flag}</span>
+                  {ruleDescriptions[flag] && (
+                    <span className="flag-description">{ruleDescriptions[flag]}</span>
+                  )}
+                </div>
               ))}
             </div>
           </Section>

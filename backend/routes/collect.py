@@ -10,11 +10,15 @@ Expected payload:
   }
 """
 
+import logging
+
 from flask import Blueprint, request, jsonify, current_app
 from services.database import db
 from models import Session, Fingerprint, SessionURL, BrowserSession
 from services.event_queue import enqueue_event
 from utils.crypto import decrypt_fingerprint
+
+logger = logging.getLogger(__name__)
 
 collect_bp = Blueprint("collect", __name__, url_prefix="/api")
 
@@ -65,6 +69,22 @@ def collect():
     if extensions:
         stored_data["_extensions"] = extensions
 
+    # ── Debug logging: dump key signal values to diagnose missing data ──
+    _signals = fp.get("signals", {})
+    _device = _signals.get("device", {})
+    _browser = _signals.get("browser", {})
+    _locale = _signals.get("locale", {})
+    _hev = _browser.get("highEntropyValues", {})
+    logger.debug("Incoming FP keys: %s", list(fp.keys()))
+    logger.debug("signals keys: %s", list(_signals.keys()))
+    logger.debug("device.memory=%s device.cpuCount=%s device.platform=%s", _device.get('memory'), _device.get('cpuCount'), _device.get('platform'))
+    logger.debug("device.screenResolution=%s", _device.get('screenResolution'))
+    logger.debug("browser.userAgent=%s", str(_browser.get('userAgent', ''))[:80])
+    logger.debug("highEntropyValues=%s", _hev)
+    logger.debug("locale.languages=%s locale.intl=%s", _locale.get('languages'), _locale.get('internationalization'))
+    logger.debug("fastBotDetection=%s detections_count=%s", fp.get('fastBotDetection'), len(fp.get('fastBotDetectionDetails', {})))
+    logger.debug("extensions keys: %s", list(extensions.keys()))
+
     # Store fingerprint with denormalized fields
     denorm = Fingerprint.extract_fields(fp)
     fingerprint = Fingerprint(
@@ -99,7 +119,7 @@ def collect():
     # Enqueue for rule evaluation (best-effort)
     enqueue_event(session_obj.id, "fingerprint")
 
-    print(f"[COLLECT] fsid={fsid[:32]} bot={fp.get('fastBotDetection')} ip={client_ip} url={url}")
+    logger.info("fsid=%s bot=%s ip=%s url=%s", fsid[:32], fp.get('fastBotDetection'), client_ip, url)
 
     return jsonify({
         "ok": True,

@@ -12,6 +12,8 @@ Running this script multiple times is safe — existing rules (matched by name)
 are skipped.
 """
 
+import logging
+
 from flask import Flask
 from config import Config
 from services.database import init_db, db
@@ -103,7 +105,7 @@ def seed():
             created += 1
 
         db.session.commit()
-        print(f"[SEED] {created} rules created, {skipped} skipped (already exist)")
+        logging.getLogger(__name__).info("%d rules created, %d skipped (already exist)", created, skipped)
 
 
 if __name__ == "__main__":

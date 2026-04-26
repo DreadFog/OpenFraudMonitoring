@@ -133,7 +133,7 @@ function FilterRow({ filter, schema, onUpdate, onRemove }) {
   );
 }
 
-export default function FilterBuilder({ schema, filters, onChange, onApply, onClear }) {
+export default function FilterBuilder({ schema, filters, onChange, onClear }) {
   const addFilter = () => {
     onChange([...filters, { field: "", op: "", value: "" }]);
   };
@@ -161,14 +161,9 @@ export default function FilterBuilder({ schema, filters, onChange, onApply, onCl
           + Add Filter
         </button>
         {filters.length > 0 && (
-          <>
-            <button className="filter-apply-btn" onClick={onApply}>
-              Apply
-            </button>
             <button className="filter-clear-btn" onClick={onClear}>
               Clear
             </button>
-          </>
         )}
       </div>
       {filters.map((filter, i) => (

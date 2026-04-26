@@ -50,12 +50,25 @@ body {
 }
 
 .badge {
-  background: #1f6feb;
   color: #fff;
   border-radius: 4px;
   padding: 2px 8px;
   font-size: 11px;
   font-weight: 600;
+}
+
+.badge-live {
+  background: #238636;
+}
+
+.badge-offline {
+  background: #da3633;
+  animation: pulse-offline 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-offline {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .refresh-btn {

@@ -13,6 +13,7 @@ Two loops run concurrently:
 
 import os
 import json
+import logging
 import time
 import threading
 from flask import Flask
@@ -20,6 +21,12 @@ from config import Config
 from services.database import init_db, db
 from services.event_queue import get_redis
 from rules import seed_default_rules
+
+logging.basicConfig(
+    level=getattr(logging, os.environ.get("LOG_LEVEL", "INFO").upper(), logging.INFO),
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 def create_app():
@@ -35,11 +42,11 @@ def create_app():
                 seed_default_rules()
                 break
             except Exception as e:
-                print(f"[WORKER] DB not ready (attempt {attempt}/10): {e}")
+                logger.warning("DB not ready (attempt %d/10): %s", attempt, e)
                 db.session.rollback()
                 time.sleep(2)
         else:
-            print("[WORKER] Could not seed rules after 10 attempts, continuing anyway")
+            logger.error("Could not seed rules after 10 attempts, continuing anyway")
 
     return app
 
@@ -79,7 +86,7 @@ def _apply_rule_matches(rules, session_id=None):
 
 def process_realtime_events():
     r = get_redis()
-    print("[WORKER] Listening for events on ofm:events …")
+    logger.info("Listening for events on ofm:events …")
 
     while True:
         try:
@@ -99,7 +106,7 @@ def process_realtime_events():
                 _apply_rule_matches(rules, session_id=session_id)
 
         except Exception as e:
-            print(f"[WORKER] Error processing event: {e}")
+            logger.error("Error processing event: %s", e)
             time.sleep(1)
 
 
@@ -117,7 +124,7 @@ def process_periodic_rules():
                 if rules:
                     _apply_rule_matches(rules)
         except Exception as e:
-            print(f"[WORKER] Periodic error: {e}")
+            logger.error("Periodic error: %s", e)
 
 
 # ── Entry point ─────────────────────────────────────────────────────────────

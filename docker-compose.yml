@@ -35,6 +35,7 @@ services:
       - "${PORT:-5000}:5000"
     environment:
       FLASK_DEBUG: ${FLASK_DEBUG:-0}
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
       DATABASE_URL: ${DATABASE_URL:-postgresql://ofm:ofm@db:5432/ofm}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     depends_on:
@@ -49,6 +50,7 @@ services:
       dockerfile: backend/Dockerfile
     command: python worker.py
     environment:
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
       DATABASE_URL: ${DATABASE_URL:-postgresql://ofm:ofm@db:5432/ofm}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       PERIODIC_INTERVAL_SECONDS: ${PERIODIC_INTERVAL_SECONDS:-60}
