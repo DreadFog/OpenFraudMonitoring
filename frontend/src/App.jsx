@@ -9,7 +9,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Dashboard />} />
-        <Route path="/session/:deviceId" element={<SessionDetail />} />
+        <Route path="/session/:fsid" element={<SessionDetail />} />
       </Routes>
     </BrowserRouter>
   );

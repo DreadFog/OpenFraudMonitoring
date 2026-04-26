@@ -1,6 +1,16 @@
 from services.database import db
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy import func
+from _generated_schema import SIGNAL_FIELDS, DETECTION_FIELDS, TOP_LEVEL_FIELDS
+
+
+# ── Special signal values from FPScanner (non-data sentinels) ──
+_SENTINEL_VALUES = {"ERROR", "INIT", "NA", "SKIPPED"}
+
+
+def _is_valid(value):
+    """Return True if the value is actual data (not an FPScanner sentinel)."""
+    return value not in _SENTINEL_VALUES and value is not None
 
 
 class Fingerprint(db.Model):
@@ -11,33 +21,10 @@ class Fingerprint(db.Model):
     timestamp = db.Column(db.Float, default=0)
     data = db.Column(JSONB, nullable=False)
 
-    # ── Denormalized columns for efficient filtering / indexing ──
-    user_agent = db.Column(db.String(512), default="")
-    platform = db.Column(db.String(64), default="")
-    language = db.Column(db.String(32), default="")
-    operating_system = db.Column(db.String(64), default="")
-    hardware_concurrency = db.Column(db.Integer, default=0)
-    device_memory = db.Column(db.Float, default=0)
-    is_mobile = db.Column(db.Boolean, default=False)
-    is_workstation = db.Column(db.Boolean, default=False)
-    screen_width = db.Column(db.Integer, default=0)
-    screen_height = db.Column(db.Integer, default=0)
-    color_depth = db.Column(db.Integer, default=0)
-    timezone = db.Column(db.String(64), default="")
-    webgl_vendor = db.Column(db.String(256), default="")
-    webgl_renderer = db.Column(db.String(256), default="")
-    public_ip = db.Column(db.String(45), default="")
-    has_webdriver = db.Column(db.Boolean, default=False)
-    has_phantom = db.Column(db.Boolean, default=False)
-    has_nightmare = db.Column(db.Boolean, default=False)
-    has_puppeteer = db.Column(db.Boolean, default=False)
-    has_selenium = db.Column(db.Boolean, default=False)
-    has_chromedriver = db.Column(db.Boolean, default=False)
-    has_empty_languages = db.Column(db.Boolean, default=False)
-    has_no_plugins = db.Column(db.Boolean, default=False)
-    has_native_spoofed = db.Column(db.Boolean, default=False)
-    has_canvas = db.Column(db.Boolean, default=False)
-    has_audio = db.Column(db.Boolean, default=False)
+    # ── Top-level fields ──
+    fsid = db.Column(db.String(512), default="", index=True)
+    fast_bot_detection = db.Column(db.Boolean, default=False)
+    url = db.Column(db.String(2048), default="")
 
     created_at = db.Column(db.DateTime, server_default=func.now())
 
@@ -45,38 +32,75 @@ class Fingerprint(db.Model):
 
     @staticmethod
     def extract_fields(fp_data):
-        """Extract denormalized fields from raw fingerprint JSON."""
-        nav = fp_data.get("navigator", {})
-        scr = fp_data.get("screen", {})
-        gl = fp_data.get("webgl", {})
-        tz = fp_data.get("timezone", {})
-        bot = fp_data.get("botSignals", {})
-        pub = fp_data.get("publicIP", {})
-        return {
-            "user_agent": (nav.get("userAgent") or "")[:512],
-            "platform": (nav.get("platform") or "")[:64],
-            "language": (nav.get("language") or "")[:32],
-            "operating_system": (fp_data.get("operatingSystem") or "")[:64],
-            "hardware_concurrency": nav.get("hardwareConcurrency") or 0,
-            "device_memory": nav.get("deviceMemory") or 0,
-            "is_mobile": bool(nav.get("isMobile")),
-            "is_workstation": bool(nav.get("isWorkstation")),
-            "screen_width": scr.get("width") or 0,
-            "screen_height": scr.get("height") or 0,
-            "color_depth": scr.get("colorDepth") or 0,
-            "timezone": (tz.get("timezone") or "")[:64],
-            "webgl_vendor": (gl.get("vendor") or "")[:256],
-            "webgl_renderer": (gl.get("renderer") or "")[:256],
-            "public_ip": (pub.get("ip") or "")[:45],
-            "has_webdriver": bool(bot.get("webdriver")),
-            "has_phantom": bool(bot.get("phantom")),
-            "has_nightmare": bool(bot.get("nightmare")),
-            "has_puppeteer": bool(bot.get("puppeteer")),
-            "has_selenium": bool(bot.get("selenium")),
-            "has_chromedriver": bool(bot.get("cdcProps")),
-            "has_empty_languages": bool(bot.get("languages_empty")),
-            "has_no_plugins": bool(bot.get("noPlugins")),
-            "has_native_spoofed": bot.get("nativeCheckPassed") is False,
-            "has_canvas": bool(fp_data.get("canvas", {}).get("dataURL")),
-            "has_audio": bool(fp_data.get("audio")),
-        }
+        """Extract denormalized fields from a decrypted FPScanner fingerprint."""
+        result = {}
+
+        # Top-level fields
+        result["fsid"] = str(fp_data.get("fsid", "") or "")[:512]
+        result["fast_bot_detection"] = bool(fp_data.get("fastBotDetection"))
+        result["url"] = str(fp_data.get("url", "") or "")[:2048]
+
+        # Signal fields — walk the nested signals dict
+        signals = fp_data.get("signals", {})
+        for field in SIGNAL_FIELDS:
+            path = field["path"]
+            col = field["column"]
+            ftype = field["type"]
+
+            # Walk nested path (e.g. "device.screenResolution.width")
+            val = signals
+            for key in path.split("."):
+                if isinstance(val, dict):
+                    val = val.get(key)
+                else:
+                    val = None
+                    break
+
+            if not _is_valid(val):
+                val = field["default"]
+
+            if ftype == "boolean":
+                result[col] = bool(val) if val is not None else False
+            elif ftype == "number":
+                try:
+                    result[col] = float(val) if val is not None else 0
+                except (ValueError, TypeError):
+                    result[col] = 0
+            else:
+                # string / string[]
+                if isinstance(val, list):
+                    result[col] = val
+                else:
+                    result[col] = str(val or "")[:512]
+
+        # Detection fields
+        details = fp_data.get("fastBotDetectionDetails", {})
+        for field in DETECTION_FIELDS:
+            name = field["name"]
+            col = field["column"]
+            det = details.get(name, {})
+            result[col] = bool(det.get("detected")) if isinstance(det, dict) else False
+
+        return result
+
+
+# ── Dynamically add denormalized columns from the generated schema ──
+# This runs at import time, adding columns to the Fingerprint model.
+
+_SA_TYPE_MAP = {
+    "db.Boolean": db.Boolean,
+    "db.Float": db.Float,
+    "db.String(512)": db.String(512),
+    "JSONB": JSONB,
+}
+
+for _field in SIGNAL_FIELDS:
+    _col_name = _field["column"]
+    _sa_type_str = _field["sa_type"]
+    _sa_type = _SA_TYPE_MAP.get(_sa_type_str, db.String(512))
+    _default = _field["default"]
+    setattr(Fingerprint, _col_name, db.Column(_sa_type, default=_default))
+
+for _field in DETECTION_FIELDS:
+    _col_name = _field["column"]
+    setattr(Fingerprint, _col_name, db.Column(db.Boolean, default=False))

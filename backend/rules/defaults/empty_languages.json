@@ -1,8 +1,0 @@
-{
-  "name": "EMPTY_LANGUAGES",
-  "description": "navigator.languages is empty — unusual for real browsers",
-  "rule_type": "realtime",
-  "logic": "AND",
-  "conditions": [{"field": "has_empty_languages", "op": "eq", "value": "true"}],
-  "score_modifier": 20
-}

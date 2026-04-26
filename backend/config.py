@@ -28,6 +28,10 @@ class Config:
     # ── Worker ──
     PERIODIC_INTERVAL_SECONDS = int(os.environ.get("PERIODIC_INTERVAL_SECONDS", "60"))
 
+    # ── FPScanner encryption ──
+    # Must match the key used at fpscanner build time (npx fpscanner build --key=...)
+    FPSCANNER_KEY = os.environ.get("FPSCANNER_KEY", "dev-key")
+
     # ── Client (injected at build time via Vite) ──
     # OFM_SERVER_URL is the URL the fingerprint.js client sends data to.
     # Set to "" for same-origin (default), or "https://ofm.example.com" for remote.

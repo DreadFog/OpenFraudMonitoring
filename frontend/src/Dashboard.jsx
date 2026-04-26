@@ -149,8 +149,8 @@ export default function Dashboard() {
                     : `${Math.round(timeSinceLastSeen / 60)}m ago`;
 
                 return (
-                  <tr key={session.full_device_id}>
-                    <td className="device-id">{session.device_id}</td>
+                  <tr key={session.full_fsid}>
+                    <td className="device-id">{session.fsid}</td>
                     <td>{session.client_ip}</td>
                     <td>
                       <span className={`risk-badge ${riskClass}`}>
@@ -175,7 +175,7 @@ export default function Dashboard() {
                     <td>
                       <button
                         className="details-btn"
-                        onClick={() => navigate(`/session/${session.full_device_id}`)}
+                        onClick={() => navigate(`/session/${session.full_fsid}`)}
                       >
                         Details
                       </button>

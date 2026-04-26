@@ -29,16 +29,19 @@ def get_sessions():
     for sess in all_sessions:
         last_fp_row = sess.fingerprints.order_by(Fingerprint.timestamp.desc()).first()
         last_fp = last_fp_row.data if last_fp_row else {}
-        nav = last_fp.get("navigator", {})
+        signals = last_fp.get("signals", {})
+        browser = signals.get("browser", {})
+        device = signals.get("device", {})
+        locale = signals.get("locale", {})
         urls = [u.url for u in sess.urls.limit(3).all()]
         urls_count = sess.urls.count()
         heartbeats_count = sess.heartbeats.count()
         session_ids = [bs.browser_session_id for bs in sess.browser_sessions.limit(2).all()]
-        device_id = sess.device_id
+        fsid = sess.fsid
 
         sessions_list.append({
-            "device_id": device_id[:16] + "..." if len(device_id) > 16 else device_id,
-            "full_device_id": device_id,
+            "fsid": fsid[:32] + "..." if len(fsid) > 32 else fsid,
+            "full_fsid": fsid,
             "client_ip": sess.client_ip or "unknown",
             "risk_score": sess.risk_score,
             "flags": (sess.flags or [])[:5],
@@ -46,24 +49,24 @@ def get_sessions():
             "last_seen": sess.last_seen,
             "heartbeats": heartbeats_count,
             "urls": urls,
-            "user_agent": nav.get("userAgent", "unknown")[:60],
-            "platform": nav.get("platform", "unknown"),
-            "is_workstation": nav.get("isWorkstation", False),
-            "is_mobile": nav.get("isMobile", False),
-            "language": nav.get("language", "unknown"),
+            "user_agent": str(browser.get("userAgent", "unknown"))[:60],
+            "platform": str(device.get("platform", "unknown")),
+            "is_mobile": bool(browser.get("highEntropyValues", {}).get("mobile")),
+            "language": str(locale.get("languages", {}).get("language", "unknown")),
             "urls_count": urls_count,
             "session_ids": session_ids,
+            "fast_bot_detection": last_fp.get("fastBotDetection", False),
         })
 
     return jsonify(sessions_list), 200
 
 
-@sessions_bp.route("/sessions/<device_id>", methods=["GET"])
-def get_session_detail(device_id):
+@sessions_bp.route("/sessions/<fsid>", methods=["GET"])
+def get_session_detail(fsid):
     """
     Get detailed session information
     """
-    sess = Session.query.filter_by(device_id=device_id).first()
+    sess = Session.query.filter_by(fsid=fsid).first()
     if not sess:
         return jsonify({"error": "session not found"}), 404
 
@@ -80,7 +83,7 @@ def get_session_detail(device_id):
     ).limit(20).all()
 
     return jsonify({
-        "device_id": device_id,
+        "fsid": fsid,
         "client_ip": sess.client_ip,
         "risk_score": sess.risk_score,
         "flags": sess.flags or [],

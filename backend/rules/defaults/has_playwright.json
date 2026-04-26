@@ -1,0 +1,14 @@
+{
+  "name": "hasPlaywright",
+  "description": "FPScanner: Det: Has Playwright (severity: high)",
+  "rule_type": "realtime",
+  "logic": "AND",
+  "conditions": [
+    {
+      "field": "det_has_playwright",
+      "op": "eq",
+      "value": "true"
+    }
+  ],
+  "score_modifier": 15
+}

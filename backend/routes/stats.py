@@ -18,8 +18,8 @@ def get_stats():
     high_risk = Session.query.filter(Session.risk_score >= 60).count()
     low_risk = total - high_risk
 
-    # Count sessions with bot-related flags using JSONB contains
-    bot_keywords = ["DETECTED", "WEBDRIVER", "DRIVER"]
+    # Count sessions with bot-related flags (FPScanner detection names)
+    bot_keywords = ["Webdriver", "Selenium", "CDP", "Playwright", "Bot"]
     bots = 0
     bot_sessions = Session.query.filter(Session.flags != None).all()  # noqa: E711
     for sess in bot_sessions:

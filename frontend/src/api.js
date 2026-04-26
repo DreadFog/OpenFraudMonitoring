@@ -14,8 +14,8 @@ export const api = {
     return res.json();
   },
 
-  getSessionDetail: async (deviceId) => {
-    const res = await fetch(`/api/sessions/${deviceId}`);
+  getSessionDetail: async (fsid) => {
+    const res = await fetch(`/api/sessions/${fsid}`);
     if (!res.ok) throw new Error("Failed to fetch session detail");
     return res.json();
   },

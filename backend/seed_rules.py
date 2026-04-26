@@ -1,12 +1,12 @@
 """
-Seed the database with default detection rules.
+Seed the database with default detection rules based on FPScanner's detections.
 
 Run once after initializing the database:
     python seed_rules.py
 
-These rules replicate the scoring logic that was previously hardcoded in
-analysis/risk.py. They are inserted as realtime rules so the worker evaluates
-them on every incoming fingerprint / heartbeat event.
+These rules are auto-generated from FPScanner's FastBotDetectionDetails.
+Each detection becomes a realtime rule that checks the corresponding
+denormalized column on the Fingerprint model.
 
 Running this script multiple times is safe — existing rules (matched by name)
 are skipped.
@@ -16,156 +16,61 @@ from flask import Flask
 from config import Config
 from services.database import init_db, db
 from models import Rule
+from _generated_schema import DETECTION_FIELDS
 
-DEFAULT_RULES = [
-    # ── Bot / automation signals ─────────────────────────────────────────────
-    {
-        "name": "CHROMEDRIVER_PROPS",
-        "description": "ChromeDriver properties detected on the page",
-        "rule_type": "realtime",
-        "logic": "AND",
-        "conditions": [{"field": "has_chromedriver", "op": "eq", "value": "true"}],
-        "score_modifier": 45,
-    },
-    {
-        "name": "WEBDRIVER_DETECTED",
-        "description": "navigator.webdriver is true",
-        "rule_type": "realtime",
-        "logic": "AND",
-        "conditions": [{"field": "has_webdriver", "op": "eq", "value": "true"}],
-        "score_modifier": 40,
-    },
-    {
-        "name": "PHANTOMJS_DETECTED",
-        "description": "PhantomJS runtime detected",
-        "rule_type": "realtime",
-        "logic": "AND",
-        "conditions": [{"field": "has_phantom", "op": "eq", "value": "true"}],
-        "score_modifier": 40,
-    },
-    {
-        "name": "SELENIUM_DETECTED",
-        "description": "Selenium automation framework detected",
-        "rule_type": "realtime",
-        "logic": "AND",
-        "conditions": [{"field": "has_selenium", "op": "eq", "value": "true"}],
-        "score_modifier": 35,
-    },
-    {
-        "name": "PUPPETEER_DETECTED",
-        "description": "Puppeteer automation framework detected",
-        "rule_type": "realtime",
-        "logic": "AND",
-        "conditions": [{"field": "has_puppeteer", "op": "eq", "value": "true"}],
-        "score_modifier": 35,
-    },
-    {
-        "name": "NIGHTMARE_DETECTED",
-        "description": "Nightmare automation framework detected",
-        "rule_type": "realtime",
-        "logic": "AND",
-        "conditions": [{"field": "has_nightmare", "op": "eq", "value": "true"}],
-        "score_modifier": 35,
-    },
-    {
-        "name": "NATIVE_SPOOFED",
-        "description": "Browser native function toString check failed — likely spoofed environment",
-        "rule_type": "realtime",
-        "logic": "AND",
-        "conditions": [{"field": "has_native_spoofed", "op": "eq", "value": "true"}],
-        "score_modifier": 30,
-    },
-    {
-        "name": "EMPTY_LANGUAGES",
-        "description": "navigator.languages is empty — unusual for real browsers",
-        "rule_type": "realtime",
-        "logic": "AND",
-        "conditions": [{"field": "has_empty_languages", "op": "eq", "value": "true"}],
-        "score_modifier": 20,
-    },
-    {
-        "name": "NO_PLUGINS",
-        "description": "No browser plugins reported",
-        "rule_type": "realtime",
-        "logic": "AND",
-        "conditions": [{"field": "has_no_plugins", "op": "eq", "value": "true"}],
-        "score_modifier": 15,
-    },
+# Severity → score modifier mapping (matches analysis/risk.py)
+SEVERITY_SCORES = {
+    "high": 15,
+    "medium": 8,
+    "low": 3,
+}
 
-    # ── Hardware anomalies ───────────────────────────────────────────────────
-    {
-        "name": "ZERO_SCREEN",
-        "description": "Screen width or height is zero — likely headless environment",
-        "rule_type": "realtime",
-        "logic": "OR",
-        "conditions": [
-            {"field": "screen_width", "op": "eq", "value": "0"},
-            {"field": "screen_height", "op": "eq", "value": "0"},
-        ],
-        "score_modifier": 25,
-    },
-    {
-        "name": "ZERO_CPU_CORES",
-        "description": "hardwareConcurrency is zero",
-        "rule_type": "realtime",
-        "logic": "AND",
-        "conditions": [{"field": "hardware_concurrency", "op": "eq", "value": "0"}],
-        "score_modifier": 20,
-    },
-    {
-        "name": "ZERO_DEVICE_MEMORY",
-        "description": "deviceMemory is zero",
-        "rule_type": "realtime",
-        "logic": "AND",
-        "conditions": [{"field": "device_memory", "op": "eq", "value": "0"}],
-        "score_modifier": 15,
-    },
-    {
-        "name": "ZERO_COLOR_DEPTH",
-        "description": "Screen color depth is zero",
-        "rule_type": "realtime",
-        "logic": "AND",
-        "conditions": [{"field": "color_depth", "op": "eq", "value": "0"}],
-        "score_modifier": 15,
-    },
+# Severity for each detection rule (from FPScanner's index.ts)
+DETECTION_SEVERITIES = {
+    "headlessChromeScreenResolution": "high",
+    "hasWebdriver": "high",
+    "hasWebdriverWritable": "high",
+    "hasSeleniumProperty": "high",
+    "hasCDP": "high",
+    "hasPlaywright": "high",
+    "hasImpossibleDeviceMemory": "high",
+    "hasHighCPUCount": "high",
+    "hasMissingChromeObject": "high",
+    "hasWebdriverIframe": "high",
+    "hasWebdriverWorker": "high",
+    "hasMismatchWebGLInWorker": "high",
+    "hasMismatchPlatformIframe": "high",
+    "hasMismatchPlatformWorker": "high",
+    "hasSwiftshaderRenderer": "low",
+    "hasUTCTimezone": "medium",
+    "hasMismatchLanguages": "low",
+    "hasInconsistentEtsl": "high",
+    "hasBotUserAgent": "high",
+    "hasGPUMismatch": "high",
+    "hasPlatformMismatch": "high",
+}
 
-    # ── Missing capabilities ─────────────────────────────────────────────────
-    {
-        "name": "NO_CANVAS",
-        "description": "Canvas fingerprinting returned no data",
-        "rule_type": "realtime",
-        "logic": "AND",
-        "conditions": [{"field": "has_canvas", "op": "eq", "value": "false"}],
-        "score_modifier": 10,
-    },
-    {
-        "name": "NO_WEBGL",
-        "description": "No WebGL vendor or renderer reported",
-        "rule_type": "realtime",
-        "logic": "AND",
-        "conditions": [
-            {"field": "webgl_vendor", "op": "eq", "value": ""},
-            {"field": "webgl_renderer", "op": "eq", "value": ""},
-        ],
-        "score_modifier": 10,
-    },
-    {
-        "name": "NO_AUDIO",
-        "description": "No audio context data available",
-        "rule_type": "realtime",
-        "logic": "AND",
-        "conditions": [{"field": "has_audio", "op": "eq", "value": "false"}],
-        "score_modifier": 5,
-    },
-    {
-        "name": "NO_TIMEZONE",
-        "description": "Timezone is empty — unusual for real browsers",
-        "rule_type": "realtime",
-        "logic": "AND",
-        "conditions": [{"field": "timezone", "op": "eq", "value": ""}],
-        "score_modifier": 5,
-    },
-]
+
+def build_default_rules():
+    """Build DEFAULT_RULES list from the generated schema + severity map."""
+    rules = []
+    for det in DETECTION_FIELDS:
+        name = det["name"]
+        col = det["column"]
+        severity = DETECTION_SEVERITIES.get(name, "medium")
+        score = SEVERITY_SCORES.get(severity, 5)
+        rules.append({
+            "name": name,
+            "description": f"FPScanner detection: {det['label']} (severity: {severity})",
+            "rule_type": "realtime",
+            "logic": "AND",
+            "conditions": [{"field": col, "op": "eq", "value": "true"}],
+            "score_modifier": score,
+        })
+    return rules
+
+
+DEFAULT_RULES = build_default_rules()
 
 
 def seed():

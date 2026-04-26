@@ -1,0 +1,14 @@
+{
+  "name": "hasImpossibleDeviceMemory",
+  "description": "FPScanner: Det: Has Impossible Device Memory (severity: high)",
+  "rule_type": "realtime",
+  "logic": "AND",
+  "conditions": [
+    {
+      "field": "det_has_impossible_device_memory",
+      "op": "eq",
+      "value": "true"
+    }
+  ],
+  "score_modifier": 15
+}

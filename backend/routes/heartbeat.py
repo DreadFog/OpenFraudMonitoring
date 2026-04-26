@@ -1,10 +1,19 @@
 """
-Heartbeat endpoint - receives behavioral updates
+Heartbeat endpoint — receives periodic extension drain data (behavior, etc.)
+
+Expected payload:
+  {
+    "timestamp": 1234567890,
+    "url": "https://...",
+    "extensions": {
+      "behavior": { "mouseMoves": [...], "clicks": [...], ... }
+    }
+  }
 """
 
 from flask import Blueprint, request, jsonify
 from services.database import db
-from models import Session, Heartbeat, SessionURL, BrowserSession
+from models import Session, Heartbeat, SessionURL
 from utils import extract_behavior_summary
 from services.event_queue import enqueue_event
 
@@ -14,23 +23,32 @@ heartbeat_bp = Blueprint("heartbeat", __name__, url_prefix="/api")
 @heartbeat_bp.route("/heartbeat", methods=["POST"])
 def heartbeat():
     """
-    Receive behavioral heartbeat updates
+    Receive periodic heartbeat with extension drain data.
+
+    The heartbeat is linked to a session via the fsid provided
+    in the most recent collect call (stored server-side).
+    For now, the client doesn't send fsid in heartbeats — we use
+    the client IP + most recent session as a fallback.
     """
     hb = request.get_json() or {}
 
-    session_id = hb.get("session", "unknown")
     url = hb.get("url", "")
     timestamp = hb.get("timestamp", 0)
-    behavior = hb.get("behavior", {})
+    extensions = hb.get("extensions", {})
+    behavior = extensions.get("behavior", {})
 
-    # Find session by browser session ID
-    browser_sess = BrowserSession.query.filter_by(
-        browser_session_id=session_id
-    ).first()
-    if not browser_sess:
-        return jsonify({"ok": False, "error": "session not found"}), 404
+    # Find session — use fsid if provided, otherwise fall back to client IP
+    fsid = hb.get("fsid")
+    session_obj = None
+    if fsid:
+        session_obj = Session.query.filter_by(fsid=fsid).first()
+    if not session_obj:
+        # Fallback: find most recent session from this IP
+        client_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+        session_obj = Session.query.filter_by(client_ip=client_ip).order_by(
+            Session.last_seen.desc()
+        ).first()
 
-    session_obj = Session.query.get(browser_sess.session_id)
     if not session_obj:
         return jsonify({"ok": False, "error": "session not found"}), 404
 
@@ -69,6 +87,6 @@ def heartbeat():
     # Enqueue for rule evaluation (best-effort)
     enqueue_event(session_obj.id, "heartbeat")
 
-    print(f"[HEARTBEAT] device_id={session_obj.device_id[:16]} url={url} moves={behavior_summary['mouseMoves']} clicks={behavior_summary['clicks']}")
+    print(f"[HEARTBEAT] fsid={session_obj.fsid[:32]} url={url} moves={behavior_summary['mouseMoves']} clicks={behavior_summary['clicks']}")
 
     return jsonify({"ok": True}), 200

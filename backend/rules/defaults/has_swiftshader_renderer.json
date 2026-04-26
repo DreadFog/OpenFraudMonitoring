@@ -1,0 +1,14 @@
+{
+  "name": "hasSwiftshaderRenderer",
+  "description": "FPScanner: Det: Has Swiftshader Renderer (severity: low)",
+  "rule_type": "realtime",
+  "logic": "AND",
+  "conditions": [
+    {
+      "field": "det_has_swiftshader_renderer",
+      "op": "eq",
+      "value": "true"
+    }
+  ],
+  "score_modifier": 3
+}

@@ -1,9 +1,14 @@
 """
-Schema registry - defines all queryable fields for filters and rules.
+Schema registry — auto-built from FPScanner's types.ts via generate_schema.py.
 
 This module is the single source of truth for what fields can be filtered on,
 what operators are available for each type, and which table/column they map to.
+
+To regenerate after FPScanner updates:
+    python generate_schema.py
 """
+
+from _generated_schema import SIGNAL_FIELDS, DETECTION_FIELDS, TOP_LEVEL_FIELDS
 
 OPERATORS = {
     "string": [
@@ -27,30 +32,53 @@ OPERATORS = {
     ],
 }
 
+# ── Build SCHEMA_FIELDS from the generated data ──
+
 SCHEMA_FIELDS = [
-    # ── Session-level fields ──
+    # Session-level fields (always present)
     {"name": "client_ip", "label": "Client IP", "type": "string", "model": "Session", "column": "client_ip"},
     {"name": "risk_score", "label": "Risk Score", "type": "number", "model": "Session", "column": "risk_score"},
-    {"name": "device_id", "label": "Device ID", "type": "string", "model": "Session", "column": "device_id"},
-
-    # ── Fingerprint-level fields (denormalized) ──
-    {"name": "user_agent", "label": "User Agent", "type": "string", "model": "Fingerprint", "column": "user_agent"},
-    {"name": "platform", "label": "Platform", "type": "string", "model": "Fingerprint", "column": "platform"},
-    {"name": "language", "label": "Language", "type": "string", "model": "Fingerprint", "column": "language"},
-    {"name": "operating_system", "label": "Operating System", "type": "string", "model": "Fingerprint", "column": "operating_system"},
-    {"name": "timezone", "label": "Timezone", "type": "string", "model": "Fingerprint", "column": "timezone"},
-    {"name": "public_ip", "label": "Public IP", "type": "string", "model": "Fingerprint", "column": "public_ip"},
-    {"name": "webgl_vendor", "label": "WebGL Vendor", "type": "string", "model": "Fingerprint", "column": "webgl_vendor"},
-    {"name": "webgl_renderer", "label": "WebGL Renderer", "type": "string", "model": "Fingerprint", "column": "webgl_renderer"},
-    {"name": "screen_width", "label": "Screen Width", "type": "number", "model": "Fingerprint", "column": "screen_width"},
-    {"name": "screen_height", "label": "Screen Height", "type": "number", "model": "Fingerprint", "column": "screen_height"},
-    {"name": "hardware_concurrency", "label": "CPU Cores", "type": "number", "model": "Fingerprint", "column": "hardware_concurrency"},
-    {"name": "device_memory", "label": "Device Memory (GB)", "type": "number", "model": "Fingerprint", "column": "device_memory"},
-    {"name": "color_depth", "label": "Color Depth", "type": "number", "model": "Fingerprint", "column": "color_depth"},
-    {"name": "is_mobile", "label": "Is Mobile", "type": "boolean", "model": "Fingerprint", "column": "is_mobile"},
-    {"name": "is_workstation", "label": "Is Workstation", "type": "boolean", "model": "Fingerprint", "column": "is_workstation"},
-    {"name": "has_webdriver", "label": "Has WebDriver", "type": "boolean", "model": "Fingerprint", "column": "has_webdriver"},
+    {"name": "fsid", "label": "Fingerprint ID (fsid)", "type": "string", "model": "Session", "column": "fsid"},
 ]
+
+# Top-level fingerprint fields
+for f in TOP_LEVEL_FIELDS:
+    SCHEMA_FIELDS.append({
+        "name": f["column"],
+        "label": f["label"],
+        "type": f["type"],
+        "model": "Fingerprint",
+        "column": f["column"],
+    })
+
+# Signal fields (denormalized from signals.*)
+for f in SIGNAL_FIELDS:
+    SCHEMA_FIELDS.append({
+        "name": f["column"],
+        "label": f["label"],
+        "type": f["type"],
+        "model": "Fingerprint",
+        "column": f["column"],
+    })
+
+# Detection fields (denormalized from fastBotDetectionDetails.*)
+for f in DETECTION_FIELDS:
+    SCHEMA_FIELDS.append({
+        "name": f["column"],
+        "label": f["label"],
+        "type": f["type"],
+        "model": "Fingerprint",
+        "column": f["column"],
+    })
+
+# ── Dedup (fsid appears in both session and top-level) ──
+_seen = set()
+_deduped = []
+for f in SCHEMA_FIELDS:
+    if f["name"] not in _seen:
+        _seen.add(f["name"])
+        _deduped.append(f)
+SCHEMA_FIELDS = _deduped
 
 
 def get_schema():

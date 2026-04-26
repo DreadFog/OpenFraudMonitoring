@@ -40,8 +40,8 @@ This rule detects headless Chrome browsers and adds 30 points to the risk score:
   "rule_type": "realtime",
   "logic": "AND",
   "conditions": [
-    {"field": "has_webdriver", "op": "eq", "value": "true"},
-    {"field": "screen_width", "op": "eq", "value": "0"}
+    {"field": "det_has_webdriver", "op": "eq", "value": "true"},
+    {"field": "device_screen_resolution_width", "op": "eq", "value": "0"}
   ],
   "score_modifier": 30
 }
@@ -78,7 +78,7 @@ Content-Type: application/json
   "rule_type": "realtime",
   "logic": "AND",
   "conditions": [
-    {"field": "user_agent", "op": "contains", "value": "HeadlessChrome"}
+    {"field": "browser_user_agent", "op": "contains", "value": "HeadlessChrome"}
   ],
   "score_modifier": 30,
   "enabled": true
@@ -116,8 +116,8 @@ This also removes all associated `RuleMatch` rows.
   "rule_type": "realtime",
   "logic": "OR",
   "conditions": [
-    {"field": "has_webdriver", "op": "eq", "value": "true"},
-    {"field": "user_agent", "op": "contains", "value": "HeadlessChrome"}
+    {"field": "det_has_webdriver", "op": "eq", "value": "true"},
+    {"field": "browser_user_agent", "op": "contains", "value": "HeadlessChrome"}
   ],
   "score_modifier": 40
 }
@@ -145,9 +145,9 @@ This also removes all associated `RuleMatch` rows.
   "rule_type": "realtime",
   "logic": "AND",
   "conditions": [
-    {"field": "hardware_concurrency", "op": "lte", "value": "1"},
+    {"field": "device_cpu_count", "op": "lte", "value": "1"},
     {"field": "device_memory", "op": "lte", "value": "1"},
-    {"field": "screen_width", "op": "eq", "value": "0"}
+    {"field": "device_screen_resolution_width", "op": "eq", "value": "0"}
   ],
   "score_modifier": 25
 }
@@ -161,8 +161,7 @@ This also removes all associated `RuleMatch` rows.
   "rule_type": "periodic",
   "logic": "AND",
   "conditions": [
-    {"field": "platform", "op": "eq", "value": "Linux x86_64"},
-    {"field": "is_workstation", "op": "eq", "value": "true"}
+    {"field": "device_platform", "op": "eq", "value": "Linux x86_64"}
   ],
   "score_modifier": 5
 }

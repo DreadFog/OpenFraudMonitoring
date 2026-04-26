@@ -1,0 +1,14 @@
+{
+  "name": "hasMismatchWebGLInWorker",
+  "description": "FPScanner: Det: Has Mismatch Web Gl In Worker (severity: high)",
+  "rule_type": "realtime",
+  "logic": "AND",
+  "conditions": [
+    {
+      "field": "det_has_mismatch_web_gl_in_worker",
+      "op": "eq",
+      "value": "true"
+    }
+  ],
+  "score_modifier": 15
+}

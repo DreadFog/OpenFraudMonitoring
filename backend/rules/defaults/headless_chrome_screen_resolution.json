@@ -1,0 +1,14 @@
+{
+  "name": "headlessChromeScreenResolution",
+  "description": "FPScanner: Det: Headless Chrome Screen Resolution (severity: high)",
+  "rule_type": "realtime",
+  "logic": "AND",
+  "conditions": [
+    {
+      "field": "det_headless_chrome_screen_resolution",
+      "op": "eq",
+      "value": "true"
+    }
+  ],
+  "score_modifier": 15
+}

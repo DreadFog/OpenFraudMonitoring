@@ -1,0 +1,14 @@
+{
+  "name": "hasGPUMismatch",
+  "description": "FPScanner: Det: Has GPU Mismatch (severity: high)",
+  "rule_type": "realtime",
+  "logic": "AND",
+  "conditions": [
+    {
+      "field": "det_has_gpu_mismatch",
+      "op": "eq",
+      "value": "true"
+    }
+  ],
+  "score_modifier": 15
+}

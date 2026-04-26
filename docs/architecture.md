@@ -34,17 +34,17 @@ OpenFraudMonitoring is a 5-service system that collects browser fingerprints and
 ### 1. Collection
 
 A browser loads `fingerprint.js`. On page load, the client:
-1. Collects device signals (navigator, screen, WebGL, canvas, audio, bot signals, etc.)
-2. Generates a deterministic `deviceID` from the fingerprint
-3. Sends the full fingerprint to `POST /api/collect`
+1. Runs FPScanner to collect 35 signal categories and 21 bot detection rules
+2. FPScanner generates a deterministic `fsid` (JA4-inspired fingerprint ID)
+3. The encrypted fingerprint + OFM extension data (IP, behavior) is sent to `POST /api/collect`
 
 Every 30 seconds, a heartbeat with behavioral data (mouse, clicks, keys, scrolls, copy/paste) is sent to `POST /api/heartbeat`.
 
 ### 2. Ingestion (Backend)
 
 On `/api/collect`:
-- Find or create a `Session` by `device_id`
-- Run the built-in `RiskAnalyzer` (bot signals, hardware anomalies, etc.)
+- Decrypt the FPScanner encrypted payload (XOR + Base64)
+- Find or create a `Session` by `fsid` (FPScanner's JA4-inspired fingerprint ID)
 - Store the raw fingerprint as JSONB + denormalized columns for filtering
 - Push an event to Redis: `{"session_id": 42, "type": "fingerprint"}`
 
@@ -69,15 +69,18 @@ The React frontend polls `GET /api/sessions` every 10 seconds. It can pass a `?f
 
 ```
 sessions
-  ├── id, device_id, risk_score, flags (JSONB), client_ip
+  ├── id, fsid, risk_score, flags (JSONB), client_ip
   ├── first_seen, last_seen, created_at, updated_at
   │
   ├──< fingerprints
   │     ├── id, session_id, timestamp, data (JSONB)
-  │     └── user_agent, platform, language, operating_system, timezone,
-  │         public_ip, webgl_vendor, webgl_renderer, screen_width,
-  │         screen_height, color_depth, hardware_concurrency,
-  │         device_memory, is_mobile, is_workstation, has_webdriver
+  │     ├── fsid, fast_bot_detection, url
+  │     ├── automation_* (webdriver, selenium, cdp, playwright, ...)
+  │     ├── device_* (cpu_count, memory, platform, screen_resolution_*, ...)
+  │     ├── browser_* (user_agent, features_*, plugins_*, extensions_*, ...)
+  │     ├── graphics_* (webgl_*, webgpu_*, canvas_*)
+  │     ├── codecs_*, locale_*, contexts_*
+  │     └── det_* (21 FPScanner detection booleans)
   │
   ├──< heartbeats
   │     ├── id, session_id, timestamp, url
@@ -130,11 +133,12 @@ backend/
 client/
   src/
     config.js            # Endpoints + OFM_SERVER_URL
-    index.js             # Entry point
-    collect.js           # Fingerprint assembly
-    heartbeat.js         # Periodic behavioral snapshots
+    index.js             # Entry point — orchestrates FPScanner + extensions
     send.js              # Beacon/fetch transport
-    collectors/          # One file per signal category
+    extensions/
+      index.js           # Extension registry
+      behavior.js        # Behavioral tracking (mouse, clicks, keys, scrolls)
+      ip.js              # Public IP collection via external API
 
 frontend/
   src/
@@ -152,7 +156,7 @@ frontend/
 | POST | `/api/collect` | Receive initial fingerprint |
 | POST | `/api/heartbeat` | Receive behavioral update |
 | GET | `/api/sessions` | List sessions (supports `?filters=[...]`) |
-| GET | `/api/sessions/<device_id>` | Session detail |
+| GET | `/api/sessions/<fsid>` | Session detail |
 | GET | `/api/stats` | Aggregate statistics |
 | GET | `/api/schema` | Filterable field definitions |
 | GET | `/api/suggest?field=x&q=y` | Autocomplete values for a field |
@@ -164,21 +168,16 @@ frontend/
 
 ## Built-in Risk Scoring
 
-`analysis/risk.py` runs on every `/api/collect` and assigns a base score (0–100):
+`analysis/risk.py` uses FPScanner's 21 built-in detection rules (from `fastBotDetectionDetails`).
+Each detection has a severity that maps to score points:
 
-| Signal | Points |
-|--------|--------|
-| ChromeDriver props detected | +45 |
-| WebDriver detected | +40 |
-| PhantomJS detected | +40 |
-| Selenium/Puppeteer/Nightmare | +35 |
-| Native function spoofed | +30 |
-| Zero screen dimensions | +25 |
-| Empty languages | +20 |
-| Zero CPU cores | +20 |
-| Zero device memory | +15 |
-| No plugins | +15 |
-| No canvas | +10 |
-| No WebGL | +10 |
+| Severity | Points |
+|----------|--------|
+| high     | +15    |
+| medium   | +8     |
+| low      | +3     |
+
+Detections include: hasWebdriver, hasCDP, hasPlaywright, hasSeleniumProperty, hasBotUserAgent,
+hasGPUMismatch, hasPlatformMismatch, hasSwiftshaderRenderer, hasUTCTimezone, and more.
 
 Custom rules (see [rules.md](rules.md)) add or subtract from this base score.

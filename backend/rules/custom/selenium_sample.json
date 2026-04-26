@@ -1,8 +1,8 @@
 {
   "name": "SELENIUM_SAMPLE",
-  "description": "Sample custom rule — copy of SELENIUM_DETECTED with a minimal score",
+  "description": "Sample custom rule — triggers when FPScanner detects Selenium properties",
   "rule_type": "realtime",
   "logic": "AND",
-  "conditions": [{"field": "has_selenium", "op": "eq", "value": "true"}],
+  "conditions": [{"field": "det_has_selenium_property", "op": "eq", "value": "true"}],
   "score_modifier": 1
 }

@@ -1,0 +1,14 @@
+{
+  "name": "hasWebdriverIframe",
+  "description": "FPScanner: Det: Has Webdriver Iframe (severity: high)",
+  "rule_type": "realtime",
+  "logic": "AND",
+  "conditions": [
+    {
+      "field": "det_has_webdriver_iframe",
+      "op": "eq",
+      "value": "true"
+    }
+  ],
+  "score_modifier": 15
+}

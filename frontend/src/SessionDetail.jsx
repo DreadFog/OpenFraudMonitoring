@@ -39,16 +39,16 @@ function RawJson({ data }) {
 }
 
 export default function SessionDetail() {
-  const { deviceId } = useParams();
+  const { fsid } = useParams();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    api.getSessionDetail(deviceId)
+    api.getSessionDetail(fsid)
       .then(setData)
       .catch(() => setError("Failed to load session."));
-  }, [deviceId]);
+  }, [fsid]);
 
   if (error) {
     return (
@@ -64,18 +64,35 @@ export default function SessionDetail() {
   }
 
   const fp = data.latest_fingerprint || {};
-  const nav = fp.navigator || {};
-  const scr = fp.screen || {};
-  const tz  = fp.timezone || {};
-  const bot = fp.botSignals || {};
-  const gl  = fp.webgl || {};
-  const apis = fp.apis || {};
-  const net  = fp.network || {};
-  const stor = fp.storage || {};
-  const pubIP = fp.publicIP || {};
+  const sig = fp.signals || {};
+  const auto = sig.automation || {};
+  const device = sig.device || {};
+  const scr = device.screenResolution || {};
+  const media = device.multimediaDevices || {};
+  const mq = device.mediaQueries || {};
+  const browser = sig.browser || {};
+  const hev = browser.highEntropyValues || {};
+  const plugins = browser.plugins || {};
+  const gfx = sig.graphics || {};
+  const gl = gfx.webGL || {};
+  const gpu = gfx.webgpu || {};
+  const canvas = gfx.canvas || {};
+  const codecs = sig.codecs || {};
+  const locale = sig.locale || {};
+  const intl = locale.internationalization || {};
+  const langs = locale.languages || {};
+  const contexts = sig.contexts || {};
+  const ext = fp._extensions || {};
+  const ipExt = ext.ip || {};
+  const botDetails = fp.fastBotDetectionDetails || {};
 
   const riskClass =
     data.risk_score >= 60 ? "risk-high" : data.risk_score >= 30 ? "risk-med" : "risk-low";
+
+  // Collect triggered detections
+  const detections = Object.entries(botDetails)
+    .filter(([, v]) => v && v.detected)
+    .map(([name, v]) => ({ name, severity: v.severity || "low" }));
 
   return (
     <div className="sd-container">
@@ -89,11 +106,12 @@ export default function SessionDetail() {
       <div className="sd-body">
         {/* Overview */}
         <Section title="Overview">
-          <Field label="Device ID"    value={data.device_id} />
+          <Field label="Fingerprint ID (fsid)" value={data.fsid} />
           <Field label="Client IP"    value={data.client_ip} />
-          <Field label="Public IP"    value={pubIP.ip} />
-          <Field label="Country"      value={pubIP.country} />
-          <Field label="City"         value={pubIP.city} />
+          <Field label="Public IP"    value={ipExt.ip} />
+          <Field label="Country"      value={ipExt.country} />
+          <Field label="City"         value={ipExt.city} />
+          <Field label="Bot Detected" value={fp.fastBotDetection ? "YES" : "No"} />
           <Field label="Risk Score"   value={data.risk_score} />
           <Field label="First Seen"   value={new Date(data.first_seen).toLocaleString()} />
           <Field label="Last Seen"    value={new Date(data.last_seen).toLocaleString()} />
@@ -112,110 +130,116 @@ export default function SessionDetail() {
           </Section>
         )}
 
-        {/* Navigator / Device */}
-        <Section title="Browser & Device">
-          <Field label="User Agent"           value={nav.userAgent} />
-          <Field label="Platform"             value={nav.platform} />
-          <Field label="Operating System"     value={fp.operatingSystem} />
-          <Field label="Device Type"          value={nav.isWorkstation ? "Workstation" : nav.isMobile ? "Mobile" : "Unknown"} />
-          <Field label="Language"             value={nav.language} />
-          <Field label="Vendor"               value={nav.vendor} />
-          <Field label="CPU Cores"            value={nav.hardwareConcurrency} />
-          <Field label="Device Memory (GB)"   value={nav.deviceMemory} />
-          <Field label="Cookies Enabled"      value={nav.cookieEnabled} />
-          <Field label="Online"               value={nav.onLine} />
+        {/* Browser */}
+        <Section title="Browser">
+          <Field label="User Agent"           value={browser.userAgent} />
+          <Field label="Platform"             value={device.platform} />
+          <Field label="Architecture"         value={hev.architecture} />
+          <Field label="Bitness"              value={hev.bitness} />
+          <Field label="Platform Version"     value={hev.platformVersion} />
+          <Field label="Mobile"               value={hev.mobile ? "Yes" : "No"} />
+          <Field label="Model"                value={hev.model} />
+          <Field label="Language"             value={langs.language} />
+          <Field label="Languages"            value={Array.isArray(langs.languages) ? langs.languages.join(", ") : null} />
+          <Field label="CPU Cores"            value={device.cpuCount} />
+          <Field label="Device Memory (GB)"   value={device.memory} />
         </Section>
 
         {/* Screen */}
         <Section title="Screen">
           <Field label="Resolution"       value={scr.width && scr.height ? `${scr.width} × ${scr.height}` : null} />
-          <Field label="Available"        value={scr.availWidth && scr.availHeight ? `${scr.availWidth} × ${scr.availHeight}` : null} />
+          <Field label="Available"        value={scr.availableWidth && scr.availableHeight ? `${scr.availableWidth} × ${scr.availableHeight}` : null} />
+          <Field label="Inner Window"     value={scr.innerWidth && scr.innerHeight ? `${scr.innerWidth} × ${scr.innerHeight}` : null} />
           <Field label="Color Depth"      value={scr.colorDepth} />
           <Field label="Pixel Depth"      value={scr.pixelDepth} />
-          <Field label="Device Pixel Ratio" value={scr.devicePixelRatio} />
-          <Field label="Inner Window"     value={scr.innerWidth && scr.innerHeight ? `${scr.innerWidth} × ${scr.innerHeight}` : null} />
-          <Field label="Outer Window"     value={scr.outerWidth && scr.outerHeight ? `${scr.outerWidth} × ${scr.outerHeight}` : null} />
+          <Field label="Multiple Displays" value={scr.hasMultipleDisplays ? "Yes" : "No"} />
+          <Field label="Color Scheme"     value={mq.prefersColorScheme} />
+          <Field label="Pointer"          value={mq.pointer} />
+          <Field label="Hover"            value={mq.hover ? "Yes" : "No"} />
         </Section>
 
-        {/* Timezone */}
-        <Section title="Timezone">
-          <Field label="Timezone" value={tz.timezone} />
-          <Field label="UTC Offset (min)" value={tz.offset} />
-          <Field label="Locale"   value={tz.locale} />
+        {/* Timezone & Locale */}
+        <Section title="Timezone & Locale">
+          <Field label="Timezone"         value={intl.timezone} />
+          <Field label="Locale Language"  value={intl.localeLanguage} />
+          <Field label="ETSL"             value={browser.etsl} />
         </Section>
 
-        {/* WebGL */}
-        <Section title="WebGL">
-          <Field label="Vendor"           value={gl.vendor} />
-          <Field label="Renderer"         value={gl.renderer} />
-          <Field label="Masked Vendor"    value={gl.maskedVendor} />
-          <Field label="Masked Renderer"  value={gl.maskedRenderer} />
-          <Field label="GL Version"       value={gl.version} />
-          <Field label="GLSL Version"     value={gl.shadingVersion} />
-          <Field label="Extensions"       value={gl.extensions ? `${gl.extensions.length} supported` : null} />
+        {/* Graphics */}
+        <Section title="Graphics">
+          <Field label="WebGL Vendor"     value={gl.vendor} />
+          <Field label="WebGL Renderer"   value={gl.renderer} />
+          <Field label="WebGPU Vendor"    value={gpu.vendor} />
+          <Field label="WebGPU Device"    value={gpu.device} />
+          <Field label="WebGPU Arch"      value={gpu.architecture} />
+          <Field label="Canvas Fingerprint" value={canvas.canvasFingerprint} />
+          <Field label="Canvas Modified"  value={canvas.hasModifiedCanvas ? "Yes" : "No"} />
         </Section>
 
-        {/* Canvas & Audio */}
-        <Section title="Canvas & Audio">
-          <Field label="Canvas Available" value={fp.canvas ? "Yes" : "No"} />
-          <Field label="Winding Rule"     value={fp.canvas?.windingSupport !== undefined ? String(fp.canvas.windingSupport) : null} />
-          <Field label="Audio Fingerprint" value={fp.audio || "Unavailable"} />
+        {/* Codecs */}
+        <Section title="Codecs">
+          <Field label="Audio CanPlayType" value={codecs.audioCanPlayTypeHash} />
+          <Field label="Video CanPlayType" value={codecs.videoCanPlayTypeHash} />
+          <Field label="MediaSource"       value={codecs.hasMediaSource ? "Yes" : "No"} />
         </Section>
 
-        {/* Network */}
-        {net && Object.keys(net).length > 0 && (
-          <Section title="Network">
-            <Field label="Effective Type" value={net.effectiveType} />
-            <Field label="Downlink (Mbps)" value={net.downlink} />
-            <Field label="RTT (ms)"       value={net.rtt} />
-            <Field label="Save Data"      value={net.saveData} />
-          </Section>
-        )}
-
-        {/* Storage */}
-        <Section title="Storage">
-          <Field label="localStorage"   value={stor.localStorage ? "Available" : "Blocked"} />
-          <Field label="sessionStorage" value={stor.sessionStorage ? "Available" : "Blocked"} />
-          <Field label="IndexedDB"      value={stor.indexedDB ? "Available" : "Blocked"} />
-          <Field label="Cookies"        value={stor.cookieEnabled ? "Enabled" : "Disabled"} />
+        {/* Plugins & Extensions */}
+        <Section title="Plugins & Extensions">
+          <Field label="Plugin Count"      value={plugins.pluginCount} />
+          <Field label="Valid Plugin Array" value={plugins.isValidPluginArray ? "Yes" : "No"} />
+          <Field label="Plugin Names Hash" value={plugins.pluginNamesHash} />
+          <Field label="Extensions"        value={browser.extensions?.bitmask} />
         </Section>
 
-        {/* Browser APIs */}
-        <Section title="Browser APIs">
-          <Field label="Crypto"            value={apis.crypto ? "Yes" : "No"} />
-          <Field label="Crypto Subtle"     value={apis.cryptoSubtle ? "Yes" : "No"} />
-          <Field label="WebGL"             value={apis.webGL ? "Yes" : "No"} />
-          <Field label="WebGL2"            value={apis.webGL2 ? "Yes" : "No"} />
-          <Field label="WebRTC"            value={apis.webRTC ? "Yes" : "No"} />
-          <Field label="Service Worker"    value={apis.serviceWorker ? "Yes" : "No"} />
-          <Field label="Payment Request"   value={apis.paymentRequest ? "Yes" : "No"} />
-          <Field label="MutationObserver"  value={apis.MutationObserver ? "Yes" : "No"} />
-          <Field label="Performance API"   value={apis.performance ? "Yes" : "No"} />
+        {/* Automation Signals */}
+        <Section title="Automation Signals">
+          <Field label="WebDriver"         value={auto.webdriver ? "DETECTED" : "No"} />
+          <Field label="Selenium"          value={auto.selenium ? "DETECTED" : "No"} />
+          <Field label="CDP"               value={auto.cdp ? "DETECTED" : "No"} />
+          <Field label="Playwright"        value={auto.playwright ? "DETECTED" : "No"} />
+          <Field label="WebDriver Writable" value={auto.webdriverWritable ? "DETECTED" : "No"} />
         </Section>
 
-        {/* Bot Signals */}
-        <Section title="Bot Signals">
-          <Field label="WebDriver"         value={bot.webdriver ? "DETECTED" : "No"} />
-          <Field label="PhantomJS"         value={bot.phantom ? "DETECTED" : "No"} />
-          <Field label="Nightmare"         value={bot.nightmare ? "DETECTED" : "No"} />
-          <Field label="Puppeteer"         value={bot.puppeteer ? "DETECTED" : "No"} />
-          <Field label="Selenium"          value={bot.selenium ? "DETECTED" : "No"} />
-          <Field label="ChromeDriver Props" value={bot.cdcProps?.length > 0 ? bot.cdcProps.join(", ") : "None"} />
-          <Field label="Empty Languages"   value={bot.languages_empty ? "Yes" : "No"} />
-          <Field label="No Plugins"        value={bot.noPlugins ? "Yes" : "No"} />
-          <Field label="Native Check"      value={bot.nativeCheckPassed === false ? "FAILED (spoofed)" : "Passed"} />
-        </Section>
-
-        {/* WebRTC IPs */}
-        {fp.webrtcIPs?.length > 0 && (
-          <Section title="WebRTC IPs">
-            <div className="ip-list">
-              {fp.webrtcIPs.map((ip, i) => (
-                <span key={i} className="ip-item">{ip}</span>
+        {/* Bot Detections (FPScanner) */}
+        <Section title={`Bot Detections (${detections.length})`}>
+          {detections.length === 0 ? (
+            <p className="empty-note">No bot signals detected.</p>
+          ) : (
+            <div className="flags-list">
+              {detections.map((d, i) => (
+                <span key={i} className={`flag-item severity-${d.severity}`}>{d.name} ({d.severity})</span>
               ))}
             </div>
+          )}
+        </Section>
+
+        {/* Cross-context checks */}
+        {(contexts.iframe || contexts.webWorker) && (
+          <Section title="Cross-Context Checks">
+            {contexts.iframe && (
+              <>
+                <Field label="Iframe WebDriver"  value={contexts.iframe.webdriver ? "DETECTED" : "No"} />
+                <Field label="Iframe Platform"    value={contexts.iframe.platform} />
+                <Field label="Iframe CPU"         value={contexts.iframe.cpuCount} />
+              </>
+            )}
+            {contexts.webWorker && (
+              <>
+                <Field label="Worker WebDriver"   value={contexts.webWorker.webdriver ? "DETECTED" : "No"} />
+                <Field label="Worker Platform"     value={contexts.webWorker.platform} />
+                <Field label="Worker WebGL Vendor" value={contexts.webWorker.vendor} />
+                <Field label="Worker WebGL Renderer" value={contexts.webWorker.renderer} />
+              </>
+            )}
           </Section>
         )}
+
+        {/* Multimedia Devices */}
+        <Section title="Multimedia Devices">
+          <Field label="Speakers"      value={media.speakers} />
+          <Field label="Microphones"   value={media.microphones} />
+          <Field label="Webcams"       value={media.webcams} />
+        </Section>
 
         {/* URLs Visited */}
         <Section title={`URLs Visited (${(data.urls || []).length})`}>

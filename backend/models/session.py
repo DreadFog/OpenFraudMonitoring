@@ -7,7 +7,7 @@ class Session(db.Model):
     __tablename__ = "sessions"
 
     id = db.Column(db.Integer, primary_key=True)
-    device_id = db.Column(db.String(512), unique=True, nullable=False, index=True)
+    fsid = db.Column(db.String(512), unique=True, nullable=False, index=True)
     risk_score = db.Column(db.Integer, default=0)
     flags = db.Column(JSONB, default=list)
     client_ip = db.Column(db.String(45), default="")
@@ -23,7 +23,7 @@ class Session(db.Model):
 
     def to_dict(self):
         return {
-            "device_id": self.device_id,
+            "fsid": self.fsid,
             "risk_score": self.risk_score,
             "flags": self.flags or [],
             "client_ip": self.client_ip,

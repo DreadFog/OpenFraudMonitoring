@@ -1,0 +1,14 @@
+{
+  "name": "hasBotUserAgent",
+  "description": "FPScanner: Det: Has Bot User Agent (severity: high)",
+  "rule_type": "realtime",
+  "logic": "AND",
+  "conditions": [
+    {
+      "field": "det_has_bot_user_agent",
+      "op": "eq",
+      "value": "true"
+    }
+  ],
+  "score_modifier": 15
+}

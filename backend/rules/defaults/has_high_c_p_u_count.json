@@ -1,0 +1,14 @@
+{
+  "name": "hasHighCPUCount",
+  "description": "FPScanner: Det: Has High CPU Count (severity: high)",
+  "rule_type": "realtime",
+  "logic": "AND",
+  "conditions": [
+    {
+      "field": "det_has_high_cpu_count",
+      "op": "eq",
+      "value": "true"
+    }
+  ],
+  "score_modifier": 15
+}

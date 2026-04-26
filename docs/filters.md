@@ -69,30 +69,20 @@ These are stored directly on the `sessions` table.
 |------------|-------|------|-----------|
 | `client_ip` | Client IP | string | `sessions.client_ip` |
 | `risk_score` | Risk Score | number | `sessions.risk_score` |
-| `device_id` | Device ID | string | `sessions.device_id` |
+| `fsid` | Fingerprint ID (fsid) | string | `sessions.fsid` |
 
 ### Fingerprint-level fields
 
-These are denormalized columns on the `fingerprints` table, extracted from the raw JSONB data at ingestion time. When used as a filter on the session list, they are wrapped in an `EXISTS` subquery.
+These are auto-generated from FPScanner's `types.ts` via `generate_schema.py`.
+Denormalized columns on the `fingerprints` table, extracted from the decrypted FPScanner payload at ingestion time. When used as a filter on the session list, they are wrapped in an `EXISTS` subquery.
 
-| Field name | Label | Type | DB column | Extracted from (JSONB path) |
-|------------|-------|------|-----------|-----------------------------|
-| `user_agent` | User Agent | string | `fingerprints.user_agent` | `navigator.userAgent` |
-| `platform` | Platform | string | `fingerprints.platform` | `navigator.platform` |
-| `language` | Language | string | `fingerprints.language` | `navigator.language` |
-| `operating_system` | Operating System | string | `fingerprints.operating_system` | `operatingSystem` |
-| `timezone` | Timezone | string | `fingerprints.timezone` | `timezone.timezone` |
-| `public_ip` | Public IP | string | `fingerprints.public_ip` | `publicIP.ip` |
-| `webgl_vendor` | WebGL Vendor | string | `fingerprints.webgl_vendor` | `webgl.vendor` |
-| `webgl_renderer` | WebGL Renderer | string | `fingerprints.webgl_renderer` | `webgl.renderer` |
-| `screen_width` | Screen Width | number | `fingerprints.screen_width` | `screen.width` |
-| `screen_height` | Screen Height | number | `fingerprints.screen_height` | `screen.height` |
-| `hardware_concurrency` | CPU Cores | number | `fingerprints.hardware_concurrency` | `navigator.hardwareConcurrency` |
-| `device_memory` | Device Memory (GB) | number | `fingerprints.device_memory` | `navigator.deviceMemory` |
-| `color_depth` | Color Depth | number | `fingerprints.color_depth` | `screen.colorDepth` |
-| `is_mobile` | Is Mobile | boolean | `fingerprints.is_mobile` | `navigator.isMobile` |
-| `is_workstation` | Is Workstation | boolean | `fingerprints.is_workstation` | `navigator.isWorkstation` |
-| `has_webdriver` | Has WebDriver | boolean | `fingerprints.has_webdriver` | `botSignals.webdriver` |
+**Signal fields** (from `signals.*`): `automation_webdriver`, `device_cpu_count`, `device_screen_resolution_width`, `browser_user_agent`, `graphics_web_gl_vendor`, `locale_internationalization_timezone`, etc.
+
+**Detection fields** (from `fastBotDetectionDetails.*`): `det_has_webdriver`, `det_has_cdp`, `det_has_playwright`, `det_has_selenium_property`, `det_has_bot_user_agent`, `det_has_gpu_mismatch`, etc.
+
+**Top-level fields**: `fsid`, `fast_bot_detection`, `url`.
+
+Run `GET /api/schema` for the full, current list of all filterable fields and their operators.
 
 ## Operators
 
