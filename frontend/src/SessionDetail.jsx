@@ -44,6 +44,19 @@ export default function SessionDetail() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [ruleDescriptions, setRuleDescriptions] = useState({});
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!window.confirm("Delete this session and all its data? This cannot be undone.")) return;
+    setDeleting(true);
+    try {
+      await api.deleteSession(fsid);
+      navigate("/");
+    } catch (e) {
+      alert("Failed to delete session.");
+      setDeleting(false);
+    }
+  };
 
   useEffect(() => {
     api.getSessionDetail(fsid)
@@ -111,6 +124,9 @@ export default function SessionDetail() {
         <button className="back-btn" onClick={() => navigate("/")}>← Back</button>
         <h1>Session Detail</h1>
         <span className={`risk-badge ${riskClass}`}>{data.risk_score}</span>
+        <button className="delete-btn" onClick={handleDelete} disabled={deleting}>
+          {deleting ? "Deleting…" : "🗑 Delete"}
+        </button>
       </header>
 
       <div className="sd-body">
@@ -152,7 +168,7 @@ export default function SessionDetail() {
           <Field label="Architecture"         value={hev.architecture} />
           <Field label="Bitness"              value={hev.bitness} />
           <Field label="Platform Version"     value={hev.platformVersion} />
-          <Field label="Mobile"               value={hev.mobile ? "Yes" : "No"} />
+          <Field label="Mobile"               value={hev.mobile === true ? "Yes" : hev.mobile === false ? "No" : hev.mobile ?? "NA"} />
           <Field label="Model"                value={hev.model} />
           <Field label="Language"             value={langs.language} />
           <Field label="Languages"            value={Array.isArray(langs.languages) ? langs.languages.join(", ") : null} />

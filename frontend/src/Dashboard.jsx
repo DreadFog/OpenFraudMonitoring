@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "./api";
 import FilterBuilder from "./FilterBuilder";
@@ -24,30 +24,31 @@ export default function Dashboard() {
   );
 
   // Fetch data — reacts to completed filter changes
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [sessionsData, statsData] = await Promise.all([
-          api.getSessions(completeFilters),
-          api.getStats(),
-        ]);
-        setSessions(sessionsData);
-        setStats(statsData);
-        setLoading(false);
-        setConnected(true);
-      } catch (err) {
-        console.error(err);
-        setSessions([]);
-        setStats(null);
-        setLoading(false);
-        setConnected(false);
-      }
-    };
+  const load = useCallback(async () => {
+    try {
+      const [sessionsData, statsData] = await Promise.all([
+        api.getSessions(completeFilters),
+        api.getStats(),
+      ]);
+      setSessions(sessionsData);
+      setStats(statsData);
+      setLoading(false);
+      setConnected(true);
+    } catch (err) {
+      console.error(err);
+      setSessions([]);
+      setStats(null);
+      setLoading(false);
+      setConnected(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(completeFilters)]);
 
+  useEffect(() => {
     load();
     const interval = setInterval(load, 10000);
     return () => clearInterval(interval);
-  }, [JSON.stringify(completeFilters)]);
+  }, [load]);
 
   const clearFilters = () => {
     setFilters([]);
@@ -65,7 +66,7 @@ export default function Dashboard() {
         <span className={`badge ${connected ? 'badge-live' : 'badge-offline'}`}>
           {connected ? 'LIVE' : 'OFFLINE'}
         </span>
-        <button className="refresh-btn" onClick={() => setLoading(true)}>
+        <button className="refresh-btn" onClick={load}>
           ↻ Refresh
         </button>
       </header>

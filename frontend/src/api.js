@@ -75,4 +75,10 @@ export const api = {
     if (!res.ok) throw new Error("Failed to delete rule");
     return res.json();
   },
+
+  deleteSession: async (fsid) => {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(fsid)}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Failed to delete session");
+    return res.json();
+  },
 };

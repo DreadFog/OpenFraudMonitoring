@@ -7,6 +7,40 @@ from flask import Blueprint, request, jsonify
 from models import Session, Fingerprint, Heartbeat
 from rules.engine import build_session_query
 
+# Platforms that are unambiguously desktop/workstation
+_WORKSTATION_PLATFORMS = {
+    "Win32", "Win64",
+    "MacIntel", "MacPPC",
+    "Linux x86_64", "Linux x86-64", "Linux aarch64",
+    "Linux armv81", "Linux armv8l",
+    "FreeBSD amd64",
+}
+
+
+def _is_workstation(device: dict, browser: dict) -> bool:
+    """
+    Derive workstation status from fingerprint signals.
+    Signals checked (in priority order):
+      1. highEntropyValues.mobile == False  → explicit non-mobile from UA-CH
+      2. platform in known desktop set       → unambiguous desktop OS/arch
+      3. pointer==fine AND hover==True       → mouse+hover = desktop-class input
+    Returns False (not workstation) only if none match and is_mobile is True.
+    """
+    hev_mobile = browser.get("highEntropyValues", {}).get("mobile")
+    if hev_mobile is False:
+        return True
+
+    platform = device.get("platform", "")
+    if platform in _WORKSTATION_PLATFORMS:
+        return True
+
+    mq = device.get("mediaQueries", {})
+    if mq.get("pointer") == "fine" and mq.get("hover") is True:
+        return True
+
+    return False
+
+
 sessions_bp = Blueprint("sessions", __name__, url_prefix="/api")
 
 
@@ -33,6 +67,7 @@ def get_sessions():
         browser = signals.get("browser", {})
         device = signals.get("device", {})
         locale = signals.get("locale", {})
+        mq = device.get("mediaQueries", {})
         urls = [u.url for u in sess.urls.limit(3).all()]
         urls_count = sess.urls.count()
         heartbeats_count = sess.heartbeats.count()
@@ -52,6 +87,7 @@ def get_sessions():
             "user_agent": str(browser.get("userAgent", "unknown"))[:60],
             "platform": str(device.get("platform", "unknown")),
             "is_mobile": browser.get("highEntropyValues", {}).get("mobile") is True,
+            "is_workstation": _is_workstation(device, browser),
             "language": str(locale.get("languages", {}).get("language", "unknown")),
             "urls_count": urls_count,
             "session_ids": session_ids,
@@ -96,3 +132,18 @@ def get_session_detail(fsid):
         "latest_fingerprint": latest_fingerprint,
         "heartbeats": [hb.to_summary() for hb in recent_heartbeats],
     }), 200
+
+
+@sessions_bp.route("/sessions/<fsid>", methods=["DELETE"])
+def delete_session(fsid):
+    """
+    Delete a session and all related records.
+    """
+    from services.database import db
+    sess = Session.query.filter_by(fsid=fsid).first()
+    if not sess:
+        return jsonify({"error": "session not found"}), 404
+
+    db.session.delete(sess)
+    db.session.commit()
+    return jsonify({"deleted": fsid}), 200

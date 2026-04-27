@@ -4,10 +4,10 @@ with specific characteristics to trigger different OFM detection rules.
 
 Usage:
     # Run a single scenario:
-    python scenarios.py vanilla --backend http://backend:5000
+    python scenarios.py vanilla --test-domain http://frontend:3000
 
     # Run all scenarios:
-    python scenarios.py --all --backend http://backend:5000 --repeat 3
+    python scenarios.py --all --test-domain http://frontend:3000 --repeat 3
 """
 
 import os
@@ -182,8 +182,8 @@ def rapid(demo_url, hub_url, dwell):
 # ── Runner ──
 
 
-def run(names, backend_url, hub_url, repeat, dwell):
-    demo_url = f"{backend_url}/demo.html"
+def run(names, test_domain, hub_url, repeat, dwell):
+    demo_url = f"{test_domain}/demo.html"
 
     for name in names:
         sc = SCENARIOS[name]
@@ -201,7 +201,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="OFM test traffic generator")
     parser.add_argument("scenario", nargs="?", help="Scenario name to run")
     parser.add_argument("--all", action="store_true", help="Run all scenarios")
-    parser.add_argument("--backend", default=os.environ.get("BACKEND_URL", "http://backend:5000"))
+    parser.add_argument(
+        "--test-domain",
+        dest="test_domain",
+        default=os.environ.get("TEST_DOMAIN", "http://frontend:3000"),
+        help="Base domain where demo.html is served (e.g. http://frontend:3000)",
+    )
+    parser.add_argument(
+        "--backend",
+        dest="test_domain",
+        default=argparse.SUPPRESS,
+        help="Deprecated alias for --test-domain",
+    )
     parser.add_argument("--hub", default=os.environ.get("SELENIUM_HUB", "http://selenium-hub:4444/wd/hub"))
     parser.add_argument("--repeat", type=int, default=int(os.environ.get("REPEAT", "1")))
     parser.add_argument("--dwell", type=int, default=int(os.environ.get("DWELL", "10")))
@@ -225,4 +236,4 @@ if __name__ == "__main__":
             print(f"Available: {', '.join(SCENARIOS.keys())}")
             raise SystemExit(1)
 
-    run(names, args.backend, args.hub, args.repeat, args.dwell)
+    run(names, args.test_domain, args.hub, args.repeat, args.dwell)

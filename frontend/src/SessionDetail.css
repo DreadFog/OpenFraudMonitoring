@@ -39,6 +39,27 @@
   background: var(--border);
 }
 
+.delete-btn {
+  margin-left: auto;
+  padding: 6px 14px;
+  background: #3d1c1c;
+  color: #f85149;
+  border: 1px solid #6e2b2b;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+
+.delete-btn:hover:not(:disabled) {
+  background: #6e2b2b;
+}
+
+.delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .sd-body {
   padding: 24px;
   display: flex;
