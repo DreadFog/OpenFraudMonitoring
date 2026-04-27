@@ -81,4 +81,50 @@ export const api = {
     if (!res.ok) throw new Error("Failed to delete session");
     return res.json();
   },
+
+  // ── Dashboards CRUD ──
+
+  getDashboards: async () => {
+    const res = await fetch("/api/dashboards");
+    if (!res.ok) throw new Error("Failed to fetch dashboards");
+    return res.json();
+  },
+
+  createDashboard: async (name, widgets) => {
+    const res = await fetch("/api/dashboards", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, widgets }),
+    });
+    if (!res.ok) throw new Error("Failed to create dashboard");
+    return res.json();
+  },
+
+  updateDashboard: async (id, data) => {
+    const res = await fetch(`/api/dashboards/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Failed to update dashboard");
+    return res.json();
+  },
+
+  deleteDashboard: async (id) => {
+    const res = await fetch(`/api/dashboards/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Failed to delete dashboard");
+    return res.json();
+  },
+
+  // ── Widget data ──
+
+  getWidgetData: async (widgetConfig) => {
+    const res = await fetch("/api/widget-data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(widgetConfig),
+    });
+    if (!res.ok) throw new Error("Failed to fetch widget data");
+    return res.json();
+  },
 };

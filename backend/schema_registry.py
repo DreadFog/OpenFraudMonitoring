@@ -30,6 +30,13 @@ OPERATORS = {
     "boolean": [
         {"name": "eq", "label": "="},
     ],
+    "date": [
+        {"name": "gt", "label": ">"},
+        {"name": "gte", "label": "≥"},
+        {"name": "lt", "label": "<"},
+        {"name": "lte", "label": "≤"},
+        {"name": "eq", "label": "="},
+    ],
 }
 
 # ── Build SCHEMA_FIELDS from the generated data ──
@@ -39,6 +46,8 @@ SCHEMA_FIELDS = [
     {"name": "client_ip", "label": "Client IP", "type": "string", "model": "Session", "column": "client_ip"},
     {"name": "risk_score", "label": "Risk Score", "type": "number", "model": "Session", "column": "risk_score"},
     {"name": "fsid", "label": "Fingerprint ID (fsid)", "type": "string", "model": "Session", "column": "fsid"},
+    {"name": "first_seen", "label": "First Seen", "type": "date", "model": "Session", "column": "first_seen"},
+    {"name": "last_seen", "label": "Last Seen", "type": "date", "model": "Session", "column": "last_seen"},
 ]
 
 # Top-level fingerprint fields

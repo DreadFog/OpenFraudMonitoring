@@ -8,6 +8,7 @@ from routes.sessions import sessions_bp
 from routes.stats import stats_bp
 from routes.rules import rules_bp
 from routes.filters import filters_bp
+from routes.dashboards import dashboards_bp
 
 
 def register_routes(app):
@@ -18,3 +19,4 @@ def register_routes(app):
     app.register_blueprint(stats_bp)
     app.register_blueprint(rules_bp)
     app.register_blueprint(filters_bp)
+    app.register_blueprint(dashboards_bp)

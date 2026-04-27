@@ -1,5 +1,5 @@
 """
-Anti-Fraud Fingerprint Backend - Python Flask
+OpenFraudMonitoring Backend - Python Flask
 Main application entry point
 """
 
@@ -55,7 +55,7 @@ def serve_fingerprint():
 @app.route("/", methods=["GET"])
 def index():
     return {
-        "message": "Anti-Fraud Fingerprint Backend v2.0",
+        "message": "OpenFraudMonitoring Backend v2.0",
         "endpoints": {
             "collect": "POST /api/collect",
             "heartbeat": "POST /api/heartbeat",

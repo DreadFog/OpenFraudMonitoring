@@ -7,6 +7,7 @@ from models.fingerprint import Fingerprint
 from models.heartbeat import Heartbeat
 from models.rule import Rule, RuleMatch
 from models.associations import SessionURL, BrowserSession
+from models.dashboard import Dashboard
 
 __all__ = [
     "Session",
@@ -16,4 +17,5 @@ __all__ = [
     "RuleMatch",
     "SessionURL",
     "BrowserSession",
+    "Dashboard",
 ]

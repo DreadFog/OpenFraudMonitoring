@@ -29,7 +29,7 @@ def build_condition(field_meta, op, value):
     field_type = field_meta["type"]
 
     # Cast value to the appropriate Python type
-    if field_type == "number":
+    if field_type in ("number", "date"):
         try:
             value = float(value)
         except (ValueError, TypeError):

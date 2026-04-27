@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { api } from "./api";
+import { api } from "../../api";
 import "./FilterBuilder.css";
 
 const OP_LABELS = {
@@ -22,6 +22,7 @@ function FilterRow({ filter, schema, onUpdate, onRemove }) {
   const fieldDef = schema.find((f) => f.name === filter.field);
   const operators = fieldDef ? fieldDef.operators : [];
   const isBoolean = fieldDef && fieldDef.type === "boolean";
+  const isDate = fieldDef && fieldDef.type === "date";
 
   // Auto-set operator to "eq" for boolean fields
   useEffect(() => {
@@ -90,6 +91,17 @@ function FilterRow({ filter, schema, onUpdate, onRemove }) {
           <option value="true">True</option>
           <option value="false">False</option>
         </select>
+      ) : isDate ? (
+        <input
+          className="filter-input"
+          type="datetime-local"
+          value={filter.value ? new Date(Number(filter.value)).toISOString().slice(0, 16) : ""}
+          onChange={(e) => {
+            const ms = e.target.value ? new Date(e.target.value).getTime() : "";
+            onUpdate("value", ms ? String(ms) : "");
+          }}
+          disabled={!filter.op}
+        />
       ) : (
       <div className="filter-value-wrapper">
         <input
