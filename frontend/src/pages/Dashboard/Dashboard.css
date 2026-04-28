@@ -406,7 +406,6 @@ body {
 /* ── Widgets grid (react-grid-layout) ──────────────────────────────── */
 
 .widgets-grid {
-  padding: 24px;
 }
 
 .widgets-grid > div {

@@ -396,7 +396,7 @@ export default function Dashboard() {
           rowHeight={ROW_HEIGHT}
           isDraggable={editMode && !isDefault}
           isResizable={editMode && !isDefault}
-
+          containerPadding={[24, 24]}
           onLayoutChange={handleLayoutChange}
         >
           {widgets.map((w, i) => (

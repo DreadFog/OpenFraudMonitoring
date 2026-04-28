@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { api } from "../../api";
 import "./FilterBuilder.css";
 
@@ -15,9 +15,84 @@ const OP_LABELS = {
   lte: "≤",
 };
 
+/* ── Searchable field selector ── */
+function FieldCombobox({ schema, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const wrapperRef = useRef(null);
+  const inputRef = useRef(null);
+
+  const filtered = schema.filter((f) =>
+    f.label.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const selectedLabel = schema.find((f) => f.name === value)?.label || "";
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleOpen = () => {
+    setOpen(true);
+    setSearch("");
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  const handleSelect = (name) => {
+    onChange(name);
+    setOpen(false);
+    setSearch("");
+  };
+
+  return (
+    <div className="field-combobox" ref={wrapperRef}>
+      <button
+        type="button"
+        className="filter-select field-combobox-trigger"
+        onClick={handleOpen}
+      >
+        {selectedLabel || "Field…"}
+      </button>
+      {open && (
+        <div className="field-combobox-dropdown">
+          <input
+            ref={inputRef}
+            className="field-combobox-search"
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search fields…"
+          />
+          <div className="field-combobox-list">
+            {filtered.length === 0 && (
+              <div className="field-combobox-empty">No matches</div>
+            )}
+            {filtered.map((f) => (
+              <div
+                key={f.name}
+                className={`field-combobox-item ${f.name === value ? "field-combobox-item-selected" : ""}`}
+                onMouseDown={() => handleSelect(f.name)}
+              >
+                {f.label}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FilterRow({ filter, schema, onUpdate, onRemove }) {
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [valueFocused, setValueFocused] = useState(false);
 
   const fieldDef = schema.find((f) => f.name === filter.field);
   const operators = fieldDef ? fieldDef.operators : [];
@@ -31,39 +106,33 @@ function FilterRow({ filter, schema, onUpdate, onRemove }) {
     }
   }, [isBoolean, filter.op]);
 
-  // Debounced suggestion fetch
+  // Debounced suggestion fetch — triggers on focus or value change
   useEffect(() => {
-    if (!filter.field || !filter.value) {
+    if (!filter.field || !valueFocused) {
       setSuggestions([]);
       return;
     }
 
     const timer = setTimeout(async () => {
       try {
-        const results = await api.getSuggestions(filter.field, filter.value);
+        const results = await api.getSuggestions(filter.field, filter.value || "");
         setSuggestions(results);
+        setShowSuggestions(true);
       } catch {
         setSuggestions([]);
       }
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [filter.field, filter.value]);
+  }, [filter.field, filter.value, valueFocused]);
 
   return (
     <div className="filter-row">
-      <select
-        className="filter-select"
+      <FieldCombobox
+        schema={schema}
         value={filter.field}
-        onChange={(e) => onUpdate("field", e.target.value)}
-      >
-        <option value="">Field…</option>
-        {schema.map((f) => (
-          <option key={f.name} value={f.name}>
-            {f.label}
-          </option>
-        ))}
-      </select>
+        onChange={(v) => onUpdate("field", v)}
+      />
 
       {!isBoolean && (
         <select
@@ -92,16 +161,34 @@ function FilterRow({ filter, schema, onUpdate, onRemove }) {
           <option value="false">False</option>
         </select>
       ) : isDate ? (
-        <input
-          className="filter-input"
-          type="datetime-local"
-          value={filter.value ? new Date(Number(filter.value)).toISOString().slice(0, 16) : ""}
-          onChange={(e) => {
-            const ms = e.target.value ? new Date(e.target.value).getTime() : "";
-            onUpdate("value", ms ? String(ms) : "");
-          }}
-          disabled={!filter.op}
-        />
+        <div className="filter-date-wrapper">
+          <input
+            className="filter-input filter-date"
+            type="date"
+            value={filter.value ? new Date(Number(filter.value)).toISOString().slice(0, 10) : ""}
+            onChange={(e) => {
+              if (!e.target.value) { onUpdate("value", ""); return; }
+              const prev = filter.value ? new Date(Number(filter.value)) : new Date();
+              const [y, m, d] = e.target.value.split("-").map(Number);
+              prev.setFullYear(y, m - 1, d);
+              onUpdate("value", String(prev.getTime()));
+            }}
+            disabled={!filter.op}
+          />
+          <input
+            className="filter-input filter-time"
+            type="time"
+            value={filter.value ? new Date(Number(filter.value)).toISOString().slice(11, 16) : ""}
+            onChange={(e) => {
+              if (!e.target.value) return;
+              const prev = filter.value ? new Date(Number(filter.value)) : new Date();
+              const [h, min] = e.target.value.split(":").map(Number);
+              prev.setUTCHours(h, min, 0, 0);
+              onUpdate("value", String(prev.getTime()));
+            }}
+            disabled={!filter.op || !filter.value}
+          />
+        </div>
       ) : (
       <div className="filter-value-wrapper">
         <input
@@ -112,12 +199,13 @@ function FilterRow({ filter, schema, onUpdate, onRemove }) {
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               setShowSuggestions(false);
+              setValueFocused(false);
             }
           }}
           placeholder="Value…"
           disabled={!filter.op}
-          onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-          onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+          onFocus={() => setValueFocused(true)}
+          onBlur={() => setTimeout(() => { setShowSuggestions(false); setValueFocused(false); }, 200)}
         />
         {showSuggestions && suggestions.length > 0 && (
           <div className="suggestions-dropdown">

@@ -88,11 +88,98 @@
   min-width: 110px;
 }
 
+/* ── Searchable field combobox ── */
+.field-combobox {
+  position: relative;
+  min-width: 140px;
+}
+
+.field-combobox-trigger {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.field-combobox-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  min-width: 220px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0 0 4px 4px;
+  z-index: 30;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+.field-combobox-search {
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.field-combobox-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.field-combobox-item {
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-combobox-item:hover {
+  background: rgba(88,166,255,0.1);
+}
+
+.field-combobox-item-selected {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.field-combobox-empty {
+  padding: 8px 10px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
 /* Value wrapper (for autocomplete dropdown) */
 .filter-value-wrapper {
   position: relative;
   flex: 1;
   min-width: 150px;
+}
+
+/* Date+time split wrapper */
+.filter-date-wrapper {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+  min-width: 150px;
+}
+
+.filter-date-wrapper .filter-date {
+  flex: 1;
+}
+
+.filter-date-wrapper .filter-time {
+  width: 100px;
+  flex: 0 0 auto;
 }
 
 .filter-value-wrapper .filter-input {
