@@ -25,6 +25,20 @@ services:
       timeout: 3s
       retries: 5
 
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-ofm}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-ofm}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: .
@@ -38,10 +52,15 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
       DATABASE_URL: ${DATABASE_URL:-postgresql://ofm:ofm@db:5432/ofm}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://ofm:ofm@rabbitmq:5672/}
+      CONNECTOR_TOKEN: ${CONNECTOR_TOKEN:-dev-connector-token}
+      INTEL_DECAY_DAYS: ${INTEL_DECAY_DAYS:-7}
     depends_on:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   worker:
@@ -53,11 +72,15 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
       DATABASE_URL: ${DATABASE_URL:-postgresql://ofm:ofm@db:5432/ofm}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://ofm:ofm@rabbitmq:5672/}
+      INTEL_DECAY_DAYS: ${INTEL_DECAY_DAYS:-7}
       PERIODIC_INTERVAL_SECONDS: ${PERIODIC_INTERVAL_SECONDS:-60}
     depends_on:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   frontend:
@@ -68,6 +91,25 @@ services:
       - "3000:3000"
     depends_on:
       - backend
+
+  connector-opencti:
+    build:
+      context: .
+      dockerfile: connectors/opencti/Dockerfile
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://ofm:ofm@rabbitmq:5672/}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      BACKEND_URL: ${BACKEND_URL:-http://backend:5000}
+      CONNECTOR_TOKEN: ${CONNECTOR_TOKEN:-dev-connector-token}
+      CONNECTOR_CONFIG: /connectors/opencti/config.yml
+    volumes:
+      - ./connectors/opencti/config.yml:/connectors/opencti/config.yml:ro
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   pgdata:

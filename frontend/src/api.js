@@ -127,4 +127,36 @@ export const api = {
     if (!res.ok) throw new Error("Failed to fetch widget data");
     return res.json();
   },
+
+  // ── Intelligence ──
+
+  getIpIntel: async (value) => {
+    const res = await fetch(`/api/intel/ip/${encodeURIComponent(value)}`);
+    if (!res.ok) throw new Error("Failed to fetch IP intel");
+    return res.json();
+  },
+
+  triggerIntelLookup: async (connector, value) => {
+    const res = await fetch("/api/intel/lookup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ connector, value }),
+    });
+    if (!res.ok) throw new Error("Failed to trigger lookup");
+    return res.json();
+  },
+
+  // ── Connectors / Logging ──
+
+  getConnectorsStatus: async () => {
+    const res = await fetch("/api/connectors/status");
+    if (!res.ok) throw new Error("Failed to fetch connector status");
+    return res.json();
+  },
+
+  getConnectorsLogs: async (tail = 100) => {
+    const res = await fetch(`/api/connectors/logs?tail=${tail}`);
+    if (!res.ok) throw new Error("Failed to fetch logs");
+    return res.json();
+  },
 };

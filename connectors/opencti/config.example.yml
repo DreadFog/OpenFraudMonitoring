@@ -1,0 +1,9 @@
+# Example OpenCTI connector configuration
+# Copy to config.yml and fill in your values.
+
+name: opencti
+mode: manual            # manual | auto | both
+
+opencti_url: "https://your-opencti-instance.example.com"
+opencti_token: "REPLACE_ME"
+ssl_verify: true

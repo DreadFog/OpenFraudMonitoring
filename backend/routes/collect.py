@@ -15,7 +15,9 @@ import logging
 from flask import Blueprint, request, jsonify, current_app
 from services.database import db
 from models import Session, Fingerprint, SessionURL, BrowserSession
-from services.event_queue import enqueue_event
+from services.event_queue import enqueue_event, get_redis
+from services.stix_store import get_or_create_ip, get_or_create_user_agent
+from services.mq import publish_intel_request
 from utils.crypto import decrypt_fingerprint
 
 logger = logging.getLogger(__name__)
@@ -63,6 +65,19 @@ def collect():
 
     session_obj.last_seen = timestamp
     session_obj.client_ip = client_ip
+
+    # ── Create / link STIX observables (Phase 1) ──
+    # IP observable
+    ip_obs = get_or_create_ip(client_ip) if client_ip else None
+    if ip_obs is not None:
+        session_obj.ip_observable_type = ip_obs.raw.get("type") if isinstance(ip_obs.raw, dict) else None
+        session_obj.ip_observable_id = ip_obs.id
+
+    # User-Agent observable (from the decrypted fingerprint payload)
+    ua_string = (fp.get("signals", {}).get("browser", {}) or {}).get("userAgent")
+    ua_obs = get_or_create_user_agent(ua_string) if ua_string else None
+    if ua_obs is not None:
+        session_obj.user_agent_observable_id = ua_obs.id
 
     # Build the full stored object: FPScanner fingerprint + extensions
     stored_data = fp
@@ -118,6 +133,19 @@ def collect():
 
     # Enqueue for rule evaluation (best-effort)
     enqueue_event(session_obj.id, "fingerprint")
+
+    # ── Auto-trigger intel lookups for connectors in 'auto' or 'both' mode ──
+    if ip_obs is not None and client_ip:
+        try:
+            redis_client = get_redis()
+            for key in redis_client.scan_iter(match="ofm:connector:*:mode"):
+                mode = (redis_client.get(key) or b"").decode("utf-8")
+                if mode in ("auto", "both"):
+                    # key format: ofm:connector:<name>:mode
+                    name = key.decode("utf-8").split(":")[2]
+                    publish_intel_request(name, client_ip, request_type="ip_lookup")
+        except Exception as e:
+            logger.debug("auto intel trigger failed: %s", e)
 
     logger.info("fsid=%s bot=%s ip=%s url=%s", fsid[:32], fp.get('fastBotDetection'), client_ip, url)
 

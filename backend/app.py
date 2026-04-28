@@ -17,8 +17,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 from services.database import init_db
+from services.log_shipper import install as install_log_shipper
 from routes import register_routes
 from rules import seed_default_rules
+
+install_log_shipper("backend")
 
 app = Flask(__name__)
 app.config.from_object(Config)

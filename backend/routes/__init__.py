@@ -9,6 +9,8 @@ from routes.stats import stats_bp
 from routes.rules import rules_bp
 from routes.filters import filters_bp
 from routes.dashboards import dashboards_bp
+from routes.intel import intel_bp
+from routes.connectors import connectors_bp
 
 
 def register_routes(app):
@@ -20,3 +22,5 @@ def register_routes(app):
     app.register_blueprint(rules_bp)
     app.register_blueprint(filters_bp)
     app.register_blueprint(dashboards_bp)
+    app.register_blueprint(intel_bp)
+    app.register_blueprint(connectors_bp)

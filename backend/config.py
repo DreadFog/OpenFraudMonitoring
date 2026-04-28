@@ -20,6 +20,13 @@ class Config:
     # ── Redis ──
     REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
 
+    # ── RabbitMQ ──
+    RABBITMQ_URL = os.environ.get("RABBITMQ_URL", "amqp://ofm:ofm@rabbitmq:5672/")
+
+    # ── Intel / Connectors ──
+    CONNECTOR_TOKEN = os.environ.get("CONNECTOR_TOKEN", "dev-connector-token")
+    INTEL_DECAY_DAYS = int(os.environ.get("INTEL_DECAY_DAYS", "7"))
+
     # ── Server ──
     HOST = os.environ.get("HOST", "0.0.0.0")
     PORT = int(os.environ.get("PORT", "5000"))

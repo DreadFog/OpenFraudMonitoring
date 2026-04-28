@@ -28,6 +28,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+from services.log_shipper import install as install_log_shipper
+install_log_shipper("worker")
+
 
 def create_app():
     app = Flask(__name__)
@@ -129,7 +132,28 @@ def process_periodic_rules():
 
 # ── Entry point ─────────────────────────────────────────────────────────────
 
+def _intel_response_handler(msg: dict):
+    """Persist a STIX bundle from a connector response."""
+    bundle = msg.get("stix_bundle") or {}
+    if not bundle:
+        logger.warning("intel response %s carried no stix_bundle", msg.get("request_id"))
+        return
+    from services.intel_ingest import ingest_bundle
+    with app.app_context():
+        count = ingest_bundle(bundle)
+        logger.info(
+            "intel response request_id=%s connector=%s value=%s ingested=%d",
+            msg.get("request_id"), msg.get("connector"), msg.get("value"), count,
+        )
+
+
+def process_intel_responses():
+    """Drain the RabbitMQ ``intel.responses`` queue forever."""
+    from services.mq import consume_responses
+    consume_responses(_intel_response_handler)
+
+
 if __name__ == "__main__":
-    periodic_thread = threading.Thread(target=process_periodic_rules, daemon=True)
-    periodic_thread.start()
+    threading.Thread(target=process_periodic_rules, daemon=True).start()
+    threading.Thread(target=process_intel_responses, daemon=True).start()
     process_realtime_events()

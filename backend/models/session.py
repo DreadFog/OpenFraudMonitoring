@@ -11,6 +11,12 @@ class Session(db.Model):
     risk_score = db.Column(db.Integer, default=0)
     flags = db.Column(JSONB, default=list)
     client_ip = db.Column(db.String(45), default="")
+    # ── STIX observable links (Phase 1) ──
+    # IP can be either ipv4 or ipv6; track the type to know which table
+    # to look up in.  `None` if no STIX observable was created.
+    ip_observable_type = db.Column(db.String(16), nullable=True)  # 'ipv4-addr' | 'ipv6-addr'
+    ip_observable_id = db.Column(db.Integer, nullable=True)
+    user_agent_observable_id = db.Column(db.Integer, nullable=True)
     first_seen = db.Column(db.Float, default=0)
     last_seen = db.Column(db.Float, default=0)
     created_at = db.Column(db.DateTime, server_default=func.now())
