@@ -22,10 +22,11 @@ class Session(db.Model):
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, server_default=func.now(), onupdate=func.now())
 
-    fingerprints = db.relationship("Fingerprint", back_populates="session", lazy="dynamic")
-    heartbeats = db.relationship("Heartbeat", back_populates="session", lazy="dynamic")
-    urls = db.relationship("SessionURL", back_populates="session", lazy="dynamic")
-    browser_sessions = db.relationship("BrowserSession", back_populates="session", lazy="dynamic")
+    fingerprints = db.relationship("Fingerprint", back_populates="session", lazy="dynamic", cascade="all, delete-orphan")
+    heartbeats = db.relationship("Heartbeat", back_populates="session", lazy="dynamic", cascade="all, delete-orphan")
+    urls = db.relationship("SessionURL", back_populates="session", lazy="dynamic", cascade="all, delete-orphan")
+    browser_sessions = db.relationship("BrowserSession", back_populates="session", lazy="dynamic", cascade="all, delete-orphan")
+    rule_matches = db.relationship("RuleMatch", lazy="dynamic", cascade="all, delete-orphan")
 
     def to_dict(self):
         return {

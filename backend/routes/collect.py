@@ -16,11 +16,7 @@ from flask import Blueprint, request, jsonify, current_app
 from services.database import db
 from models import Session, Fingerprint, SessionURL, BrowserSession
 from services.event_queue import enqueue_event, get_redis
-from services.stix_store import (
-    get_or_create_ip, get_or_create_user_agent,
-    get_or_create_country, get_or_create_autonomous_system,
-    get_or_create_relationship,
-)
+from services.stix_store import get_or_create_ip, get_or_create_user_agent
 from services.mq import publish_intel_request
 from utils.crypto import decrypt_fingerprint
 
@@ -56,9 +52,10 @@ def collect():
     timestamp = fp.get("time", 0)
     nonce = fp.get("nonce", "")
 
-    # Get client IP (prefer extension-collected IP, fallback to headers)
+    # Get client IP (fallback to headers)
     ip_ext = extensions.get("ip", {}) or {}
-    client_ip = ip_ext.get("ip") or request.headers.get("X-Forwarded-For", request.remote_addr)
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    client_ip = ip_ext.get("ip") or (forwarded.split(",")[0].strip() if forwarded else "") or request.remote_addr
 
     # Find or create session keyed by fsid
     session_obj = Session.query.filter_by(fsid=fsid).first()
@@ -76,20 +73,6 @@ def collect():
     if ip_obs is not None:
         session_obj.ip_observable_type = ip_obs.raw.get("type") if isinstance(ip_obs.raw, dict) else None
         session_obj.ip_observable_id = ip_obs.id
-
-    # Country observable (from IP extension data)
-    country_iso = ip_ext.get("country_iso")
-    country_name = ip_ext.get("country")
-    country_obs = get_or_create_country(country_iso, country_name) if country_iso else None
-    if ip_obs is not None and country_obs is not None:
-        get_or_create_relationship(ip_obs.stix_id, "located-at", country_obs.stix_id)
-
-    # Autonomous System observable (from IP extension data)
-    asn = ip_ext.get("asn")
-    asn_org = ip_ext.get("asn_org")
-    as_obs = get_or_create_autonomous_system(asn, asn_org) if asn else None
-    if ip_obs is not None and as_obs is not None:
-        get_or_create_relationship(ip_obs.stix_id, "belongs-to", as_obs.stix_id)
 
     # User-Agent observable (from the decrypted fingerprint payload)
     ua_string = (fp.get("signals", {}).get("browser", {}) or {}).get("userAgent")

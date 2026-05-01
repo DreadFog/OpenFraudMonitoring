@@ -1,0 +1,7 @@
+# IPinfo connector configuration
+# Copy to config.yml and fill in your values.
+
+name: ipinfo
+mode: auto              # manual | auto | both
+
+ipinfo_token: "REPLACE_ME"

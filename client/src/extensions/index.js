@@ -13,11 +13,9 @@
  */
 
 import behavior from "./behavior.js";
-import ip from "./ip.js";
 
 const extensions = [
   behavior,
-  ip,
 ];
 
 export default extensions;

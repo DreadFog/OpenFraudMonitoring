@@ -17,6 +17,13 @@ import extensions from "./extensions/index.js";
 // Cached fsid for heartbeat correlation (set after first collect)
 let _fsid = null;
 
+// ── Global hooks for debugging / demo pages (debug builds only) ──
+if (__OFM_DEBUG__) {
+  if (typeof window !== "undefined" && !window.__OFM__) {
+    window.__OFM__ = {};
+  }
+}
+
 // ── Helpers ──
 
 function initExtensions() {
@@ -82,6 +89,11 @@ async function collect() {
     url: location.href,
   };
 
+  // Expose unencrypted payload for demo/debug (debug builds only)
+  if (__OFM_DEBUG__ && window.__OFM__ && typeof window.__OFM__.onFingerprint === "function") {
+    try { window.__OFM__.onFingerprint({ ...fp, _extensions: extensionData }); } catch (_) {}
+  }
+
   send(CFG.collectEndpoint, payload);
 }
 
@@ -95,6 +107,12 @@ function startHeartbeat() {
       url: location.href,
       extensions: drainExtensions(),  // { behavior: { mouseMoves: [...], ... } }
     };
+
+    // Expose heartbeat payload for demo/debug (debug builds only)
+    if (__OFM_DEBUG__ && window.__OFM__ && typeof window.__OFM__.onHeartbeat === "function") {
+      try { window.__OFM__.onHeartbeat(snapshot); } catch (_) {}
+    }
+
     send(CFG.heartbeatEndpoint, snapshot);
   }
 

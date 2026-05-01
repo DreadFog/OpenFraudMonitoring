@@ -45,6 +45,7 @@ services:
       dockerfile: backend/Dockerfile
       args:
         OFM_SERVER_URL: ${OFM_SERVER_URL:-}
+        OFM_DEBUG: ${OFM_DEBUG:-true}
     ports:
       - "${PORT:-5000}:5000"
     environment:
@@ -87,6 +88,8 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+      args:
+        OFM_DEBUG: ${OFM_DEBUG:-true}
     ports:
       - "3000:3000"
     depends_on:
@@ -105,6 +108,25 @@ services:
       CONNECTOR_CONFIG: /connectors/opencti/config.yml
     volumes:
       - ./connectors/opencti/config.yml:/connectors/opencti/config.yml:ro
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  connector-ipinfo:
+    build:
+      context: .
+      dockerfile: connectors/ipinfo/Dockerfile
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://ofm:ofm@rabbitmq:5672/}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      BACKEND_URL: ${BACKEND_URL:-http://backend:5000}
+      CONNECTOR_TOKEN: ${CONNECTOR_TOKEN:-dev-connector-token}
+      CONNECTOR_CONFIG: /connectors/ipinfo/config.yml
+    volumes:
+      - ./connectors/ipinfo/config.yml:/connectors/ipinfo/config.yml:ro
     depends_on:
       rabbitmq:
         condition: service_healthy

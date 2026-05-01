@@ -10,27 +10,17 @@
       font-family: system-ui, sans-serif;
       background: #0d1117;
       color: #e6edf3;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
       min-height: 100vh;
-      gap: 24px;
+      padding: 24px;
     }
-    h1 { font-size: 22px; color: #58a6ff; }
+    h1 { font-size: 22px; color: #58a6ff; margin-bottom: 4px; }
+    h2 { font-size: 16px; color: #58a6ff; margin-bottom: 8px; }
     p { color: #8b949e; font-size: 14px; }
     a { color: #58a6ff; text-decoration: none; }
     a:hover { text-decoration: underline; }
-    .card {
-      background: #161b22;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      padding: 24px 32px;
-      max-width: 480px;
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
     }
     .status {
       font-size: 12px;
@@ -39,8 +29,53 @@
       border-radius: 4px;
       padding: 4px 10px;
       display: inline-block;
-      width: fit-content;
+      margin: 8px 0;
     }
+    .columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+    @media (max-width: 900px) {
+      .columns { grid-template-columns: 1fr; }
+    }
+    .panel {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 200px;
+    }
+    .panel-scroll {
+      flex: 1;
+      overflow-y: auto;
+      max-height: 80vh;
+    }
+    pre {
+      font-family: monospace;
+      font-size: 12px;
+      color: #79c0ff;
+      background: #21262d;
+      border-radius: 4px;
+      padding: 12px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .hb-entry {
+      margin-bottom: 10px;
+    }
+    .hb-label {
+      font-size: 11px;
+      color: #8b949e;
+      margin-bottom: 2px;
+    }
+    .muted { color: #484f58; font-style: italic; font-size: 13px; }
     code {
       font-family: monospace;
       background: #21262d;
@@ -49,40 +84,79 @@
       font-size: 12px;
       color: #79c0ff;
     }
+    .info {
+      max-width: 1600px;
+      margin: 16px auto 0;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
-  <div class="card">
+  <div class="header">
     <h1>Fingerprint Demo</h1>
     <span class="status" id="status">Collecting fingerprint...</span>
-    <p>
-      This page loads <code>fingerprint.js</code> and sends your browser's
-      fingerprint to the backend for analysis.
-    </p>
     <p>
       Open the <a href="http://localhost:3000" target="_blank">dashboard</a> to
       see your session appear in real time.
     </p>
+  </div>
+
+  <div class="columns">
+    <!-- Left column: fingerprint -->
+    <div class="panel">
+      <h2>Fingerprint</h2>
+      <div class="panel-scroll">
+        <p class="muted" id="fp-placeholder">Waiting for fingerprint…</p>
+        <pre id="fp-json" style="display:none"></pre>
+      </div>
+    </div>
+
+    <!-- Right column: heartbeats -->
+    <div class="panel">
+      <h2>Heartbeats</h2>
+      <div class="panel-scroll" id="hb-list">
+        <p class="muted" id="hb-placeholder">No heartbeats yet…</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="info">
     <p>
       The script collects: hardware capabilities, canvas and WebGL fingerprints,
-      audio fingerprint, bot signals, operating system, device type, public IP,
+      bot signals, operating system, device type, public IP,
       and behavioral events (mouse, keyboard, copy/paste, navigation).
     </p>
   </div>
 
-  <!--
-    fingerprint.js is served by the backend at http://localhost:5000/fingerprint.js.
-    The CRA dev server proxies unknown requests to the backend (see package.json "proxy"),
-    so this src path works both in development and when the backend serves this file directly.
-  -->
-  <script src="/fingerprint.js"></script>
   <script>
-    // Update status once the script has loaded and sent the fingerprint
-    window.addEventListener("load", function () {
-      setTimeout(function () {
+    // Register hooks before fingerprint.js loads
+    window.__OFM__ = {
+      onFingerprint: function (fp) {
         document.getElementById("status").textContent = "Fingerprint sent";
-      }, 2000);
-    });
+        document.getElementById("fp-placeholder").style.display = "none";
+        var el = document.getElementById("fp-json");
+        el.style.display = "block";
+        el.textContent = JSON.stringify(fp, null, 2);
+      },
+      _hbCount: 0,
+      onHeartbeat: function (hb) {
+        this._hbCount++;
+        var placeholder = document.getElementById("hb-placeholder");
+        if (placeholder) placeholder.style.display = "none";
+        var list = document.getElementById("hb-list");
+        var entry = document.createElement("div");
+        entry.className = "hb-entry";
+        var label = document.createElement("div");
+        label.className = "hb-label";
+        label.textContent = "Heartbeat #" + this._hbCount + " — " + new Date(hb.timestamp).toLocaleTimeString();
+        var pre = document.createElement("pre");
+        pre.textContent = JSON.stringify(hb, null, 2);
+        entry.appendChild(label);
+        entry.appendChild(pre);
+        list.prepend(entry);
+      },
+    };
   </script>
+  <script src="/fingerprint.js"></script>
 </body>
 </html>

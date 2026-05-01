@@ -44,7 +44,8 @@ def heartbeat():
         session_obj = Session.query.filter_by(fsid=fsid).first()
     if not session_obj:
         # Fallback: find most recent session from this IP
-        client_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+        forwarded = request.headers.get("X-Forwarded-For", "")
+        client_ip = (forwarded.split(",")[0].strip() if forwarded else "") or request.remote_addr
         session_obj = Session.query.filter_by(client_ip=client_ip).order_by(
             Session.last_seen.desc()
         ).first()

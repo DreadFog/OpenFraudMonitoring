@@ -6,6 +6,8 @@ export default defineConfig({
     __OFM_SERVER_URL__: JSON.stringify(process.env.OFM_SERVER_URL || ""),
     // FPScanner encryption key — must match the backend's FPSCANNER_KEY
     __FP_ENCRYPTION_KEY__: JSON.stringify(process.env.FPSCANNER_KEY || "dev-key"),
+    // Debug mode — enables window.__OFM__ hooks for demo/debug pages
+    __OFM_DEBUG__: process.env.OFM_DEBUG === "true",
   },
   resolve: {
     alias: {

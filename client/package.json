@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "build": "vite build",
-    "build:dev": "FPSCANNER_KEY=dev-key vite build",
+    "build:dev": "FPSCANNER_KEY=dev-key OFM_DEBUG=true vite build",
     "build:prod": "vite build",
-    "watch": "FPSCANNER_KEY=dev-key vite build --watch"
+    "watch": "FPSCANNER_KEY=dev-key OFM_DEBUG=true vite build --watch"
   },
   "dependencies": {
     "fpscanner": "file:../fpscanner"

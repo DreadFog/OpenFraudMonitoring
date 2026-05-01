@@ -5,6 +5,8 @@ Sessions endpoints - list and detail views
 import json
 from flask import Blueprint, request, jsonify
 from models import Session, Fingerprint, Heartbeat
+from models.associations import SessionURL, BrowserSession
+from models.rule import RuleMatch
 from rules.engine import build_session_query
 
 # Platforms that are unambiguously desktop/workstation
@@ -143,6 +145,13 @@ def delete_session(fsid):
     sess = Session.query.filter_by(fsid=fsid).first()
     if not sess:
         return jsonify({"error": "session not found"}), 404
+
+    # Explicitly delete children (lazy="dynamic" prevents ORM cascade)
+    Fingerprint.query.filter_by(session_id=sess.id).delete()
+    Heartbeat.query.filter_by(session_id=sess.id).delete()
+    SessionURL.query.filter_by(session_id=sess.id).delete()
+    BrowserSession.query.filter_by(session_id=sess.id).delete()
+    RuleMatch.query.filter_by(session_id=sess.id).delete()
 
     db.session.delete(sess)
     db.session.commit()
