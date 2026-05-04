@@ -46,6 +46,23 @@
   border-color: #58a6ff;
 }
 
+.intel-select {
+  padding: 10px 14px;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #161b22;
+  color: #e6edf3;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  min-width: 160px;
+}
+
+.intel-select:focus {
+  border-color: #58a6ff;
+}
+
 .intel-btn {
   padding: 8px 16px;
   border: 1px solid #30363d;
@@ -75,6 +92,44 @@
 
 .intel-btn-primary:hover:not(:disabled) {
   background: #79c0ff;
+}
+
+.intel-back-btn {
+  margin-bottom: 12px;
+}
+
+.intel-limit-select {
+  margin-left: auto;
+  padding: 4px 10px;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #161b22;
+  color: #e6edf3;
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+}
+
+.intel-limit-select:focus {
+  border-color: #58a6ff;
+}
+
+.intel-entity-list tbody tr {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.intel-entity-list tbody tr:hover {
+  background: #1a2332;
+}
+
+.intel-entity-value {
+  font-family: monospace;
+  color: #58a6ff;
+  max-width: 500px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .intel-note {
@@ -226,6 +281,18 @@
 
 .intel-muted {
   color: #6e7681;
+}
+
+/* Clickable entity links */
+.intel-link {
+  color: #58a6ff;
+  cursor: pointer;
+  transition: color 0.12s;
+}
+
+.intel-link:hover {
+  color: #79c0ff;
+  text-decoration: underline;
 }
 
 /* Relationship table */

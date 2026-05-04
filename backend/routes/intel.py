@@ -29,8 +29,10 @@ from services.database import db
 from services.mq import publish_intel_request
 from services.intel_ingest import ingest_bundle
 from models import (
+    Session,
     StixIPv4Addr,
     StixIPv6Addr,
+    StixUserAgent,
     StixAutonomousSystem,
     StixCountry,
     StixIndicator,
@@ -47,6 +49,7 @@ intel_bp = Blueprint("intel", __name__, url_prefix="/api/intel")
 _TYPE_TO_MODEL = {
     "ipv4-addr": StixIPv4Addr,
     "ipv6-addr": StixIPv6Addr,
+    "user-agent": StixUserAgent,
     "autonomous-system": StixAutonomousSystem,
     "location": StixCountry,
     "indicator": StixIndicator,
@@ -92,27 +95,14 @@ def _detect_ip_model(ip: str):
     return StixIPv4Addr if v == 4 else StixIPv6Addr
 
 
-@intel_bp.route("/ip/<path:value>", methods=["GET"])
-def get_ip_intel(value):
-    logging.debug("Gathering intel for IP '%s'",value)
-    """Return everything we know about an IP from the local STIX cache."""
-    Model = _detect_ip_model(value)
-    if Model is None:
-        return jsonify({"error": "invalid IP address"}), 400
-
-    obs = Model.query.filter_by(value=value).first()
-    if obs is None:
-        return jsonify({"found": False, "value": value}), 200
-
+def _build_entity_response(obs, stix_type: str):
+    """Build the standard intel response dict for any STIX observable."""
     days = int(current_app.config.get("INTEL_DECAY_DAYS", 7))
 
-    # ── Direct relationships involving this observable ──
-    logging.debug("Looking up relationships with observable '%s'",str(obs))
     rels = StixRelationship.query.filter(
         (StixRelationship.source_ref == obs.stix_id)
         | (StixRelationship.target_ref == obs.stix_id)
     ).all()
-    logging.debug("Found relationships: '%s'",str(rels))
 
     # Indirect: indicators -> malware/campaign/intrusion-set
     indicator_ids = [
@@ -129,15 +119,12 @@ def get_ip_intel(value):
 
     _apply_decay([obs], days)
 
-    # Resolve referenced objects.
     all_rels = rels + indirect_rels
     referenced_ids = set()
-    all_rels = rels + indirect_rels
     for r in all_rels:
         referenced_ids.add(r.source_ref)
         referenced_ids.add(r.target_ref)
     referenced_ids.discard(obs.stix_id)
-    logging.debug("Referenced objects: '%s'", str(referenced_ids))
 
     referenced = {}
     related_objs = []
@@ -165,22 +152,115 @@ def get_ip_intel(value):
             if tgt and tgt["stix_type"] == "location":
                 country = tgt
 
-    return jsonify({
+    obs_dict = {**obs.to_dict(), "stix_type": stix_type}
+
+    # Count linked sessions
+    session_count = 0
+    if stix_type in ("ipv4-addr", "ipv6-addr"):
+        session_count = Session.query.filter_by(
+            ip_observable_id=obs.id, ip_observable_type=stix_type
+        ).count()
+    elif stix_type == "user-agent":
+        session_count = Session.query.filter_by(
+            user_agent_observable_id=obs.id
+        ).count()
+
+    return {
         "found": True,
-        "value": value,
-        "observable": {
-            **obs.to_dict(),
-            "stix_type": _stix_id_type(obs.stix_id),
-        },
+        "value": obs.value,
+        "observable": obs_dict,
         "autonomous_system": autonomous_system,
         "country": country,
+        "session_count": session_count,
         "relationships": [
             {**r.to_dict(),
-             "source": referenced.get(r.source_ref) if r.source_ref != obs.stix_id else {**obs.to_dict(), "stix_type": _stix_id_type(obs.stix_id)},
-             "target": referenced.get(r.target_ref) if r.target_ref != obs.stix_id else {**obs.to_dict(), "stix_type": _stix_id_type(obs.stix_id)}}
+             "source": referenced.get(r.source_ref) if r.source_ref != obs.stix_id else obs_dict,
+             "target": referenced.get(r.target_ref) if r.target_ref != obs.stix_id else obs_dict}
             for r in all_rels
         ],
         "decay_days": days,
+    }
+
+
+@intel_bp.route("/ip/<path:value>", methods=["GET"])
+def get_ip_intel(value):
+    """Return everything we know about an IP from the local STIX cache."""
+    Model = _detect_ip_model(value)
+    if Model is None:
+        return jsonify({"error": "invalid IP address"}), 400
+
+    obs = Model.query.filter_by(value=value).first()
+    if obs is None:
+        return jsonify({"found": False, "value": value}), 200
+
+    stix_type = "ipv4-addr" if Model is StixIPv4Addr else "ipv6-addr"
+    return jsonify(_build_entity_response(obs, stix_type)), 200
+
+
+@intel_bp.route("/entity", methods=["GET"])
+def get_entity_intel():
+    """Generic entity lookup by STIX type + value.
+
+    Query params:
+        type   – STIX type key (e.g. ipv4-addr, user-agent)
+        value  – value to search for (exact match)
+    """
+    stix_type = (request.args.get("type") or "").strip().lower()
+    value = (request.args.get("value") or "").strip()
+
+    if not stix_type or not value:
+        return jsonify({"error": "type and value are required"}), 400
+
+    Model = _TYPE_TO_MODEL.get(stix_type)
+    if Model is None:
+        return jsonify({"error": f"unknown entity type: {stix_type}"}), 400
+
+    obs = Model.query.filter_by(value=value).first()
+    if obs is None:
+        return jsonify({"found": False, "value": value, "type": stix_type}), 200
+
+    return jsonify(_build_entity_response(obs, stix_type)), 200
+
+
+@intel_bp.route("/types", methods=["GET"])
+def entity_types():
+    """Return the list of STIX entity types that have at least one record."""
+    available = []
+    for stix_type, Model in _TYPE_TO_MODEL.items():
+        count = Model.query.count()
+        if count > 0:
+            available.append({"type": stix_type, "count": count})
+    return jsonify({"types": available}), 200
+
+
+@intel_bp.route("/entities", methods=["GET"])
+def list_entities():
+    """Return the latest N entities of a given STIX type.
+
+    Query params:
+        type   – STIX type key (e.g. ipv4-addr, user-agent)
+        limit  – max results (default 25, max 500)
+    """
+    stix_type = (request.args.get("type") or "").strip().lower()
+    try:
+        limit = min(max(1, int(request.args.get("limit", "25"))), 500)
+    except (ValueError, TypeError):
+        limit = 25
+
+    Model = _TYPE_TO_MODEL.get(stix_type)
+    if Model is None:
+        return jsonify({"error": f"unknown entity type: {stix_type}"}), 400
+
+    days = int(current_app.config.get("INTEL_DECAY_DAYS", 7))
+    rows = Model.query.order_by(Model.created_at_platform.desc()).limit(limit).all()
+    _apply_decay(rows, days)
+
+    return jsonify({
+        "type": stix_type,
+        "entities": [
+            {**r.to_dict(), "stix_type": stix_type}
+            for r in rows
+        ],
     }), 200
 
 

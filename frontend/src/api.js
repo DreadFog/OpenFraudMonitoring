@@ -136,6 +136,24 @@ export const api = {
     return res.json();
   },
 
+  getEntityIntel: async (type, value) => {
+    const res = await fetch(`/api/intel/entity?type=${encodeURIComponent(type)}&value=${encodeURIComponent(value)}`);
+    if (!res.ok) throw new Error("Failed to fetch entity intel");
+    return res.json();
+  },
+
+  getIntelTypes: async () => {
+    const res = await fetch("/api/intel/types");
+    if (!res.ok) throw new Error("Failed to fetch intel types");
+    return res.json();
+  },
+
+  listEntities: async (type, limit = 25) => {
+    const res = await fetch(`/api/intel/entities?type=${encodeURIComponent(type)}&limit=${limit}`);
+    if (!res.ok) throw new Error("Failed to fetch entities");
+    return res.json();
+  },
+
   triggerIntelLookup: async (connector, value) => {
     const res = await fetch("/api/intel/lookup", {
       method: "POST",
