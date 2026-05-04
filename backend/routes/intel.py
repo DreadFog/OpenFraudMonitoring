@@ -132,6 +132,7 @@ def get_ip_intel(value):
     # Resolve referenced objects.
     all_rels = rels + indirect_rels
     referenced_ids = set()
+    all_rels = rels + indirect_rels
     for r in all_rels:
         referenced_ids.add(r.source_ref)
         referenced_ids.add(r.target_ref)
