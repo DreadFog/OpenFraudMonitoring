@@ -12,6 +12,7 @@ a STIX 2.1 bundle containing:
 """
 
 import ipaddress
+import json
 import logging
 import uuid
 from typing import Any, Dict, Optional
@@ -20,10 +21,14 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-# Deterministic UUIDv5 namespaces for stable STIX ids
-_AS_NAMESPACE = uuid.UUID("b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e")
-_COUNTRY_NAMESPACE = uuid.UUID("7a3e4b2c-1d5f-4e8a-9c0b-2f6d8e7a1b3c")
-_REL_NAMESPACE = uuid.UUID("c4d5e6f7-a8b9-4c0d-1e2f-3a4b5c6d7e8f")
+# OASIS STIX namespace for deterministic UUIDv5 generation,
+# matching the approach used by OpenCTI (identifier.js).
+_OASIS_NAMESPACE = uuid.UUID("00abedb4-aa42-466c-9c01-fed23315a9b7")
+
+
+def _canonical(data: dict) -> str:
+    """RFC 8785-style JSON canonicalization (sorted keys, compact)."""
+    return json.dumps(data, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
 
 
 def _detect_ip_type(ip: str) -> Optional[str]:
@@ -35,8 +40,7 @@ def _detect_ip_type(ip: str) -> Optional[str]:
 
 
 def _make_rel_id(source_id: str, rel_type: str, target_id: str) -> str:
-    key = f"{source_id}|{rel_type}|{target_id}"
-    return f"relationship--{uuid.uuid5(_REL_NAMESPACE, key)}"
+    return f"relationship--{uuid.uuid5(_OASIS_NAMESPACE, _canonical({'relationship_type': rel_type, 'source_ref': source_id, 'target_ref': target_id}))}"
 
 
 class IPInfoClient:
@@ -67,7 +71,7 @@ class IPInfoClient:
         seen = set()
 
         # 1. IP observable
-        ip_stix_id = f"{ip_type}--{uuid.uuid5(uuid.NAMESPACE_URL, ip)}"
+        ip_stix_id = f"{ip_type}--{uuid.uuid5(_OASIS_NAMESPACE, _canonical({'value': ip}))}"
         ip_obj = {
             "type": ip_type,
             "spec_version": "2.1",
@@ -81,7 +85,7 @@ class IPInfoClient:
         as_name = data.get("as_name")  # e.g. "Google LLC"
         if asn_raw:
             asn_number = int("".join(c for c in asn_raw if c.isdigit()) or "0")
-            as_stix_id = f"autonomous-system--{uuid.uuid5(_AS_NAMESPACE, asn_raw)}"
+            as_stix_id = f"autonomous-system--{uuid.uuid5(_OASIS_NAMESPACE, _canonical({'number': asn_number}))}"
             as_obj = {
                 "type": "autonomous-system",
                 "spec_version": "2.1",
@@ -106,7 +110,8 @@ class IPInfoClient:
         country_code = data.get("country_code")  # e.g. "US"
         country_name = data.get("country")  # e.g. "United States"
         if country_code:
-            country_stix_id = f"location--{uuid.uuid5(_COUNTRY_NAMESPACE, country_code)}"
+            country_name_lower = (country_name or country_code).lower().strip()
+            country_stix_id = f"location--{uuid.uuid5(_OASIS_NAMESPACE, _canonical({'name': country_name_lower, 'x_opencti_location_type': 'Country'}))}"
             country_obj = {
                 "type": "location",
                 "spec_version": "2.1",

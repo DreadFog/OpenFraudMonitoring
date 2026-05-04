@@ -11,6 +11,7 @@ populated by external connectors in a later phase.
 """
 
 import ipaddress
+import json
 import logging
 import uuid
 from typing import Optional, Union
@@ -26,12 +27,15 @@ logger = logging.getLogger(__name__)
 
 IPObservable = Union[StixIPv4Addr, StixIPv6Addr]
 
-# Deterministic namespace for UUIDv5 ids so identical values
-# produce the same STIX id across runs (stable deduplication).
-_UA_NAMESPACE = uuid.UUID("00abedb4-aa42-466c-9c01-fed23315a9b7")
-_COUNTRY_NAMESPACE = uuid.UUID("7a3e4b2c-1d5f-4e8a-9c0b-2f6d8e7a1b3c")
-_AS_NAMESPACE = uuid.UUID("b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e")
-_REL_NAMESPACE = uuid.UUID("c4d5e6f7-a8b9-4c0d-1e2f-3a4b5c6d7e8f")
+# OASIS STIX namespace for deterministic UUIDv5 generation,
+# matching the approach used by OpenCTI (identifier.js).
+# UUID is derived from canonicalized JSON of contributing fields.
+OASIS_NAMESPACE = uuid.UUID("00abedb4-aa42-466c-9c01-fed23315a9b7")
+
+
+def _canonical(data: dict) -> str:
+    """RFC 8785-style JSON canonicalization (sorted keys, compact)."""
+    return json.dumps(data, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
 
 
 def _detect_ip_version(ip: str) -> Optional[int]:
@@ -85,7 +89,7 @@ def get_or_create_user_agent(user_agent: str) -> Optional[StixUserAgent]:
     if existing:
         return existing
 
-    stix_id = f"user-agent--{uuid.uuid5(_UA_NAMESPACE, ua)}"
+    stix_id = f"user-agent--{uuid.uuid5(OASIS_NAMESPACE, _canonical({'value': ua}))}"
     raw = {
         "type": "user-agent",
         "spec_version": "2.1",
@@ -113,7 +117,8 @@ def get_or_create_country(country_iso: str, country_name: Optional[str] = None) 
     if existing:
         return existing
 
-    stix_id = f"location--{uuid.uuid5(_COUNTRY_NAMESPACE, code)}"
+    name = (country_name or code).lower().strip()
+    stix_id = f"location--{uuid.uuid5(OASIS_NAMESPACE, _canonical({'name': name, 'x_opencti_location_type': 'Country'}))}"
     raw = {
         "type": "location",
         "spec_version": "2.1",
@@ -144,7 +149,7 @@ def get_or_create_autonomous_system(asn: str, asn_org: Optional[str] = None) -> 
 
     # Extract numeric part for the STIX object ("AS12322" -> 12322)
     asn_number = int("".join(c for c in asn_str if c.isdigit()) or "0")
-    stix_id = f"autonomous-system--{uuid.uuid5(_AS_NAMESPACE, asn_str)}"
+    stix_id = f"autonomous-system--{uuid.uuid5(OASIS_NAMESPACE, _canonical({'number': asn_number}))}"
     raw = {
         "type": "autonomous-system",
         "spec_version": "2.1",
@@ -174,8 +179,7 @@ def get_or_create_relationship(source_stix_id: str, relationship_type: str, targ
     if existing:
         return existing
 
-    key = f"{source_stix_id}|{relationship_type}|{target_stix_id}"
-    stix_id = f"relationship--{uuid.uuid5(_REL_NAMESPACE, key)}"
+    stix_id = f"relationship--{uuid.uuid5(OASIS_NAMESPACE, _canonical({'relationship_type': relationship_type, 'source_ref': source_stix_id, 'target_ref': target_stix_id}))}"
     raw = {
         "type": "relationship",
         "spec_version": "2.1",
