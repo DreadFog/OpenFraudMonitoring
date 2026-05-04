@@ -3,5 +3,9 @@
 
 name: ipinfo
 mode: auto              # manual | auto | both
+connector_type: enricher
+scope:
+  - ipv4-addr
+  - ipv6-addr
 
 ipinfo_token: "REPLACE_ME"

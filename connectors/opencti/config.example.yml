@@ -3,6 +3,11 @@
 
 name: opencti
 mode: manual            # manual | auto | both
+connector_type: enricher
+scope:
+  - ipv4-addr
+  - ipv6-addr
+  - user-agent
 
 opencti_url: "https://your-opencti-instance.example.com"
 opencti_token: "REPLACE_ME"

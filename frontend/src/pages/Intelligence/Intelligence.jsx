@@ -33,6 +33,8 @@ export default function Intelligence() {
   const [showRaw, setShowRaw] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshNote, setRefreshNote] = useState("");
+  const [enrichers, setEnrichers] = useState([]);
+  const [enrichOpen, setEnrichOpen] = useState(false);
 
   const runSearch = async (e) => {
     if (e) e.preventDefault();
@@ -42,9 +44,21 @@ export default function Intelligence() {
     setError("");
     setData(null);
     setShowRaw(false);
+    setEnrichers([]);
+    setEnrichOpen(false);
     try {
       const result = await api.getIpIntel(v);
       setData(result);
+      // Fetch available enrichers for this entity type
+      if (result.found && result.observable) {
+        const entityType = result.observable.stix_type;
+        try {
+          const er = await api.getEnrichers(entityType);
+          setEnrichers(er.enrichers || []);
+        } catch {
+          setEnrichers([]);
+        }
+      }
     } catch (err) {
       setError(err.message || "Lookup failed");
     } finally {
@@ -52,15 +66,16 @@ export default function Intelligence() {
     }
   };
 
-  const forceRefresh = async () => {
+  const triggerEnrich = async (connectorName) => {
     if (!query.trim()) return;
     setRefreshing(true);
     setRefreshNote("");
+    setEnrichOpen(false);
     try {
-      const r = await api.triggerIntelLookup("opencti", query.trim());
-      setRefreshNote(`Lookup queued (request ${r.request_id.slice(0, 8)}…). Re-search in a few seconds.`);
+      const r = await api.triggerIntelLookup(connectorName, query.trim());
+      setRefreshNote(`Enrichment via ${connectorName} queued (${r.request_id.slice(0, 8)}…). Re-search in a few seconds.`);
     } catch (err) {
-      setRefreshNote(err.message || "Refresh failed");
+      setRefreshNote(err.message || "Enrichment failed");
     } finally {
       setRefreshing(false);
     }
@@ -84,15 +99,32 @@ export default function Intelligence() {
         <button className="intel-btn intel-btn-primary" type="submit" disabled={loading}>
           {loading ? "Searching…" : "Search"}
         </button>
-        <button
-          className="intel-btn"
-          type="button"
-          onClick={forceRefresh}
-          disabled={refreshing || !query.trim()}
-          title="Trigger a fresh OpenCTI query"
-        >
-          {refreshing ? "Queuing…" : "↻ Force refresh"}
-        </button>
+        <div className="intel-enrich-wrap">
+          <button
+            className="intel-btn"
+            type="button"
+            onClick={() => setEnrichOpen((v) => !v)}
+            disabled={refreshing || !query.trim() || enrichers.length === 0}
+            title={enrichers.length === 0 ? "No enrichers available for this entity type" : "Enrich via a connector"}
+          >
+            {refreshing ? "Enriching…" : "⚡ Enrich"}{enrichers.length > 0 ? ` (${enrichers.length})` : ""}
+          </button>
+          {enrichOpen && enrichers.length > 0 && (
+            <div className="intel-enrich-dropdown">
+              {enrichers.map((c) => (
+                <button
+                  key={c.name}
+                  className="intel-enrich-option"
+                  type="button"
+                  onClick={() => triggerEnrich(c.name)}
+                >
+                  <span className="intel-enrich-name">{c.name}</span>
+                  <span className="intel-enrich-scope">{c.scope.join(", ")}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </form>
 
       {refreshNote && <div className="intel-note">{refreshNote}</div>}
@@ -154,24 +186,23 @@ export default function Intelligence() {
                       <th>Source</th>
                       <th>Type</th>
                       <th>Target</th>
-                      <th>Created</th>
-                      <th>Start</th>
-                      <th>Stop</th>
                       <th>Decay</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.relationships.map((r) => (
-                      <tr key={r.stix_id}>
+                      <tr key={r.stix_id} className="intel-rel-row">
                         <td><ObjectLabel obj={r.source} /></td>
                         <td><span className="intel-rel-type">{r.relationship_type}</span></td>
                         <td><ObjectLabel obj={r.target} /></td>
-                        <td>{fmtDate(r.created_at_platform)}</td>
-                        <td>{fmtDate(r.start_time)}</td>
-                        <td>{fmtDate(r.stop_time)}</td>
                         <td>{r.decayed
                           ? <span className="intel-pill intel-pill-decayed">decayed</span>
                           : <span className="intel-muted">—</span>}</td>
+                        <td className="intel-rel-dates">
+                          <div>Created: {fmtDate(r.created_at_platform)}</div>
+                          <div>Start: {fmtDate(r.start_time)}</div>
+                          <div>Stop: {fmtDate(r.stop_time)}</div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

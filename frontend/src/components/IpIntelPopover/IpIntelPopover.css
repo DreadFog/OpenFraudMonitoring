@@ -1,0 +1,102 @@
+.ip-intel-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.ip-intel-lens {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 4px;
+  line-height: 1;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+
+.ip-intel-lens:hover {
+  opacity: 1;
+}
+
+.ip-intel-popover {
+  position: fixed;
+  z-index: 9999;
+  min-width: 240px;
+  max-width: 320px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.ip-intel-popover-header {
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #58a6ff;
+  background: #0d1117;
+  border-bottom: 1px solid #21262d;
+  font-family: monospace;
+}
+
+.ip-intel-popover-body {
+  padding: 10px 12px;
+  font-size: 12px;
+}
+
+.ip-intel-loading {
+  color: #8b949e;
+}
+
+.ip-intel-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding: 3px 0;
+}
+
+.ip-intel-label {
+  color: #8b949e;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+
+.ip-intel-value {
+  color: #e6edf3;
+  text-align: right;
+  word-break: break-word;
+}
+
+.ip-intel-muted {
+  color: #6e7681;
+}
+
+.ip-intel-malware-section {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid #21262d;
+}
+
+.ip-intel-malware-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 0 3px 8px;
+}
+
+.ip-intel-malware-name {
+  color: #f85149;
+  font-weight: 500;
+}
+
+.ip-intel-malware-date {
+  color: #8b949e;
+  font-size: 11px;
+  white-space: nowrap;
+}

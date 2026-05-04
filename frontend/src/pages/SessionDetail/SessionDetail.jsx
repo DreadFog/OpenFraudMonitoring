@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../../api";
+import IpIntelPopover from "../../components/IpIntelPopover/IpIntelPopover";
 import "./SessionDetail.css";
 
-function Field({ label, value }) {
+function Field({ label, value, popoverIp }) {
   if (value === null || value === undefined) return null;
   return (
     <div className="field">
       <span className="field-label">{label}</span>
-      <span className="field-value">{String(value)}</span>
+      <span className="field-value">{String(value)}{popoverIp && <IpIntelPopover ip={popoverIp} />}</span>
     </div>
   );
 }
@@ -133,8 +134,8 @@ export default function SessionDetail() {
         {/* Overview */}
         <Section title="Overview">
           <Field label="Fingerprint ID (fsid)" value={data.fsid} />
-          <Field label="Client IP"    value={data.client_ip} />
-          <Field label="Public IP"    value={ipExt.ip} />
+          <Field label="Client IP"    value={data.client_ip} popoverIp={data.client_ip} />
+          <Field label="Public IP"    value={ipExt.ip} popoverIp={ipExt.ip} />
           <Field label="Country"      value={ipExt.country} />
           <Field label="City"         value={ipExt.city} />
           <Field label="Bot Detected" value={fp.fastBotDetection ? "YES" : "No"} />

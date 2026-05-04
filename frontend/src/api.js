@@ -146,6 +146,13 @@ export const api = {
     return res.json();
   },
 
+  getEnrichers: async (entityType) => {
+    const params = entityType ? `?entity_type=${encodeURIComponent(entityType)}` : "";
+    const res = await fetch(`/api/connectors/enrichers${params}`);
+    if (!res.ok) throw new Error("Failed to fetch enrichers");
+    return res.json();
+  },
+
   // ── Connectors / Logging ──
 
   getConnectorsStatus: async () => {

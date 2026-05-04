@@ -69,12 +69,26 @@ def _connector_info(name: str) -> dict:
     except Exception:
         mode = "manual"
 
+    try:
+        type_raw = r.get(f"ofm:connector:{name}:type")
+        connector_type = type_raw.decode("utf-8") if type_raw else "enricher"
+    except Exception:
+        connector_type = "enricher"
+
+    try:
+        scope_raw = r.get(f"ofm:connector:{name}:scope")
+        scope = json.loads(scope_raw.decode("utf-8")) if scope_raw else []
+    except Exception:
+        scope = []
+
     now_ts = int(datetime.utcnow().timestamp())
     healthy = last_seen_ts is not None and (now_ts - last_seen_ts) <= HEARTBEAT_TTL_SECONDS
 
     return {
         "name": name,
         "mode": mode,
+        "connector_type": connector_type,
+        "scope": scope,
         "healthy": healthy,
         "last_seen": datetime.utcfromtimestamp(last_seen_ts).isoformat() + "Z" if last_seen_ts else None,
         "last_seen_age_seconds": (now_ts - last_seen_ts) if last_seen_ts else None,
@@ -92,6 +106,25 @@ def status():
             "events": _list_length("ofm:events"),
         },
     }), 200
+
+
+@connectors_bp.route("/enrichers", methods=["GET"])
+def enrichers():
+    """Return enricher connectors that support a given entity type.
+
+    Query params:
+        entity_type  – STIX type to filter by (e.g. ipv4-addr). Optional;
+                       if omitted, all enrichers are returned.
+    """
+    entity_type = (request.args.get("entity_type") or "").strip().lower()
+    all_connectors = [_connector_info(name) for name in _list_connectors()]
+    enrichers_list = [
+        c for c in all_connectors
+        if c["connector_type"] == "enricher"
+        and c["healthy"]
+        and (not entity_type or entity_type in c["scope"])
+    ]
+    return jsonify({"enrichers": enrichers_list}), 200
 
 
 def _list_length(key: str):

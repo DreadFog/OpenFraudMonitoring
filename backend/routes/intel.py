@@ -127,10 +127,10 @@ def get_ip_intel(value):
             StixRelationship.source_ref.in_(indicator_ids),
         ).all()
 
-    all_rels = rels + indirect_rels
-    _apply_decay([obs] + all_rels, days)
+    _apply_decay([obs], days)
 
     # Resolve referenced objects.
+    all_rels = rels + indirect_rels
     referenced_ids = set()
     for r in all_rels:
         referenced_ids.add(r.source_ref)

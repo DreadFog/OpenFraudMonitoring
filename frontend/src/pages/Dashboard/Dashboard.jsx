@@ -4,6 +4,7 @@ import { ResponsiveGridLayout, useContainerWidth } from "react-grid-layout";
 import { api } from "../../api";
 import FilterBuilder from "../../components/FilterBuilder/FilterBuilder";
 import WidgetWizard from "../../components/WidgetWizard/WidgetWizard";
+import IpIntelPopover from "../../components/IpIntelPopover/IpIntelPopover";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import "./Dashboard.css";
@@ -474,7 +475,7 @@ export default function Dashboard() {
                 return (
                   <tr key={session.full_fsid} onClick={() => navigate(`/session/${session.full_fsid}`)}>
                     <td className="device-id">{session.fsid}</td>
-                    <td>{session.client_ip}</td>
+                    <td>{session.client_ip} <IpIntelPopover ip={session.client_ip} /></td>
                     <td>
                       <span className={`risk-badge ${riskClass}`}>
                         {session.risk_score}

@@ -266,6 +266,34 @@
   font-size: 11px;
 }
 
+/* Relationship row — hover-to-show dates */
+.intel-rel-row {
+  position: relative;
+}
+
+.intel-rel-dates {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: #8b949e;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.intel-rel-row:hover .intel-rel-dates {
+  opacity: 1;
+}
+
 /* Raw JSON */
 .intel-raw {
   background: #0d1117;
@@ -277,4 +305,54 @@
   font-size: 11px;
   max-height: 500px;
   overflow: auto;
+}
+
+/* Enrich dropdown */
+.intel-enrich-wrap {
+  position: relative;
+}
+
+.intel-enrich-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 220px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 10;
+  overflow: hidden;
+}
+
+.intel-enrich-option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  color: #e6edf3;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.intel-enrich-option:hover {
+  background: #21262d;
+}
+
+.intel-enrich-option + .intel-enrich-option {
+  border-top: 1px solid #21262d;
+}
+
+.intel-enrich-name {
+  font-weight: 600;
+}
+
+.intel-enrich-scope {
+  font-size: 11px;
+  color: #8b949e;
 }

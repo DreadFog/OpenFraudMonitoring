@@ -84,12 +84,15 @@ class ConnectorRunner:
     def run(self):
         threading.Thread(target=self._heartbeat_loop, daemon=True).start()
 
-        # Publish our mode to Redis so the backend knows when to auto-trigger.
+        # Publish our mode, type, and scope to Redis so the backend knows when to auto-trigger
+        # and which connectors can enrich which entity types.
         try:
             r = _redis_lib.Redis.from_url(self.redis_url)
             r.set(f"ofm:connector:{self.config.name}:mode", self.config.mode or "manual")
+            r.set(f"ofm:connector:{self.config.name}:type", self.config.connector_type or "enricher")
+            r.set(f"ofm:connector:{self.config.name}:scope", json.dumps(self.config.scope or []))
         except Exception as e:
-            logger.debug("could not publish connector mode: %s", e)
+            logger.debug("could not publish connector metadata: %s", e)
 
         request_queue = f"intel.requests.{self.config.name}"
         request_rk = f"request.{self.config.name}"
