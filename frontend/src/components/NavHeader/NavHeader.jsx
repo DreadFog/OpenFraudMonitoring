@@ -12,7 +12,10 @@ export default function NavHeader() {
   const { pathname } = useLocation();
   return (
     <nav className="nav-header">
-      <Link to="/" className="nav-brand">OpenFraudMonitoring</Link>
+      <Link to="/" className="nav-brand">
+        <img src="/logo.png" alt="" className="nav-brand-logo" />
+        OpenFraudMonitoring
+      </Link>
       <div className="nav-tabs">
         {TABS.map((t) => (
           <Link

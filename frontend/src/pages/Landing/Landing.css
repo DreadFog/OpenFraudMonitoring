@@ -12,6 +12,22 @@
   text-align: center;
   margin-bottom: 60px;
   max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.landing-hero-title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.landing-logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
 }
 
 .landing-hero h1 {

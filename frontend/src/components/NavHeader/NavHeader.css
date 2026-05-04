@@ -11,11 +11,20 @@
 }
 
 .nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 14px;
   font-weight: 700;
   color: #58a6ff;
   text-decoration: none;
   letter-spacing: 0.3px;
+}
+
+.nav-brand-logo {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 
 .nav-brand:hover {

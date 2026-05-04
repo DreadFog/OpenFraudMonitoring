@@ -27,7 +27,10 @@ export default function Landing() {
   return (
     <div className="landing">
       <header className="landing-hero">
-        <h1>OpenFraudMonitoring</h1>
+        <div className="landing-hero-title">
+          <img src="/logo.png" alt="OpenFraudMonitoring" className="landing-logo" />
+          <h1>OpenFraudMonitoring</h1>
+        </div>
         <p>Browser fingerprinting, behavioral signals and threat intelligence.</p>
       </header>
       <div className="landing-tiles">
