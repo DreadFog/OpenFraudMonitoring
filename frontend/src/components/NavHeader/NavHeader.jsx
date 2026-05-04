@@ -24,6 +24,7 @@ export default function NavHeader() {
           </Link>
         ))}
       </div>
+      <a href="/demo.html" className="nav-demo" target="_blank" rel="noopener noreferrer">Demo</a>
     </nav>
   );
 }

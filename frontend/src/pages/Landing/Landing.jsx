@@ -39,6 +39,9 @@ export default function Landing() {
           </Link>
         ))}
       </div>
+      <a href="/demo.html" className="landing-demo" target="_blank" rel="noopener noreferrer">
+        🎯 Try the Demo
+      </a>
     </div>
   );
 }

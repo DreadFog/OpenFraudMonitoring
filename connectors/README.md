@@ -3,6 +3,8 @@
 Each subdirectory under `connectors/` is an independent connector container
 that talks to the OpenFraudMonitoring backend through RabbitMQ.
 
+For full documentation on how connectors work, configuration, and how to build your own, see [docs/connectors.md](../docs/connectors.md).
+
 ## Architecture
 
 ```
@@ -21,10 +23,13 @@ liveness display.
 ## Shared library
 
 `connectors/base/` provides `connector_base` — a Python package with:
-- `load_config(path)` — YAML config loader
-- `ConnectorRunner(config, handler)` — RabbitMQ consume/publish loop
-- `BackendClient(base_url, token)` — fallback HTTP client to the backend
+- `load_config(path)` — YAML config loader (with env var overrides)
+- `ConnectorRunner(config, handler)` — RabbitMQ consume/publish loop + Redis heartbeat
+- `log_shipper` — centralized log shipping to Redis
 
 ## Available connectors
 
-- `connectors/opencti/` — queries an OpenCTI instance (added in Phase 3)
+| Connector | Scope | Mode | Description |
+|-----------|-------|------|-------------|
+| `ipinfo` | `ipv4-addr`, `ipv6-addr` | auto | IPinfo Lite API — AS number + country |
+| `opencti` | `ipv4-addr`, `ipv6-addr`, `user-agent` | manual | OpenCTI — indicators, malware, campaigns |

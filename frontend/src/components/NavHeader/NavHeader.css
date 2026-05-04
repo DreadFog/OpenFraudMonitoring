@@ -46,3 +46,19 @@
   color: #e6edf3;
   font-weight: 600;
 }
+
+.nav-demo {
+  margin-left: auto;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  background: linear-gradient(135deg, #58a6ff, #bc8cff);
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.nav-demo:hover {
+  opacity: 0.85;
+}
