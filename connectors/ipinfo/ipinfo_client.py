@@ -58,6 +58,7 @@ class IPInfoClient:
             )
             r.raise_for_status()
             data = r.json()
+            logger.debug("IPinfo returned the following data: '%s'", str(data))
         except Exception as e:
             logger.warning("IPinfo lookup failed for %s: %s", ip, e)
             return _empty_bundle()

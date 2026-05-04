@@ -21,6 +21,7 @@ POST /api/intel/ingest
 
 import ipaddress
 from datetime import datetime, timedelta
+import logging
 
 from flask import Blueprint, request, jsonify, current_app
 
@@ -54,6 +55,7 @@ _TYPE_TO_MODEL = {
     "intrusion-set": StixIntrusionSet,
 }
 
+logger = logging.getLogger(__name__)
 
 def _stix_id_type(stix_id: str) -> str:
     return (stix_id or "").split("--", 1)[0]
@@ -92,6 +94,7 @@ def _detect_ip_model(ip: str):
 
 @intel_bp.route("/ip/<path:value>", methods=["GET"])
 def get_ip_intel(value):
+    logging.debug("Gathering intel for IP '%s'",value)
     """Return everything we know about an IP from the local STIX cache."""
     Model = _detect_ip_model(value)
     if Model is None:
@@ -104,10 +107,12 @@ def get_ip_intel(value):
     days = int(current_app.config.get("INTEL_DECAY_DAYS", 7))
 
     # ── Direct relationships involving this observable ──
+    logging.debug("Looking up relationships with observable '%s'",str(obs))
     rels = StixRelationship.query.filter(
         (StixRelationship.source_ref == obs.stix_id)
         | (StixRelationship.target_ref == obs.stix_id)
     ).all()
+    logging.debug("Found relationships: '%s'",str(rels))
 
     # Indirect: indicators -> malware/campaign/intrusion-set
     indicator_ids = [
@@ -131,6 +136,7 @@ def get_ip_intel(value):
         referenced_ids.add(r.source_ref)
         referenced_ids.add(r.target_ref)
     referenced_ids.discard(obs.stix_id)
+    logging.debug("Referenced objects: '%s'", str(referenced_ids))
 
     referenced = {}
     related_objs = []

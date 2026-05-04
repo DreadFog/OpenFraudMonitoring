@@ -8,6 +8,17 @@ Supported object types:
 
 Unknown types are stored verbatim into a ``raw`` log but otherwise ignored
 for now.
+
+Sample created bundle based on the IPInfo connector
+{'type': 'bundle', 'id': 'bundle--f2286958-57eb-4f30-acbf-5005f1487fdf', 
+'objects': [
+{'type': 'ipv6-addr', 'spec_version': '2.1', 'id': 'ipv6-addr--3d1bcfd3-3764-58c9-b283-6a69fe0f0277', 'value': '2a0d:e487:6ce:b5ee::1698:3d47'},
+{'type': 'autonomous-system', 'spec_version': '2.1', 'id': 'autonomous-system--7b30ccf1-3f7f-53c4-bd3f-18877f6aef99', 'number': 51207, 'name': 'Free Mobile SAS'},
+{'type': 'relationship', 'spec_version': '2.1', 'id': 'relationship--b029dbe4-1788-57f7-b36c-0f49453c6bc0', 'relationship_type': 'belongs-to', 'source_ref': 'ipv6-addr--3d1bcfd3-3764-58c9-b283-6a69fe0f0277', 'target_ref': 'autonomous-system--7b30ccf1-3f7f-53c4-bd3f-18877f6aef99'},
+{'type': 'location', 'spec_version': '2.1', 'id': 'location--597ce4b1-a421-517c-b703-9e20d586d79c', 'name': 'France', 'country': 'FR'},
+{'type': 'relationship', 'spec_version': '2.1', 'id': 'relationship--18ea03c9-b3e3-539a-8ed0-942eb06d12f9', 'relationship_type': 'located-at', 'source_ref': 'ipv6-addr--3d1bcfd3-3764-58c9-b283-6a69fe0f0277', 'target_ref': 'location--597ce4b1-a421-517c-b703-9e20d586d79c'}
+]}'
+
 """
 
 import logging
@@ -54,6 +65,7 @@ def _parse_iso(ts: Optional[str]) -> Optional[datetime]:
 
 
 def _upsert_typed(obj: dict) -> None:
+    logging.debug("Adding object: '%s'", obj)
     otype = obj.get("type")
     sid = obj.get("id")
     if not sid:
@@ -75,12 +87,14 @@ def _upsert_typed(obj: dict) -> None:
 
     existing = Model.query.filter_by(stix_id=sid).first()
     if existing:
+        logging.debug("Object exists in database: '%s'", existing)
         existing.raw = obj
         existing.last_refreshed_at = datetime.utcnow()
         existing.decayed = False
         if value:
             existing.value = value[:2048]
     else:
+        logging.debug("Object did not exist in the database. Adding...")
         db.session.add(Model(
             stix_id=sid,
             value=(value or sid)[:2048],
@@ -90,11 +104,13 @@ def _upsert_typed(obj: dict) -> None:
 
 
 def _upsert_relationship(obj: dict) -> None:
+    logging.debug("Adding relationship: '%s'", obj)
     sid = obj.get("id")
     if not sid:
         return
     existing = StixRelationship.query.filter_by(stix_id=sid).first()
     if existing:
+        logging.debug("Relationship exists in database: '%s'", existing)
         existing.raw = obj
         existing.relationship_type = obj.get("relationship_type", existing.relationship_type)
         existing.source_ref = obj.get("source_ref", existing.source_ref)
@@ -102,16 +118,17 @@ def _upsert_relationship(obj: dict) -> None:
         existing.start_time = _parse_iso(obj.get("start_time")) or existing.start_time
         existing.stop_time = _parse_iso(obj.get("stop_time")) or existing.stop_time
         existing.decayed = False
-        return
-    db.session.add(StixRelationship(
-        stix_id=sid,
-        relationship_type=obj.get("relationship_type", ""),
-        source_ref=obj.get("source_ref", ""),
-        target_ref=obj.get("target_ref", ""),
-        start_time=_parse_iso(obj.get("start_time")),
-        stop_time=_parse_iso(obj.get("stop_time")),
-        raw=obj,
-    ))
+    else:
+        logging.debug("Relationship did not exist in the database. Adding...")
+        db.session.add(StixRelationship(
+            stix_id=sid,
+            relationship_type=obj.get("relationship_type", ""),
+            source_ref=obj.get("source_ref", ""),
+            target_ref=obj.get("target_ref", ""),
+            start_time=_parse_iso(obj.get("start_time")),
+            stop_time=_parse_iso(obj.get("stop_time")),
+            raw=obj,
+        ))
 
 
 def ingest_bundle(bundle: dict) -> int:

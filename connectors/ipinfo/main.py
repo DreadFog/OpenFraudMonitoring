@@ -22,6 +22,7 @@ logging.basicConfig(
     level=getattr(logging, os.environ.get("LOG_LEVEL", "INFO").upper(), logging.INFO),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
+logging.getLogger('pika').setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
 
 from connector_base.log_shipper import install as install_log_shipper  # noqa: E402
@@ -50,6 +51,7 @@ def main():
             return {"type": "bundle", "objects": []}
         if not value:
             return {"type": "bundle", "objects": []}
+        logger.info("Looking up the value: '%s'", value)
         return client.lookup_ip(value)
 
     runner = ConnectorRunner(cfg, handler)

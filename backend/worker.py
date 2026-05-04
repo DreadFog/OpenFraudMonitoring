@@ -26,6 +26,7 @@ logging.basicConfig(
     level=getattr(logging, os.environ.get("LOG_LEVEL", "INFO").upper(), logging.INFO),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
+logging.getLogger('pika').setLevel(logging.INFO) #  reduce verbosity of pika
 logger = logging.getLogger(__name__)
 
 from services.log_shipper import install as install_log_shipper
@@ -140,6 +141,7 @@ def _intel_response_handler(msg: dict):
         return
     from services.intel_ingest import ingest_bundle
     with app.app_context():
+        logger.debug("Received the following bundle: '%s'", str(bundle))
         count = ingest_bundle(bundle)
         logger.info(
             "intel response request_id=%s connector=%s value=%s ingested=%d",

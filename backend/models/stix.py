@@ -37,6 +37,9 @@ class _StixBase:
             "raw": self.raw or {},
         }
 
+    def __str__(self):
+        return f"{self.__class__.__name__}({self.value})"
+
 
 class StixIPv4Addr(_StixBase, db.Model):
     __tablename__ = "stix_ipv4_addr"
@@ -113,3 +116,6 @@ class StixRelationship(db.Model):
             "decayed": self.decayed,
             "raw": self.raw or {},
         }
+
+    def __str__(self):
+        return f"StixRelationship({self.relationship_type}: {self.source_ref} -> {self.target_ref})"
