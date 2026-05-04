@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="images/logo.png" alt="OpenFraudMonitoring" width="256" />
+</p>
+
 # OpenFraudMonitoring
 
 Self-hosted browser fingerprinting, behavioral analysis, and fraud monitoring platform. One script tag gives you device fingerprints, bot detection, behavioral signals, threat intelligence enrichment, and a live dashboard.
