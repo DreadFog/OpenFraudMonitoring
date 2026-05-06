@@ -47,13 +47,13 @@ with app.app_context():
 # Static file serving
 # ─────────────────────────────────────────────────────────────────────────────
 
-@app.route("/fingerprint.js")
+@app.route("/ofm.js")
 def serve_fingerprint():
     """
-    Serve the fingerprint.js script
+    Serve the ofm.js script
     """
     script_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    return send_from_directory(script_dir, "fingerprint.js")
+    return send_from_directory(script_dir, "ofm.js")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -65,11 +65,11 @@ def index():
     return {
         "message": "OpenFraudMonitoring Backend v2.0",
         "endpoints": {
-            "collect": "POST /api/collect",
+            "collect": "POST /api/initial",
             "heartbeat": "POST /api/heartbeat",
             "sessions": "GET /api/sessions",
             "stats": "GET /api/stats",
-            "fingerprint_script": "GET /fingerprint.js",
+            "fingerprint_script": "GET /ofm.js",
         }
     }, 200
 
@@ -82,9 +82,9 @@ def health():
 
 if __name__ == "__main__":
     logger.info("Server starting...")
-    logger.info("  API:                http://localhost:5000/api/collect")
+    logger.info("  API:                http://localhost:5000/api/initial")
     logger.info("  Heartbeat:          http://localhost:5000/api/heartbeat")
     logger.info("  Sessions:           http://localhost:5000/api/sessions")
     logger.info("  Stats:              http://localhost:5000/api/stats")
-    logger.info("  Fingerprint script: http://localhost:5000/fingerprint.js")
+    logger.info("  Fingerprint script: http://localhost:5000/ofm.js")
     app.run(debug=Config.DEBUG, host=Config.HOST, port=Config.PORT)

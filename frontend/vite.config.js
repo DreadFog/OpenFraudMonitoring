@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": "http://localhost:5000",
-      "/fingerprint.js": "http://localhost:5000",
+      "/ofm.js": "http://localhost:5000",
     },
   },
 });

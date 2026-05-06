@@ -129,7 +129,7 @@
   </div>
 
   <script>
-    // Register hooks before fingerprint.js loads
+    // Register hooks before ofm.js loads
     window.__OFM__ = {
       onFingerprint: function (fp) {
         document.getElementById("status").textContent = "Fingerprint sent";
@@ -157,6 +157,6 @@
       },
     };
   </script>
-  <script src="/fingerprint.js"></script>
+  <script src="/ofm.js"></script>
 </body>
 </html>

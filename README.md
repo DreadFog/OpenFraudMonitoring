@@ -37,7 +37,7 @@ docker compose up --build
 Add the fingerprint collection script to any page:
 
 ```html
-<script src="http://your-server/fingerprint.js"></script>
+<script src="http://your-server/ofm.js"></script>
 ```
 
 The script automatically:

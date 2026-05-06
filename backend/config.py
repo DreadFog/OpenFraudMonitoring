@@ -46,6 +46,6 @@ class Config:
     FPSCANNER_KEY = os.environ.get("FPSCANNER_KEY", "dev-key")
 
     # ── Client (injected at build time via Vite) ──
-    # OFM_SERVER_URL is the URL the fingerprint.js client sends data to.
+    # OFM_SERVER_URL is the URL the ofm.js client sends data to.
     # Set to "" for same-origin (default), or "https://ofm.example.com" for remote.
     OFM_SERVER_URL = os.environ.get("OFM_SERVER_URL", "")

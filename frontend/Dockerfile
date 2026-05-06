@@ -21,7 +21,7 @@ COPY frontend/package.json ./
 RUN npm install
 
 COPY frontend/ .
-COPY --from=client-build /client/dist/fingerprint.js public/fingerprint.js
+COPY --from=client-build /client/dist/ofm.js public/ofm.js
 
 RUN npm run build
 

@@ -23,9 +23,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy all backend modules
 COPY backend/ ./
 
-# fingerprint.js is served from one level up relative to app.py
+# ofm.js is served from one level up relative to app.py
 # app.py resolves os.path.join(dirname(__file__), "..") => /
-COPY --from=client-build /client/dist/fingerprint.js /fingerprint.js
+COPY --from=client-build /client/dist/ofm.js /ofm.js
 
 EXPOSE 5000
 

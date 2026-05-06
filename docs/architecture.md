@@ -42,16 +42,16 @@ OpenFraudMonitoring is a multi-service system that collects browser fingerprints
 
 ### 1. Collection
 
-A browser loads `fingerprint.js`. On page load, the client:
+A browser loads `ofm.js`. On page load, the client:
 1. Runs FPScanner to collect 35 signal categories and 21 bot detection rules
 2. FPScanner generates a deterministic `fsid` (JA4-inspired fingerprint ID)
-3. The encrypted fingerprint is sent to `POST /api/collect`
+3. The encrypted fingerprint is sent to `POST /api/initial`
 
 Every 30 seconds, a heartbeat with behavioral data (mouse, clicks, keys, scrolls, copy/paste) is sent to `POST /api/heartbeat`.
 
 ### 2. Ingestion (Backend)
 
-On `/api/collect`:
+On `/api/initial`:
 - Decrypt the FPScanner encrypted payload (XOR + Base64)
 - Find or create a `Session` by `fsid`
 - Store the raw fingerprint as JSONB + denormalized columns for filtering
@@ -203,7 +203,7 @@ backend/
     dashboard.py         # Dashboard model (widget layouts)
     stix.py              # All STIX 2.1 models (9 entity types + relationship)
   routes/
-    collect.py           # POST /api/collect (creates STIX observables)
+    collect.py           # POST /api/initial (creates STIX observables)
     heartbeat.py         # POST /api/heartbeat
     sessions.py          # GET/DELETE /api/sessions
     stats.py             # GET /api/stats
@@ -254,7 +254,7 @@ frontend/
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/collect` | Receive initial fingerprint |
+| POST | `/api/initial` | Receive initial fingerprint |
 | POST | `/api/heartbeat` | Receive behavioral update |
 | GET | `/api/sessions` | List sessions (supports `?filters=[...]`) |
 | GET | `/api/sessions/<fsid>` | Session detail |
@@ -262,7 +262,7 @@ frontend/
 | GET | `/api/stats` | Aggregate statistics |
 | GET | `/api/schema` | Filterable field definitions |
 | GET | `/api/suggest?field=x&q=y` | Autocomplete values for a field |
-| GET | `/fingerprint.js` | Client collection script |
+| GET | `/ofm.js` | Client collection script |
 
 ### Rules
 

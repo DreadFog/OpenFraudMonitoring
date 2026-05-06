@@ -432,7 +432,7 @@ export default function Dashboard() {
       <div className="table-wrapper">
         {sessions.length === 0 ? (
           <p className="empty-message">
-            No sessions yet — load a page with fingerprint.js included.
+            No sessions yet — load a page with ofm.js included.
           </p>
         ) : (
           <table className="sessions-table">

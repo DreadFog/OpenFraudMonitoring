@@ -5,7 +5,7 @@
  *   1. Init all extensions (attach event listeners, etc.)
  *   2. Collect FPScanner fingerprint (encrypted)
  *   3. Run each extension's collect() in parallel
- *   4. Send combined payload to /api/collect
+ *   4. Send combined payload to /api/initial
  *   5. Start heartbeat loop (drains extension buffers periodically)
  */
 
