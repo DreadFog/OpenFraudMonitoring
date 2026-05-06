@@ -2,15 +2,15 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:-ofm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ofm}
+      POSTGRES_DB: ${POSTGRES_DB:-ofm}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ofm}"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -31,8 +31,8 @@ services:
       - "5672:5672"
       - "15672:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-ofm}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-ofm}
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
@@ -44,21 +44,21 @@ services:
       context: .
       dockerfile: backend/Dockerfile
       args:
-        OFM_SERVER_URL: ${OFM_SERVER_URL}
-        OFM_DEBUG: ${OFM_DEBUG}
+        OFM_SERVER_URL: ${OFM_SERVER_URL:-}
+        OFM_DEBUG: ${OFM_DEBUG:-true}
     ports:
-      - "${PORT}:5000"
+      - "${PORT:-5000}:5000"
     environment:
-      FLASK_DEBUG: ${FLASK_DEBUG}
-      LOG_LEVEL: ${LOG_LEVEL}
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: ${REDIS_URL}
-      RABBITMQ_URL: ${RABBITMQ_URL}
-      JWT_SECRET: ${JWT_SECRET}
-      OFM_ADMIN_USERNAME: ${OFM_ADMIN_USERNAME}
-      OFM_ADMIN_PASSWORD: ${OFM_ADMIN_PASSWORD}
-      OFM_ADMIN_TOKEN: ${OFM_ADMIN_TOKEN}
-      INTEL_DECAY_DAYS: ${INTEL_DECAY_DAYS}
+      FLASK_DEBUG: ${FLASK_DEBUG:-0}
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://ofm:ofm@db:5432/ofm}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://ofm:ofm@rabbitmq:5672/}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      OFM_ADMIN_USERNAME: ${OFM_ADMIN_USERNAME:-admin}
+      OFM_ADMIN_PASSWORD: ${OFM_ADMIN_PASSWORD:-admin}
+      OFM_ADMIN_TOKEN: ${OFM_ADMIN_TOKEN:-dev-admin-token}
+      INTEL_DECAY_DAYS: ${INTEL_DECAY_DAYS:-7}
     depends_on:
       db:
         condition: service_healthy
@@ -73,12 +73,12 @@ services:
       dockerfile: backend/Dockerfile
     command: python worker.py
     environment:
-      LOG_LEVEL: ${LOG_LEVEL}
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: ${REDIS_URL}
-      RABBITMQ_URL: ${RABBITMQ_URL}
-      INTEL_DECAY_DAYS: ${INTEL_DECAY_DAYS}
-      PERIODIC_INTERVAL_SECONDS: ${PERIODIC_INTERVAL_SECONDS}
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://ofm:ofm@db:5432/ofm}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://ofm:ofm@rabbitmq:5672/}
+      INTEL_DECAY_DAYS: ${INTEL_DECAY_DAYS:-7}
+      PERIODIC_INTERVAL_SECONDS: ${PERIODIC_INTERVAL_SECONDS:-60}
     depends_on:
       db:
         condition: service_healthy
@@ -92,7 +92,7 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
       args:
-        OFM_DEBUG: ${OFM_DEBUG}
+        OFM_DEBUG: ${OFM_DEBUG:-true}
     ports:
       - "30000:3000"
     depends_on:
@@ -103,11 +103,11 @@ services:
       context: .
       dockerfile: connectors/opencti/Dockerfile
     environment:
-      LOG_LEVEL: ${LOG_LEVEL}
-      RABBITMQ_URL: ${RABBITMQ_URL}
-      REDIS_URL: ${REDIS_URL}
-      BACKEND_URL: ${BACKEND_URL}
-      OFM_ADMIN_TOKEN: ${OFM_ADMIN_TOKEN}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://ofm:ofm@rabbitmq:5672/}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      BACKEND_URL: ${BACKEND_URL:-http://backend:5000}
+      OFM_ADMIN_TOKEN: ${OFM_ADMIN_TOKEN:-dev-admin-token}
       CONNECTOR_CONFIG: /connectors/opencti/config.yml
     volumes:
       - ./connectors/opencti/config.yml:/connectors/opencti/config.yml:ro
@@ -122,11 +122,11 @@ services:
       context: .
       dockerfile: connectors/ipinfo/Dockerfile
     environment:
-      LOG_LEVEL: ${LOG_LEVEL}
-      RABBITMQ_URL: ${RABBITMQ_URL}
-      REDIS_URL: ${REDIS_URL}
-      BACKEND_URL: ${BACKEND_URL}
-      OFM_ADMIN_TOKEN: ${OFM_ADMIN_TOKEN}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://ofm:ofm@rabbitmq:5672/}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      BACKEND_URL: ${BACKEND_URL:-http://backend:5000}
+      OFM_ADMIN_TOKEN: ${OFM_ADMIN_TOKEN:-dev-admin-token}
       CONNECTOR_CONFIG: /connectors/ipinfo/config.yml
     volumes:
       - ./connectors/ipinfo/config.yml:/connectors/ipinfo/config.yml:ro
