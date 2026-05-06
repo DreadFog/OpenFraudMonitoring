@@ -24,8 +24,14 @@ class Config:
     RABBITMQ_URL = os.environ.get("RABBITMQ_URL", "amqp://ofm:ofm@rabbitmq:5672/")
 
     # ── Intel / Connectors ──
-    CONNECTOR_TOKEN = os.environ.get("CONNECTOR_TOKEN", "dev-connector-token")
     INTEL_DECAY_DAYS = int(os.environ.get("INTEL_DECAY_DAYS", "7"))
+
+    # ── Authentication ──
+    JWT_SECRET = os.environ.get("JWT_SECRET", "change-me-in-production")
+    JWT_EXPIRY_HOURS = int(os.environ.get("JWT_EXPIRY_HOURS", "24"))
+    OFM_ADMIN_USERNAME = os.environ.get("OFM_ADMIN_USERNAME", "admin")
+    OFM_ADMIN_PASSWORD = os.environ.get("OFM_ADMIN_PASSWORD", "admin")
+    OFM_ADMIN_TOKEN = os.environ.get("OFM_ADMIN_TOKEN", "dev-admin-token")
 
     # ── Server ──
     HOST = os.environ.get("HOST", "0.0.0.0")

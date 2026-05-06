@@ -57,7 +57,6 @@
 }
 
 .nav-demo {
-  margin-left: auto;
   padding: 6px 14px;
   border-radius: 6px;
   font-size: 13px;
@@ -70,4 +69,31 @@
 
 .nav-demo:hover {
   opacity: 0.85;
+}
+
+.nav-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-user {
+  font-size: 13px;
+  color: #8b949e;
+}
+
+.nav-logout {
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #f85149;
+  background: transparent;
+  border: 1px solid #30363d;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.nav-logout:hover {
+  background: #21262d;
 }

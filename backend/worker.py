@@ -140,9 +140,17 @@ def _intel_response_handler(msg: dict):
         logger.warning("intel response %s carried no stix_bundle", msg.get("request_id"))
         return
     from services.intel_ingest import ingest_bundle
+    from models.user import User
     with app.app_context():
         logger.debug("Received the following bundle: '%s'", str(bundle))
-        count = ingest_bundle(bundle)
+        # Resolve connector user for source tracking
+        connector_name = msg.get("connector")
+        source_connector_id = None
+        if connector_name:
+            connector_user = User.query.filter_by(username=connector_name, role="connector").first()
+            if connector_user:
+                source_connector_id = connector_user.id
+        count = ingest_bundle(bundle, source_connector_id=source_connector_id)
         logger.info(
             "intel response request_id=%s connector=%s value=%s ingested=%d",
             msg.get("request_id"), msg.get("connector"), msg.get("value"), count,

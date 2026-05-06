@@ -25,6 +25,7 @@ class _StixBase:
     last_refreshed_at = db.Column(db.DateTime, nullable=True)
     decayed = db.Column(db.Boolean, default=False, nullable=False)
     raw = db.Column(JSONB, nullable=False, default=dict)
+    source_connector_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     def to_dict(self):
         return {
@@ -35,6 +36,7 @@ class _StixBase:
             "last_refreshed_at": self.last_refreshed_at.isoformat() if self.last_refreshed_at else None,
             "decayed": self.decayed,
             "raw": self.raw or {},
+            "source_connector_id": self.source_connector_id,
         }
 
     def __str__(self):
@@ -102,6 +104,7 @@ class StixRelationship(db.Model):
     stop_time = db.Column(db.DateTime, nullable=True)
     decayed = db.Column(db.Boolean, default=False, nullable=False)
     raw = db.Column(JSONB, nullable=False, default=dict)
+    source_connector_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     def to_dict(self):
         return {
@@ -115,6 +118,7 @@ class StixRelationship(db.Model):
             "stop_time": self.stop_time.isoformat() if self.stop_time else None,
             "decayed": self.decayed,
             "raw": self.raw or {},
+            "source_connector_id": self.source_connector_id,
         }
 
     def __str__(self):

@@ -5,11 +5,13 @@ Stats endpoint - overall statistics
 from flask import Blueprint, jsonify
 from datetime import datetime
 from models import Session
+from services.auth import require_auth
 
 stats_bp = Blueprint("stats", __name__, url_prefix="/api")
 
 
 @stats_bp.route("/stats", methods=["GET"])
+@require_auth
 def get_stats():
     """
     Get overall statistics

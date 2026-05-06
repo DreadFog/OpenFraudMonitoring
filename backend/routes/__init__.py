@@ -2,6 +2,7 @@
 Routes package — registers all API blueprints.
 """
 
+from routes.auth import auth_bp
 from routes.collect import collect_bp
 from routes.heartbeat import heartbeat_bp
 from routes.sessions import sessions_bp
@@ -15,6 +16,7 @@ from routes.connectors import connectors_bp
 
 def register_routes(app):
     """Register all API blueprints with the Flask app."""
+    app.register_blueprint(auth_bp)
     app.register_blueprint(collect_bp)
     app.register_blueprint(heartbeat_bp)
     app.register_blueprint(sessions_bp)

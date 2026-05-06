@@ -8,6 +8,7 @@ from models.heartbeat import Heartbeat
 from models.rule import Rule, RuleMatch
 from models.associations import SessionURL, BrowserSession
 from models.dashboard import Dashboard
+from models.user import User, ApiToken
 from models.stix import (
     StixIPv4Addr,
     StixIPv6Addr,
@@ -30,6 +31,8 @@ __all__ = [
     "SessionURL",
     "BrowserSession",
     "Dashboard",
+    "User",
+    "ApiToken",
     "StixIPv4Addr",
     "StixIPv6Addr",
     "StixUserAgent",

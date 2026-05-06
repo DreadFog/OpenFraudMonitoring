@@ -8,6 +8,7 @@ from models import Session, Fingerprint, Heartbeat
 from models.associations import SessionURL, BrowserSession
 from models.rule import RuleMatch
 from rules.engine import build_session_query
+from services.auth import require_auth, require_role
 
 # Platforms that are unambiguously desktop/workstation
 _WORKSTATION_PLATFORMS = {
@@ -47,6 +48,7 @@ sessions_bp = Blueprint("sessions", __name__, url_prefix="/api")
 
 
 @sessions_bp.route("/sessions", methods=["GET"])
+@require_auth
 def get_sessions():
     """
     Get all sessions with basic info.
@@ -100,6 +102,7 @@ def get_sessions():
 
 
 @sessions_bp.route("/sessions/<fsid>", methods=["GET"])
+@require_auth
 def get_session_detail(fsid):
     """
     Get detailed session information
@@ -137,6 +140,8 @@ def get_session_detail(fsid):
 
 
 @sessions_bp.route("/sessions/<fsid>", methods=["DELETE"])
+@require_auth
+@require_role("user", "admin")
 def delete_session(fsid):
     """
     Delete a session and all related records.

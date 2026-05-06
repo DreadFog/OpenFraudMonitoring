@@ -8,4 +8,8 @@ scope:
   - ipv4-addr
   - ipv6-addr
 
+# OFM admin token used for connector self-registration on first start.
+# Can also be set via OFM_ADMIN_TOKEN env var.
+admin_token: "REPLACE_ME"
+
 ipinfo_token: "REPLACE_ME"

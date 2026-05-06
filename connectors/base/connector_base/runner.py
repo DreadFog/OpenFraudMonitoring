@@ -23,6 +23,7 @@ import redis as _redis_lib
 from pika.exceptions import AMQPConnectionError
 
 from .config import ConnectorConfig
+from .backend import BackendClient
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,21 @@ class ConnectorRunner:
         )
 
     def run(self):
+        # Self-register with the backend so this connector appears as a user
+        if self.config.admin_token:
+            for attempt in range(1, 11):
+                try:
+                    bc = BackendClient(
+                        self.config.backend_url,
+                        self.config.admin_token,
+                        self.config.name,
+                    )
+                    bc._ensure_registered()
+                    break
+                except Exception as e:
+                    logger.warning("Connector self-registration attempt %d/10 failed: %s", attempt, e)
+                    time.sleep(3)
+
         threading.Thread(target=self._heartbeat_loop, daemon=True).start()
 
         # Publish our mode, type, and scope to Redis so the backend knows when to auto-trigger

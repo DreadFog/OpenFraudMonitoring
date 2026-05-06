@@ -17,7 +17,7 @@ class ConnectorConfig:
     scope: list = field(default_factory=list)  # STIX entity types this connector can handle
     rabbitmq_url: str = "amqp://ofm:ofm@rabbitmq:5672/"
     backend_url: str = "http://backend:5000"
-    connector_token: str = ""
+    admin_token: str = ""
     params: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -37,13 +37,13 @@ def load_config(path: str) -> ConnectorConfig:
         scope=data.get("scope", []),
         rabbitmq_url=data.get("rabbitmq_url", _from_env("RABBITMQ_URL", "amqp://ofm:ofm@rabbitmq:5672/")),
         backend_url=data.get("backend_url", _from_env("BACKEND_URL", "http://backend:5000")),
-        connector_token=data.get("connector_token", _from_env("CONNECTOR_TOKEN", "")),
+        admin_token=data.get("admin_token", _from_env("OFM_ADMIN_TOKEN", "")),
         params=data.get("params", {}) or {},
     )
 
     # Allow any top-level key besides the structural ones to be promoted
     # into params (so a connector can either define them flat or under params).
-    structural = {"name", "mode", "connector_type", "scope", "rabbitmq_url", "backend_url", "connector_token", "params"}
+    structural = {"name", "mode", "connector_type", "scope", "rabbitmq_url", "backend_url", "admin_token", "params"}
     for k, v in data.items():
         if k not in structural and k not in cfg.params:
             cfg.params[k] = v

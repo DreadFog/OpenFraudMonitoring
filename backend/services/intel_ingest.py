@@ -64,7 +64,7 @@ def _parse_iso(ts: Optional[str]) -> Optional[datetime]:
         return None
 
 
-def _upsert_typed(obj: dict) -> None:
+def _upsert_typed(obj: dict, source_connector_id: int = None) -> None:
     logging.debug("Adding object: '%s'", obj)
     otype = obj.get("type")
     sid = obj.get("id")
@@ -93,6 +93,8 @@ def _upsert_typed(obj: dict) -> None:
         existing.decayed = False
         if value:
             existing.value = value[:2048]
+        if source_connector_id is not None:
+            existing.source_connector_id = source_connector_id
     else:
         logging.debug("Object did not exist in the database. Adding...")
         db.session.add(Model(
@@ -100,10 +102,11 @@ def _upsert_typed(obj: dict) -> None:
             value=(value or sid)[:2048],
             raw=obj,
             last_refreshed_at=datetime.utcnow(),
+            source_connector_id=source_connector_id,
         ))
 
 
-def _upsert_relationship(obj: dict) -> None:
+def _upsert_relationship(obj: dict, source_connector_id: int = None) -> None:
     logging.debug("Adding relationship: '%s'", obj)
     sid = obj.get("id")
     if not sid:
@@ -118,6 +121,8 @@ def _upsert_relationship(obj: dict) -> None:
         existing.start_time = _parse_iso(obj.get("start_time")) or existing.start_time
         existing.stop_time = _parse_iso(obj.get("stop_time")) or existing.stop_time
         existing.decayed = False
+        if source_connector_id is not None:
+            existing.source_connector_id = source_connector_id
     else:
         logging.debug("Relationship did not exist in the database. Adding...")
         db.session.add(StixRelationship(
@@ -128,10 +133,11 @@ def _upsert_relationship(obj: dict) -> None:
             start_time=_parse_iso(obj.get("start_time")),
             stop_time=_parse_iso(obj.get("stop_time")),
             raw=obj,
+            source_connector_id=source_connector_id,
         ))
 
 
-def ingest_bundle(bundle: dict) -> int:
+def ingest_bundle(bundle: dict, source_connector_id: int = None) -> int:
     """
     Persist all objects from a STIX 2.1 bundle.  Returns the number of
     objects written/updated.
@@ -145,9 +151,9 @@ def ingest_bundle(bundle: dict) -> int:
             continue
         try:
             if obj.get("type") == "relationship":
-                _upsert_relationship(obj)
+                _upsert_relationship(obj, source_connector_id=source_connector_id)
             else:
-                _upsert_typed(obj)
+                _upsert_typed(obj, source_connector_id=source_connector_id)
             count += 1
         except Exception as e:
             logger.exception("Failed to ingest STIX object %s: %s", obj.get("id"), e)

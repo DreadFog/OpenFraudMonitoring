@@ -28,6 +28,7 @@ from flask import Blueprint, jsonify, request
 
 from services.event_queue import get_redis
 from services.mq import queue_depth, request_queue, RESPONSE_QUEUE
+from services.auth import require_auth
 from config import Config
 
 logger = logging.getLogger(__name__)
@@ -97,6 +98,7 @@ def _connector_info(name: str) -> dict:
 
 
 @connectors_bp.route("/status", methods=["GET"])
+@require_auth
 def status():
     connectors = [_connector_info(name) for name in _list_connectors()]
     return jsonify({
@@ -109,6 +111,7 @@ def status():
 
 
 @connectors_bp.route("/enrichers", methods=["GET"])
+@require_auth
 def enrichers():
     """Return enricher connectors that support a given entity type.
 
@@ -135,6 +138,7 @@ def _list_length(key: str):
 
 
 @connectors_bp.route("/logs", methods=["GET"])
+@require_auth
 def logs():
     try:
         tail = max(1, min(int(request.args.get("tail", "100")), 500))

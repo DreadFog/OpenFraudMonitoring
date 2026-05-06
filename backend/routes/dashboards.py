@@ -9,6 +9,7 @@ from models.dashboard import Dashboard
 from models import Session, Fingerprint
 from rules.engine import build_session_query
 from services.schema import get_field_meta
+from services.auth import require_auth, require_role
 
 dashboards_bp = Blueprint("dashboards", __name__, url_prefix="/api")
 
@@ -17,12 +18,16 @@ dashboards_bp = Blueprint("dashboards", __name__, url_prefix="/api")
 
 
 @dashboards_bp.route("/dashboards", methods=["GET"])
+@require_auth
+@require_role("user", "admin")
 def list_dashboards():
     dashboards = Dashboard.query.order_by(Dashboard.name).all()
     return jsonify([d.to_dict() for d in dashboards]), 200
 
 
 @dashboards_bp.route("/dashboards", methods=["POST"])
+@require_auth
+@require_role("user", "admin")
 def create_dashboard():
     body = request.get_json()
     name = (body.get("name") or "").strip()
@@ -38,6 +43,8 @@ def create_dashboard():
 
 
 @dashboards_bp.route("/dashboards/<int:dashboard_id>", methods=["PUT"])
+@require_auth
+@require_role("user", "admin")
 def update_dashboard(dashboard_id):
     dashboard = db.session.get(Dashboard, dashboard_id)
     if not dashboard:
@@ -55,6 +62,8 @@ def update_dashboard(dashboard_id):
 
 
 @dashboards_bp.route("/dashboards/<int:dashboard_id>", methods=["DELETE"])
+@require_auth
+@require_role("user", "admin")
 def delete_dashboard(dashboard_id):
     dashboard = db.session.get(Dashboard, dashboard_id)
     if not dashboard:
@@ -68,6 +77,8 @@ def delete_dashboard(dashboard_id):
 
 
 @dashboards_bp.route("/widget-data", methods=["POST"])
+@require_auth
+@require_role("user", "admin")
 def widget_data():
     """
     Compute aggregated data for a single widget.

@@ -23,11 +23,12 @@ import ipaddress
 from datetime import datetime, timedelta
 import logging
 
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, g
 
 from services.database import db
 from services.mq import publish_intel_request
 from services.intel_ingest import ingest_bundle
+from services.auth import require_auth, require_role
 from models import (
     Session,
     StixIPv4Addr,
@@ -183,6 +184,7 @@ def _build_entity_response(obs, stix_type: str):
 
 
 @intel_bp.route("/ip/<path:value>", methods=["GET"])
+@require_auth
 def get_ip_intel(value):
     """Return everything we know about an IP from the local STIX cache."""
     Model = _detect_ip_model(value)
@@ -198,6 +200,7 @@ def get_ip_intel(value):
 
 
 @intel_bp.route("/entity", methods=["GET"])
+@require_auth
 def get_entity_intel():
     """Generic entity lookup by STIX type + value.
 
@@ -223,6 +226,7 @@ def get_entity_intel():
 
 
 @intel_bp.route("/types", methods=["GET"])
+@require_auth
 def entity_types():
     """Return the list of STIX entity types that have at least one record."""
     available = []
@@ -234,6 +238,7 @@ def entity_types():
 
 
 @intel_bp.route("/entities", methods=["GET"])
+@require_auth
 def list_entities():
     """Return the latest N entities of a given STIX type.
 
@@ -265,6 +270,7 @@ def list_entities():
 
 
 @intel_bp.route("/lookup", methods=["POST"])
+@require_auth
 def lookup():
     body = request.get_json(silent=True) or {}
     connector = (body.get("connector") or "opencti").strip()
@@ -279,13 +285,10 @@ def lookup():
 
 
 @intel_bp.route("/ingest", methods=["POST"])
+@require_auth
+@require_role("connector", "admin")
 def ingest():
-    auth_header = request.headers.get("Authorization", "")
-    expected = current_app.config.get("CONNECTOR_TOKEN", "")
-    if not auth_header.startswith("Bearer ") or auth_header[len("Bearer "):].strip() != expected:
-        return jsonify({"error": "unauthorized"}), 401
-
     body = request.get_json(silent=True) or {}
     bundle = body.get("stix_bundle") or {}
-    count = ingest_bundle(bundle)
+    count = ingest_bundle(bundle, source_connector_id=g.current_user.id)
     return jsonify({"ok": True, "objects_ingested": count}), 200

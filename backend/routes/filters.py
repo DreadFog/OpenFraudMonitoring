@@ -5,17 +5,20 @@ Schema and suggestion endpoints for frontend filtering.
 from flask import Blueprint, request, jsonify
 from services.database import db
 from services.schema import get_schema, get_field_meta
+from services.auth import require_auth
 
 filters_bp = Blueprint("filters", __name__, url_prefix="/api")
 
 
 @filters_bp.route("/schema", methods=["GET"])
+@require_auth
 def schema():
     """Return the list of filterable fields with their types and operators."""
     return jsonify(get_schema()), 200
 
 
 @filters_bp.route("/suggest", methods=["GET"])
+@require_auth
 def suggest():
     """
     Return up to 20 distinct values for a given field, optionally filtered

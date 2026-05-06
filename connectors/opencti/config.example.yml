@@ -9,6 +9,10 @@ scope:
   - ipv6-addr
   - user-agent
 
+# OFM admin token used for connector self-registration on first start.
+# Can also be set via OFM_ADMIN_TOKEN env var.
+admin_token: "REPLACE_ME"
+
 opencti_url: "https://your-opencti-instance.example.com"
 opencti_token: "REPLACE_ME"
 ssl_verify: true

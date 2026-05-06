@@ -46,6 +46,12 @@
   margin: 0;
 }
 
+.landing-welcome {
+  font-size: 18px;
+  color: #e6edf3;
+  margin: 0 0 8px;
+}
+
 .landing-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));

@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../../AuthContext";
 import "./Landing.css";
 
 const TILES = [
@@ -24,6 +25,7 @@ const TILES = [
 ];
 
 export default function Landing() {
+  const { user } = useAuth();
   return (
     <div className="landing">
       <header className="landing-hero">
@@ -31,6 +33,7 @@ export default function Landing() {
           <img src="/logo.png" alt="OpenFraudMonitoring" className="landing-logo" />
           <h1>OpenFraudMonitoring</h1>
         </div>
+        {user && <p className="landing-welcome">Welcome {user.username}</p>}
         <p>Browser fingerprinting, behavioral signals and threat intelligence.</p>
       </header>
       <div className="landing-tiles">

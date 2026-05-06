@@ -19,14 +19,17 @@ logging.getLogger('pika').setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
 from services.database import init_db
 from services.log_shipper import install as install_log_shipper
+from services.auth import bcrypt
 from routes import register_routes
 from rules import seed_default_rules
+from seed_users import seed_default_admin
 
 install_log_shipper("backend")
 
 app = Flask(__name__)
 app.config.from_object(Config)
 CORS(app)
+bcrypt.init_app(app)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Database + Routes + Default Rules
@@ -37,6 +40,7 @@ register_routes(app)
 
 with app.app_context():
     seed_default_rules()
+    seed_default_admin()
 
 
 # ─────────────────────────────────────────────────────────────────────────────

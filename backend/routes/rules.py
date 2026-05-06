@@ -5,17 +5,22 @@ Rules CRUD endpoints
 from flask import Blueprint, request, jsonify
 from services.database import db
 from models import Rule, RuleMatch
+from services.auth import require_auth, require_role
 
 rules_bp = Blueprint("rules", __name__, url_prefix="/api")
 
 
 @rules_bp.route("/rules", methods=["GET"])
+@require_auth
+@require_role("user", "admin")
 def list_rules():
     rules = Rule.query.order_by(Rule.created_at.desc()).all()
     return jsonify([r.to_dict() for r in rules]), 200
 
 
 @rules_bp.route("/rules", methods=["POST"])
+@require_auth
+@require_role("user", "admin")
 def create_rule():
     data = request.get_json() or {}
     rule = Rule(
@@ -34,6 +39,8 @@ def create_rule():
 
 
 @rules_bp.route("/rules/<int:rule_id>", methods=["PUT"])
+@require_auth
+@require_role("user", "admin")
 def update_rule(rule_id):
     rule = Rule.query.get_or_404(rule_id)
     data = request.get_json() or {}
@@ -48,6 +55,8 @@ def update_rule(rule_id):
 
 
 @rules_bp.route("/rules/<int:rule_id>", methods=["DELETE"])
+@require_auth
+@require_role("user", "admin")
 def delete_rule(rule_id):
     rule = Rule.query.get_or_404(rule_id)
     RuleMatch.query.filter_by(rule_id=rule.id).delete()
