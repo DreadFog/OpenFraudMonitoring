@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 collect_bp = Blueprint("collect", __name__, url_prefix="/api")
 
 
-@collect_bp.route("/collect", methods=["POST"])
+@collect_bp.route("/initial", methods=["POST"])
 def collect():
     """
     Receive and store an FPScanner fingerprint with extension data.

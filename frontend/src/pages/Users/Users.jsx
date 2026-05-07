@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../AuthContext";
 import { api } from "../../api";
+import CorsSettings from "../../components/CorsSettings/CorsSettings";
 import "./Users.css";
 
 function CreateUserForm({ onCreated }) {
@@ -215,6 +216,8 @@ export default function Users() {
           </table>
         </div>
       )}
+
+      {isAdmin && <CorsSettings />}
     </div>
   );
 }

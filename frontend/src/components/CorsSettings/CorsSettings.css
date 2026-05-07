@@ -1,0 +1,152 @@
+.cors-settings {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.cors-settings h3 {
+  margin: 0 0 0.5rem;
+  color: #e6edf3;
+  font-size: 1.1rem;
+}
+
+.cors-description {
+  margin: 0 0 1rem;
+  color: #8b949e;
+  font-size: 0.85rem;
+}
+
+.cors-error {
+  background: #3d1f28;
+  border: 1px solid #f85149;
+  color: #f85149;
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+}
+
+.cors-add-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.cors-add-form input {
+  flex: 1;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #e6edf3;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+.cors-add-form input:focus {
+  outline: none;
+  border-color: #58a6ff;
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+}
+
+.cors-add-form button {
+  background: #238636;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cors-add-form button:hover {
+  background: #2ea043;
+}
+
+.cors-add-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cors-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.cors-table th {
+  text-align: left;
+  padding: 0.75rem;
+  border-bottom: 1px solid #30363d;
+  color: #8b949e;
+  font-weight: 600;
+}
+
+.cors-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #21262d;
+  color: #e6edf3;
+}
+
+.cors-table code {
+  background: #161b22;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  word-break: break-all;
+}
+
+.cors-row-inactive {
+  opacity: 0.5;
+}
+
+.cors-empty {
+  text-align: center;
+  color: #8b949e;
+  padding: 1.5rem !important;
+}
+
+.cors-status-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.cors-active {
+  background: #1f2d1f;
+  color: #3fb950;
+}
+
+.cors-active:hover {
+  background: #238636;
+}
+
+.cors-inactive {
+  background: #2d1f1f;
+  color: #f85149;
+}
+
+.cors-inactive:hover {
+  background: #3d1f28;
+}
+
+.cors-btn-delete {
+  background: transparent;
+  border: 1px solid #f85149;
+  color: #f85149;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.cors-btn-delete:hover {
+  background: #3d1f28;
+}

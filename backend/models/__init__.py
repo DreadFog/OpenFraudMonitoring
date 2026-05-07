@@ -9,6 +9,7 @@ from models.rule import Rule, RuleMatch
 from models.associations import SessionURL, BrowserSession
 from models.dashboard import Dashboard
 from models.user import User, ApiToken
+from models.cors import AllowedOrigin
 from models.stix import (
     StixIPv4Addr,
     StixIPv6Addr,
@@ -33,6 +34,7 @@ __all__ = [
     "Dashboard",
     "User",
     "ApiToken",
+    "AllowedOrigin",
     "StixIPv4Addr",
     "StixIPv6Addr",
     "StixUserAgent",

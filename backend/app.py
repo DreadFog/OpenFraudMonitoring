@@ -6,10 +6,11 @@ Main application entry point
 import logging
 import os
 
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, request
 from flask_cors import CORS
 
 from config import Config
+from services.cors_origins import dynamic_origin
 
 logging.basicConfig(
     level=getattr(logging, os.environ.get("LOG_LEVEL", "INFO").upper(), logging.INFO),
@@ -28,8 +29,33 @@ install_log_shipper("backend")
 
 app = Flask(__name__)
 app.config.from_object(Config)
-CORS(app)
+
+# CORS handled manually in after_request (see below)
+CORS(app, resources={
+    r"/api/*": {
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True,
+    }
+}, origins=[])  # Empty list since we handle dynamically
+
 bcrypt.init_app(app)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Dynamic CORS validation
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.after_request
+def apply_cors_headers(response):
+    """Apply CORS headers based on allowed origins from database."""
+    origin = request.headers.get("Origin")
+    if origin and dynamic_origin(origin):
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    return response
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Database + Routes + Default Rules

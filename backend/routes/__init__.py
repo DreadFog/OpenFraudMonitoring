@@ -12,6 +12,7 @@ from routes.filters import filters_bp
 from routes.dashboards import dashboards_bp
 from routes.intel import intel_bp
 from routes.connectors import connectors_bp
+from routes.cors import cors_bp
 
 
 def register_routes(app):
@@ -26,3 +27,4 @@ def register_routes(app):
     app.register_blueprint(dashboards_bp)
     app.register_blueprint(intel_bp)
     app.register_blueprint(connectors_bp)
+    app.register_blueprint(cors_bp)

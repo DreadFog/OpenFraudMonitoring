@@ -126,6 +126,41 @@ export const api = {
     return res.json();
   },
 
+  // ── CORS Management (admin) ──
+
+  getCorsOrigins: async () => {
+    const res = await authFetch("/api/admin/cors/origins");
+    if (!res.ok) throw new Error("Failed to fetch CORS origins");
+    return res.json();
+  },
+
+  addCorsOrigin: async (origin) => {
+    const res = await authFetch("/api/admin/cors/origins", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ origin }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || "Failed to add CORS origin");
+    }
+    return res.json();
+  },
+
+  deleteCorsOrigin: async (originId) => {
+    const res = await authFetch(`/api/admin/cors/origins/${originId}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Failed to delete CORS origin");
+    return res.json();
+  },
+
+  toggleCorsOrigin: async (originId) => {
+    const res = await authFetch(`/api/admin/cors/origins/${originId}/toggle`, {
+      method: "PATCH",
+    });
+    if (!res.ok) throw new Error("Failed to toggle CORS origin");
+    return res.json();
+  },
+
   // ── Sessions ──
 
   getSessions: async (filters = []) => {
