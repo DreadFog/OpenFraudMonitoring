@@ -10,6 +10,7 @@ from models import Session, Fingerprint
 from rules.engine import build_session_query
 from services.schema import get_field_meta
 from services.auth import require_auth, require_role
+from custom_filters import get_custom_aggregate
 
 dashboards_bp = Blueprint("dashboards", __name__, url_prefix="/api")
 
@@ -112,6 +113,14 @@ def widget_data():
 
     # Build the GROUP BY query
     session_ids = query.with_entities(Session.id)
+
+    # Custom filters have their own aggregate logic
+    if meta["model"] == "__custom__":
+        id_list = [r[0] for r in session_ids.all()]
+        groups = get_custom_aggregate(field, id_list, limit)
+        if groups is None:
+            return jsonify({"error": f"field '{field}' does not support aggregation"}), 400
+        return jsonify({"groups": groups}), 200
 
     if meta["model"] == "Session":
         column = getattr(Session, meta["column"])

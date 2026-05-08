@@ -52,7 +52,10 @@ sessions_bp = Blueprint("sessions", __name__, url_prefix="/api")
 def get_sessions():
     """
     Get all sessions with basic info.
-    Accepts an optional `filters` query param (JSON array of conditions).
+    Accepts optional query params:
+    - filters: JSON array of conditions
+    - sort_by: 'last_seen', 'device_type', 'risk_score', 'first_seen', or 'client_ip' (default: 'risk_score')
+    - sort_order: 'asc' or 'desc' (default: 'desc')
     """
     filters_raw = request.args.get("filters", "[]")
     try:
@@ -60,8 +63,29 @@ def get_sessions():
     except (json.JSONDecodeError, TypeError):
         filters = []
 
+    sort_by = request.args.get("sort_by", "risk_score")
+    sort_order = request.args.get("sort_order", "desc").lower()
+    
     query = build_session_query(filters)
-    all_sessions = query.order_by(Session.risk_score.desc()).limit(200).all()
+    
+    # Apply sorting
+    if sort_by == "last_seen":
+        sort_col = Session.last_seen
+    elif sort_by == "first_seen":
+        sort_col = Session.first_seen
+    elif sort_by == "client_ip":
+        sort_col = Session.client_ip
+    else:
+        # Default to risk_score for 'device_type' and unknown sorts
+        # (device_type is derived, so sorting will be done in post-processing)
+        sort_col = Session.risk_score
+    
+    if sort_order == "asc":
+        query = query.order_by(sort_col.asc())
+    else:
+        query = query.order_by(sort_col.desc())
+    
+    all_sessions = query.limit(200).all()
     sessions_list = []
 
     for sess in all_sessions:
@@ -77,6 +101,10 @@ def get_sessions():
         heartbeats_count = sess.heartbeats.count()
         session_ids = [bs.browser_session_id for bs in sess.browser_sessions.limit(2).all()]
         fsid = sess.fsid
+        
+        is_mobile = browser.get("highEntropyValues", {}).get("mobile") is True
+        is_workstation = _is_workstation(device, browser)
+        device_type = "mobile" if is_mobile else ("workstation" if is_workstation else "unknown")
 
         sessions_list.append({
             "fsid": fsid[:32] + "..." if len(fsid) > 32 else fsid,
@@ -90,13 +118,18 @@ def get_sessions():
             "urls": urls,
             "user_agent": str(browser.get("userAgent", "unknown"))[:60],
             "platform": str(device.get("platform", "unknown")),
-            "is_mobile": browser.get("highEntropyValues", {}).get("mobile") is True,
-            "is_workstation": _is_workstation(device, browser),
+            "is_mobile": is_mobile,
+            "is_workstation": is_workstation,
+            "device_type": device_type,
             "language": str(locale.get("languages", {}).get("language", "unknown")),
             "urls_count": urls_count,
             "session_ids": session_ids,
             "fast_bot_detection": last_fp.get("fastBotDetection", False),
         })
+    
+    # Post-process sorting for device_type since it's derived
+    if sort_by == "device_type":
+        sessions_list.sort(key=lambda x: x["device_type"], reverse=(sort_order != "asc"))
 
     return jsonify(sessions_list), 200
 

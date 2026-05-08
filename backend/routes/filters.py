@@ -6,6 +6,7 @@ from flask import Blueprint, request, jsonify
 from services.database import db
 from services.schema import get_schema, get_field_meta
 from services.auth import require_auth
+from custom_filters import get_custom_suggestions
 
 filters_bp = Blueprint("filters", __name__, url_prefix="/api")
 
@@ -34,6 +35,13 @@ def suggest():
     meta = get_field_meta(field_name)
     if not meta:
         return jsonify([]), 200
+
+    # Custom filters — delegate to their own suggest function
+    if meta["model"] == "__custom__":
+        custom = get_custom_suggestions(field_name, q)
+        if custom is not None:
+            return jsonify(custom), 200
+        # Fall through to default behaviour for the type
 
     # Boolean fields → static options
     if meta["type"] == "boolean":

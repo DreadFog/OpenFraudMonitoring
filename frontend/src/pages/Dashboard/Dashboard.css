@@ -146,6 +146,17 @@ body {
   font-weight: 600;
 }
 
+.sortable-header {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sortable-header:hover {
+  background: #26303a;
+  color: var(--accent);
+}
+
 .sessions-table td {
   padding: 10px 14px;
   border-bottom: 1px solid var(--border);

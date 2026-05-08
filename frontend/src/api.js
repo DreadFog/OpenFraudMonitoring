@@ -163,12 +163,16 @@ export const api = {
 
   // ── Sessions ──
 
-  getSessions: async (filters = []) => {
-    const params =
-      filters.length > 0
-        ? `?filters=${encodeURIComponent(JSON.stringify(filters))}`
-        : "";
-    const res = await authFetch(`/api/sessions${params}`);
+  getSessions: async (filters = [], sortBy = "risk_score", sortOrder = "desc") => {
+    const params = new URLSearchParams();
+    if (filters.length > 0) {
+      params.append("filters", JSON.stringify(filters));
+    }
+    params.append("sort_by", sortBy);
+    params.append("sort_order", sortOrder);
+    
+    const queryString = params.toString();
+    const res = await authFetch(`/api/sessions${queryString ? '?' + queryString : ''}`);
     if (!res.ok) throw new Error("Failed to fetch sessions");
     return res.json();
   },

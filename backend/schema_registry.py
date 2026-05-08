@@ -1,14 +1,18 @@
 """
-Schema registry — auto-built from FPScanner's types.ts via generate_schema.py.
+Schema registry — single source of truth for filterable fields.
 
-This module is the single source of truth for what fields can be filtered on,
-what operators are available for each type, and which table/column they map to.
+Aggregates:
+  1. Session-level columns (hardcoded below)
+  2. Auto-generated FPScanner fields (_generated_schema.py)
+  3. Custom filters (custom_filters.py) — manually maintained
 
-To regenerate after FPScanner updates:
+To regenerate FPScanner fields after upstream updates:
     python generate_schema.py
+To add custom filters, edit custom_filters.py.
 """
 
 from _generated_schema import SIGNAL_FIELDS, DETECTION_FIELDS, TOP_LEVEL_FIELDS
+from custom_filters import get_custom_fields
 
 OPERATORS = {
     "string": [
@@ -78,6 +82,17 @@ for f in DETECTION_FIELDS:
         "type": f["type"],
         "model": "Fingerprint",
         "column": f["column"],
+    })
+
+# Custom filters (from custom_filters.py — manually maintained)
+# These have no model/column; they are dispatched to handler functions.
+for f in get_custom_fields():
+    SCHEMA_FIELDS.append({
+        "name": f["name"],
+        "label": f["label"],
+        "type": f["type"],
+        "model": "__custom__",
+        "column": None,
     })
 
 # ── Dedup (fsid appears in both session and top-level) ──

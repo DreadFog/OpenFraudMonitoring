@@ -167,6 +167,8 @@ export default function Dashboard() {
   const [schema, setSchema] = useState([]);
   const [filters, setFilters] = useState([]);
   const [connected, setConnected] = useState(true);
+  const [sortBy, setSortBy] = useState("risk_score");
+  const [sortOrder, setSortOrder] = useState("desc");
   const navigate = useNavigate();
   const { containerRef, width: containerWidth } = useContainerWidth({ initialWidth: 1200 });
 
@@ -193,7 +195,7 @@ export default function Dashboard() {
   // Fetch sessions
   const loadSessions = useCallback(async () => {
     try {
-      const sessionsData = await api.getSessions(completeFilters);
+      const sessionsData = await api.getSessions(completeFilters, sortBy, sortOrder);
       setSessions(sessionsData);
       setLoading(false);
       setConnected(true);
@@ -204,7 +206,7 @@ export default function Dashboard() {
       setConnected(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(completeFilters)]);
+  }, [JSON.stringify(completeFilters), sortBy, sortOrder]);
 
   useEffect(() => {
     loadSessions();
@@ -339,6 +341,22 @@ export default function Dashboard() {
 
   const clearFilters = () => setFilters([]);
 
+  const handleSort = (column) => {
+    if (sortBy === column) {
+      // Toggle sort order if clicking the same column
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      // Switch to new column with desc order
+      setSortBy(column);
+      setSortOrder("desc");
+    }
+  };
+
+  const renderSortIndicator = (column) => {
+    if (sortBy !== column) return null;
+    return sortOrder === "asc" ? " ▲" : " ▼";
+  };
+
   if (loading) {
     return <div className="container"><p>Loading...</p></div>;
   }
@@ -442,11 +460,23 @@ export default function Dashboard() {
                 <th>IP Address</th>
                 <th>Risk Score</th>
                 <th>Flags</th>
-                <th>Device Type</th>
+                <th 
+                  className="sortable-header"
+                  onClick={() => handleSort("device_type")}
+                  title="Click to sort"
+                >
+                  Device Type{renderSortIndicator("device_type")}
+                </th>
                 <th>Language</th>
                 <th>URLs Visited</th>
                 <th>Heartbeats</th>
-                <th>Last Seen</th>
+                <th 
+                  className="sortable-header"
+                  onClick={() => handleSort("last_seen")}
+                  title="Click to sort"
+                >
+                  Last Seen{renderSortIndicator("last_seen")}
+                </th>
               </tr>
             </thead>
             <tbody>

@@ -9,6 +9,7 @@ Used by:
 
 from sqlalchemy import and_, or_
 from services.schema import get_field_meta
+from custom_filters import get_custom_handler
 
 # Lazy model resolution to avoid circular imports
 _models = {}
@@ -68,6 +69,9 @@ def build_session_query(filters, logic="AND", base_query=None):
     Each filter condition targeting a Fingerprint field is wrapped in an EXISTS
     subquery so that the result is always a set of Session rows.
 
+    Custom filters (registered in custom_filters.py) are dispatched to their
+    handler functions instead of being resolved via model column.
+
     Args:
         filters: list of {"field": str, "op": str, "value": str}
         logic: "AND" or "OR" – how to combine conditions
@@ -85,13 +89,26 @@ def build_session_query(filters, logic="AND", base_query=None):
     combiner = and_ if logic == "AND" else or_
 
     all_conditions = []
+    # Custom filters that need post-processing (they mutate the query directly)
+    deferred_handlers = []
 
     for f in filters:
-        meta = get_field_meta(f.get("field", ""))
+        field_name = f.get("field", "")
+        op = f.get("op", "")
+        value = f.get("value", "")
+
+        # Check for a custom filter handler first
+        handler = get_custom_handler(field_name)
+        if handler is not None:
+            deferred_handlers.append((handler, op, value))
+            continue
+
+        # Regular schema-based filters
+        meta = get_field_meta(field_name)
         if not meta:
             continue
 
-        cond = build_condition(meta, f.get("op", ""), f.get("value", ""))
+        cond = build_condition(meta, op, value)
         if cond is None:
             continue
 
@@ -107,6 +124,10 @@ def build_session_query(filters, logic="AND", base_query=None):
 
     if all_conditions:
         query = query.filter(combiner(*all_conditions))
+
+    # Apply custom filter handlers (they receive and return the query)
+    for handler, op, value in deferred_handlers:
+        query = handler(query, op, value)
 
     return query
 
