@@ -92,6 +92,8 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
       args:
+        OFM_SERVER_URL: ${OFM_SERVER_URL:-}
+        FPSCANNER_KEY: ${FPSCANNER_KEY:-dev-key}
         OFM_DEBUG: ${OFM_DEBUG:-true}
     ports:
       - "30000:3000"

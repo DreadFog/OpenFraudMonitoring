@@ -2,6 +2,26 @@ import React, { useState, useEffect, useCallback } from "react";
 import { api } from "../../api";
 import "./CorsSettings.css";
 
+const WILDCARD_ORIGIN_RE = /^https?:\/\/\*\.[A-Za-z0-9.-]+(?::\d{1,5})?$/;
+
+function isValidOriginInput(origin) {
+  if (WILDCARD_ORIGIN_RE.test(origin)) {
+    return true;
+  }
+
+  try {
+    const parsed = new URL(origin);
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      return false;
+    }
+
+    // Origin entries should not include path/query/hash.
+    return parsed.pathname === "/" && parsed.search === "" && parsed.hash === "";
+  } catch {
+    return false;
+  }
+}
+
 export default function CorsSettings() {
   const [origins, setOrigins] = useState([]);
   const [newOrigin, setNewOrigin] = useState("");
@@ -33,6 +53,11 @@ export default function CorsSettings() {
 
     if (!origin.startsWith("http://") && !origin.startsWith("https://")) {
       setError("Origin must start with http:// or https://");
+      return;
+    }
+
+    if (!isValidOriginInput(origin)) {
+      setError("Please enter a valid origin (e.g. https://example.com or https://*.example.com)");
       return;
     }
 
@@ -78,8 +103,9 @@ export default function CorsSettings() {
 
       <form className="cors-add-form" onSubmit={handleAddOrigin}>
         <input
-          type="url"
-          placeholder="https://example.com"
+          type="text"
+          inputMode="url"
+          placeholder="https://example.com or https://*.example.com"
           value={newOrigin}
           onChange={(e) => setNewOrigin(e.target.value)}
           disabled={loading}
