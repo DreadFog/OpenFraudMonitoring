@@ -6,6 +6,9 @@ import "./NavHeader.css";
 const TABS = [
   { path: "/dashboard", label: "Dashboard" },
   { path: "/intelligence", label: "Intelligence" },
+];
+
+const ADMIN_TABS = [
   { path: "/admin", label: "Administration" },
 ];
 
@@ -13,6 +16,8 @@ export default function NavHeader() {
   const { pathname } = useLocation();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const isAdmin = user?.role === "admin";
+  const tabs = isAdmin ? [...TABS, ...ADMIN_TABS] : TABS;
 
   const handleLogout = () => {
     logout();
@@ -26,7 +31,7 @@ export default function NavHeader() {
         OpenFraudMonitoring
       </Link>
       <div className="nav-tabs">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <Link
             key={t.path}
             to={t.path}

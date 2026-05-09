@@ -16,16 +16,21 @@ const TILES = [
     description: "Browse cached threat intel — search any IP and view its STIX context.",
     icon: "🔍",
   },
+];
+
+const ADMIN_TILES = [
   {
-    path: "/logging",
-    title: "Logging",
-    description: "Queue depths, connector health and recent error logs.",
-    icon: "📡",
+    path: "/admin",
+    title: "Administration",
+    description: "Queue depths, connector health, error logs, user and CORS management.",
+    icon: "⚙️",
   },
 ];
 
 export default function Landing() {
   const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const tiles = isAdmin ? [...TILES, ...ADMIN_TILES] : TILES;
   return (
     <div className="landing">
       <header className="landing-hero">
@@ -37,7 +42,7 @@ export default function Landing() {
         <p>Browser fingerprinting, behavioral signals and threat intelligence.</p>
       </header>
       <div className="landing-tiles">
-        {TILES.map((t) => (
+        {tiles.map((t) => (
           <Link key={t.path} to={t.path} className="landing-tile">
             <div className="landing-tile-icon">{t.icon}</div>
             <h2>{t.title}</h2>
