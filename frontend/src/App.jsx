@@ -5,9 +5,9 @@ import Dashboard from "./pages/Dashboard/Dashboard";
 import SessionDetail from "./pages/SessionDetail/SessionDetail";
 import Landing from "./pages/Landing/Landing";
 import Intelligence from "./pages/Intelligence/Intelligence";
-import Logging from "./pages/Logging/Logging";
+import Administration from "./pages/Logging/Logging";
 import Login from "./pages/Login/Login";
-import Users from "./pages/Users/Users";
+import Profile from "./pages/Profile/Profile";
 import NavHeader from "./components/NavHeader/NavHeader";
 import "./App.css";
 
@@ -40,9 +40,9 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/intelligence" element={<ProtectedRoute><Intelligence /></ProtectedRoute>} />
-            <Route path="/logging" element={<ProtectedRoute><Logging /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute><Administration /></ProtectedRoute>} />
             <Route path="/session/:fsid" element={<ProtectedRoute><SessionDetail /></ProtectedRoute>} />
-            <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           </Routes>
         </Chrome>
       </BrowserRouter>

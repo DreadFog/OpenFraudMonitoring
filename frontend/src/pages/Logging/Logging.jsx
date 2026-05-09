@@ -1,5 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { useAuth } from "../../AuthContext";
 import { api } from "../../api";
+import CorsSettings from "../../components/CorsSettings/CorsSettings";
+import UserManagement from "../Users/Users";
 import "./Logging.css";
 
 const POLL_MS = 5000;
@@ -16,7 +19,9 @@ function fmtTs(ms) {
   return new Date(ms).toISOString().replace("T", " ").slice(11, 19);
 }
 
-export default function Logging() {
+export default function Administration() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const [status, setStatus] = useState(null);
   const [logs, setLogs] = useState([]);
   const [error, setError] = useState("");
@@ -48,8 +53,8 @@ export default function Logging() {
   return (
     <div className="logging-page">
       <header className="logging-header">
-        <h1>Logging</h1>
-        <p className="logging-sub">Connector health, queue depths, and recent warnings/errors. Auto-refreshes every {POLL_MS / 1000}s.</p>
+        <h1>Administration</h1>
+        <p className="logging-sub">Connector health, queue depths, recent warnings/errors, and system settings. Auto-refreshes every {POLL_MS / 1000}s.</p>
         <button className="logging-btn" type="button" onClick={refresh}>↻ Refresh now</button>
       </header>
 
@@ -137,6 +142,14 @@ export default function Logging() {
           </div>
         )}
       </section>
+
+      {isAdmin && <CorsSettings />}
+
+      {isAdmin && (
+        <section className="logging-card">
+          <UserManagement />
+        </section>
+      )}
     </div>
   );
 }

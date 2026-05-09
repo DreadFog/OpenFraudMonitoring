@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../AuthContext";
 import { api } from "../../api";
-import CorsSettings from "../../components/CorsSettings/CorsSettings";
 import "./Users.css";
 
 function CreateUserForm({ onCreated }) {
@@ -53,110 +52,16 @@ function CreateUserForm({ onCreated }) {
   );
 }
 
-function TokenSection() {
-  const [tokens, setTokens] = useState([]);
-  const [newTokenName, setNewTokenName] = useState("");
-  const [createdToken, setCreatedToken] = useState(null);
-  const [copied, setCopied] = useState(false);
-
-  const loadTokens = useCallback(async () => {
-    try {
-      const data = await api.getTokens();
-      setTokens(data);
-    } catch {}
-  }, []);
-
-  useEffect(() => { loadTokens(); }, [loadTokens]);
-
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    try {
-      const data = await api.createToken(newTokenName || "default");
-      setCreatedToken(data.token);
-      setNewTokenName("");
-      loadTokens();
-    } catch {}
-  };
-
-  const handleRevoke = async (id) => {
-    if (!window.confirm("Revoke this token?")) return;
-    try {
-      await api.revokeToken(id);
-      loadTokens();
-    } catch {}
-  };
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(createdToken);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div className="users-section">
-      <h3>My API Tokens</h3>
-
-      {createdToken && (
-        <div className="token-reveal">
-          <p>New token created. Copy it now — it won't be shown again:</p>
-          <code>{createdToken}</code>
-          <button onClick={handleCopy}>{copied ? "Copied!" : "Copy"}</button>
-          <button onClick={() => setCreatedToken(null)}>Dismiss</button>
-        </div>
-      )}
-
-      <form className="token-create-form" onSubmit={handleCreate}>
-        <input
-          placeholder="Token name"
-          value={newTokenName}
-          onChange={(e) => setNewTokenName(e.target.value)}
-        />
-        <button type="submit">Create Token</button>
-      </form>
-
-      <table className="users-table">
-        <thead>
-          <tr>
-            <th>Prefix</th>
-            <th>Name</th>
-            <th>Created</th>
-            <th>Last Used</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {tokens.map((t) => (
-            <tr key={t.id}>
-              <td><code>{t.token_prefix}...</code></td>
-              <td>{t.name}</td>
-              <td>{t.created_at ? new Date(t.created_at).toLocaleDateString() : "-"}</td>
-              <td>{t.last_used_at ? new Date(t.last_used_at).toLocaleString() : "Never"}</td>
-              <td>
-                <button className="btn-danger-sm" onClick={() => handleRevoke(t.id)}>Revoke</button>
-              </td>
-            </tr>
-          ))}
-          {tokens.length === 0 && (
-            <tr><td colSpan="5" className="users-empty">No API tokens</td></tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-export default function Users() {
+export default function UserManagement() {
   const { user } = useAuth();
   const [users, setUsers] = useState([]);
-  const isAdmin = user?.role === "admin";
 
   const loadUsers = useCallback(async () => {
-    if (!isAdmin) return;
     try {
       const data = await api.getUsers();
       setUsers(data);
     } catch {}
-  }, [isAdmin]);
+  }, []);
 
   useEffect(() => { loadUsers(); }, [loadUsers]);
 
@@ -176,48 +81,40 @@ export default function Users() {
   };
 
   return (
-    <div className="users-page">
-      <TokenSection />
+    <div className="users-section">
+      <h2>User Management</h2>
+      <CreateUserForm onCreated={loadUsers} />
 
-      {isAdmin && (
-        <div className="users-section">
-          <h2>User Management</h2>
-          <CreateUserForm onCreated={loadUsers} />
-
-          <table className="users-table">
-            <thead>
-              <tr>
-                <th>Username</th>
-                <th>Role</th>
-                <th>Active</th>
-                <th>Created</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.id} className={!u.is_active ? "row-inactive" : ""}>
-                  <td>{u.username}</td>
-                  <td><span className={`role-badge role-${u.role}`}>{u.role}</span></td>
-                  <td>
-                    <button className="btn-toggle" onClick={() => handleToggleActive(u)}>
-                      {u.is_active ? "Active" : "Inactive"}
-                    </button>
-                  </td>
-                  <td>{u.created_at ? new Date(u.created_at).toLocaleDateString() : "-"}</td>
-                  <td>
-                    {u.id !== user.id && (
-                      <button className="btn-danger-sm" onClick={() => handleDelete(u.id)}>Delete</button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {isAdmin && <CorsSettings />}
+      <table className="users-table">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Role</th>
+            <th>Active</th>
+            <th>Created</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {users.map((u) => (
+            <tr key={u.id} className={!u.is_active ? "row-inactive" : ""}>
+              <td>{u.username}</td>
+              <td><span className={`role-badge role-${u.role}`}>{u.role}</span></td>
+              <td>
+                <button className="btn-toggle" onClick={() => handleToggleActive(u)}>
+                  {u.is_active ? "Active" : "Inactive"}
+                </button>
+              </td>
+              <td>{u.created_at ? new Date(u.created_at).toLocaleDateString() : "-"}</td>
+              <td>
+                {u.id !== user.id && (
+                  <button className="btn-danger-sm" onClick={() => handleDelete(u.id)}>Delete</button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

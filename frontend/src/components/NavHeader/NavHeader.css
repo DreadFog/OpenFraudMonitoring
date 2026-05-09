@@ -78,9 +78,16 @@
   gap: 12px;
 }
 
-.nav-user {
+.nav-user-link {
   font-size: 13px;
   color: #8b949e;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.nav-user-link:hover {
+  color: #58a6ff;
 }
 
 .nav-logout {

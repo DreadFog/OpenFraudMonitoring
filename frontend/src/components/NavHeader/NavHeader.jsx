@@ -6,7 +6,7 @@ import "./NavHeader.css";
 const TABS = [
   { path: "/dashboard", label: "Dashboard" },
   { path: "/intelligence", label: "Intelligence" },
-  { path: "/logging", label: "Logging" },
+  { path: "/admin", label: "Administration" },
 ];
 
 export default function NavHeader() {
@@ -35,17 +35,10 @@ export default function NavHeader() {
             {t.label}
           </Link>
         ))}
-        {user?.role === "admin" && (
-          <Link
-            to="/users"
-            className={`nav-tab ${pathname.startsWith("/users") ? "nav-tab-active" : ""}`}
-          >
-            Users
-          </Link>
-        )}
+
       </div>
       <div className="nav-right">
-        {user && <span className="nav-user">{user.username}</span>}
+        {user && <Link to="/profile" className="nav-user-link">{user.username}</Link>}
         <a href="/demo.html" className="nav-demo" target="_blank" rel="noopener noreferrer">Demo</a>
         {user && (
           <button className="nav-logout" onClick={handleLogout}>
