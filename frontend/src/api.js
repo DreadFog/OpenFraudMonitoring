@@ -163,13 +163,15 @@ export const api = {
 
   // ── Sessions ──
 
-  getSessions: async (filters = [], sortBy = "risk_score", sortOrder = "desc") => {
+  getSessions: async (filters = [], sortBy = "last_seen", sortOrder = "desc", page = 1, perPage = 10) => {
     const params = new URLSearchParams();
     if (filters.length > 0) {
       params.append("filters", JSON.stringify(filters));
     }
     params.append("sort_by", sortBy);
     params.append("sort_order", sortOrder);
+    params.append("page", String(page));
+    params.append("per_page", String(perPage));
     
     const queryString = params.toString();
     const res = await authFetch(`/api/sessions${queryString ? '?' + queryString : ''}`);

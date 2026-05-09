@@ -51,11 +51,13 @@ sessions_bp = Blueprint("sessions", __name__, url_prefix="/api")
 @require_auth
 def get_sessions():
     """
-    Get all sessions with basic info.
+    Get paginated sessions with basic info.
     Accepts optional query params:
     - filters: JSON array of conditions
-    - sort_by: 'last_seen', 'device_type', 'risk_score', 'first_seen', or 'client_ip' (default: 'risk_score')
+    - sort_by: 'last_seen', 'device_type', 'risk_score', 'first_seen', or 'client_ip' (default: 'last_seen')
     - sort_order: 'asc' or 'desc' (default: 'desc')
+    - page: page number (default: 1)
+    - per_page: results per page – 10, 25, 50 or 100 (default: 10)
     """
     filters_raw = request.args.get("filters", "[]")
     try:
@@ -63,10 +65,24 @@ def get_sessions():
     except (json.JSONDecodeError, TypeError):
         filters = []
 
-    sort_by = request.args.get("sort_by", "risk_score")
+    sort_by = request.args.get("sort_by", "last_seen")
     sort_order = request.args.get("sort_order", "desc").lower()
+
+    try:
+        page = max(1, int(request.args.get("page", "1")))
+    except (ValueError, TypeError):
+        page = 1
+
+    try:
+        per_page = int(request.args.get("per_page", "10"))
+    except (ValueError, TypeError):
+        per_page = 10
+    if per_page not in (10, 25, 50, 100):
+        per_page = 10
     
     query = build_session_query(filters)
+
+    total = query.count()
     
     # Apply sorting
     if sort_by == "last_seen":
@@ -75,20 +91,26 @@ def get_sessions():
         sort_col = Session.first_seen
     elif sort_by == "client_ip":
         sort_col = Session.client_ip
-    else:
-        # Default to risk_score for 'device_type' and unknown sorts
-        # (device_type is derived, so sorting will be done in post-processing)
+    elif sort_by == "risk_score":
         sort_col = Session.risk_score
+    else:
+        # Default to last_seen for 'device_type' and unknown sorts
+        # (device_type is derived, so sorting will be done in post-processing)
+        sort_col = Session.last_seen
     
     if sort_order == "asc":
         query = query.order_by(sort_col.asc())
     else:
         query = query.order_by(sort_col.desc())
-    
-    all_sessions = query.limit(200).all()
+
+    pages = max(1, -(-total // per_page))  # ceil division
+    page = min(page, pages)  # clamp to last page
+    offset = (page - 1) * per_page
+
+    page_sessions = query.offset(offset).limit(per_page).all()
     sessions_list = []
 
-    for sess in all_sessions:
+    for sess in page_sessions:
         last_fp_row = sess.fingerprints.order_by(Fingerprint.timestamp.desc()).first()
         last_fp = last_fp_row.data if last_fp_row else {}
         signals = last_fp.get("signals", {})
@@ -131,7 +153,13 @@ def get_sessions():
     if sort_by == "device_type":
         sessions_list.sort(key=lambda x: x["device_type"], reverse=(sort_order != "asc"))
 
-    return jsonify(sessions_list), 200
+    return jsonify({
+        "sessions": sessions_list,
+        "page": page,
+        "per_page": per_page,
+        "total": total,
+        "pages": pages,
+    }), 200
 
 
 @sessions_bp.route("/sessions/<fsid>", methods=["GET"])

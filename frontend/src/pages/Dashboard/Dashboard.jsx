@@ -167,8 +167,12 @@ export default function Dashboard() {
   const [schema, setSchema] = useState([]);
   const [filters, setFilters] = useState([]);
   const [connected, setConnected] = useState(true);
-  const [sortBy, setSortBy] = useState("risk_score");
+  const [sortBy, setSortBy] = useState("last_seen");
   const [sortOrder, setSortOrder] = useState("desc");
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+  const [totalSessions, setTotalSessions] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const navigate = useNavigate();
   const { containerRef, width: containerWidth } = useContainerWidth({ initialWidth: 1200 });
 
@@ -195,8 +199,10 @@ export default function Dashboard() {
   // Fetch sessions
   const loadSessions = useCallback(async () => {
     try {
-      const sessionsData = await api.getSessions(completeFilters, sortBy, sortOrder);
-      setSessions(sessionsData);
+      const result = await api.getSessions(completeFilters, sortBy, sortOrder, page, perPage);
+      setSessions(result.sessions || []);
+      setTotalSessions(result.total || 0);
+      setTotalPages(result.pages || 1);
       setLoading(false);
       setConnected(true);
     } catch (err) {
@@ -206,7 +212,7 @@ export default function Dashboard() {
       setConnected(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(completeFilters), sortBy, sortOrder]);
+  }, [JSON.stringify(completeFilters), sortBy, sortOrder, page, perPage]);
 
   useEffect(() => {
     loadSessions();
@@ -339,17 +345,16 @@ export default function Dashboard() {
     );
   };
 
-  const clearFilters = () => setFilters([]);
+  const clearFilters = () => { setFilters([]); setPage(1); };
 
   const handleSort = (column) => {
     if (sortBy === column) {
-      // Toggle sort order if clicking the same column
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
-      // Switch to new column with desc order
       setSortBy(column);
       setSortOrder("desc");
     }
+    setPage(1);
   };
 
   const renderSortIndicator = (column) => {
@@ -442,7 +447,7 @@ export default function Dashboard() {
       <FilterBuilder
         schema={schema}
         filters={filters}
-        onChange={setFilters}
+        onChange={(f) => { setFilters(f); setPage(1); }}
         onClear={clearFilters}
       />
 
@@ -500,7 +505,11 @@ export default function Dashboard() {
                 const timeStr =
                   timeSinceLastSeen < 60
                     ? `${timeSinceLastSeen}s ago`
-                    : `${Math.round(timeSinceLastSeen / 60)}m ago`;
+                    : timeSinceLastSeen < 3600
+                    ? `${Math.round(timeSinceLastSeen / 60)}m ago`
+                    : timeSinceLastSeen < 86400
+                    ? `${Math.round(timeSinceLastSeen / 3600)}h ago`
+                    : `${Math.round(timeSinceLastSeen / 86400)}d ago`;
 
                 return (
                   <tr key={session.full_fsid} onClick={() => navigate(`/session/${session.full_fsid}`)}>
@@ -533,6 +542,52 @@ export default function Dashboard() {
           </table>
         )}
       </div>
+
+      {/* Pagination */}
+      {totalSessions > 0 && (
+        <div className="pagination-bar">
+          <div className="pagination-info">
+            Showing {Math.min((page - 1) * perPage + 1, totalSessions)}–{Math.min(page * perPage, totalSessions)} of {totalSessions} sessions
+          </div>
+          <div className="pagination-controls">
+            <button
+              className="pagination-btn"
+              disabled={page <= 1}
+              onClick={() => setPage(1)}
+              title="First page"
+            >«</button>
+            <button
+              className="pagination-btn"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+              title="Previous page"
+            >‹</button>
+            <span className="pagination-current">Page {page} / {totalPages}</span>
+            <button
+              className="pagination-btn"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+              title="Next page"
+            >›</button>
+            <button
+              className="pagination-btn"
+              disabled={page >= totalPages}
+              onClick={() => setPage(totalPages)}
+              title="Last page"
+            >»</button>
+          </div>
+          <select
+            className="pagination-size-select"
+            value={perPage}
+            onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}
+          >
+            <option value={10}>10 per page</option>
+            <option value={25}>25 per page</option>
+            <option value={50}>50 per page</option>
+            <option value={100}>100 per page</option>
+          </select>
+        </div>
+      )}
 
       {/* Widget Wizard Modal */}
       {showWizard && (
