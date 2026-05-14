@@ -2,6 +2,66 @@ import React, { useState, useEffect } from "react";
 import { api } from "../../api";
 import "./Intelligence.css";
 
+function parseIPv4(ip) {
+  const parts = ip.split(".");
+  if (parts.length !== 4) return null;
+  const nums = [];
+  for (const part of parts) {
+    if (!/^\d{1,3}$/.test(part)) return null;
+    const n = Number(part);
+    if (n < 0 || n > 255) return null;
+    nums.push(n);
+  }
+  return nums;
+}
+
+function expandIPv6(input) {
+  const ip = input.toLowerCase();
+  if (!ip.includes(":")) return null;
+  if (ip.includes(".")) return null;
+  const halves = ip.split("::");
+  if (halves.length > 2) return null;
+
+  const left = halves[0] ? halves[0].split(":").filter(Boolean) : [];
+  const right = halves[1] ? halves[1].split(":").filter(Boolean) : [];
+
+  for (const seg of [...left, ...right]) {
+    if (!/^[0-9a-f]{1,4}$/.test(seg)) return null;
+  }
+
+  if (halves.length === 1) {
+    if (left.length !== 8) return null;
+    return left;
+  }
+
+  const missing = 8 - (left.length + right.length);
+  if (missing <= 0) return null;
+  return [...left, ...Array(missing).fill("0"), ...right];
+}
+
+function isPrivateIp(ip) {
+  if (!ip) return false;
+  const cleaned = String(ip).trim().replace(/^\[(.*)\]$/, "$1");
+
+  const v4 = parseIPv4(cleaned);
+  if (v4) {
+    const [a, b] = v4;
+    return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+  }
+
+  const v6 = expandIPv6(cleaned);
+  if (v6) {
+    const first = parseInt(v6[0], 16);
+    return (first & 0xfe) === 0xfc;
+  }
+
+  return false;
+}
+
+function isIpEntityType(type) {
+  return type === "ipv4-addr" || type === "ipv6-addr";
+}
+
 function fmtDate(iso) {
   if (!iso) return "—";
   try {
@@ -101,6 +161,15 @@ export default function Intelligence() {
     setShowRaw(false);
     setEnrichers([]);
     setEnrichOpen(false);
+    if (isIpEntityType(entityType) && isPrivateIp(v)) {
+      setData({
+        privateIp: true,
+        value: v,
+        type: entityType,
+      });
+      setLoading(false);
+      return;
+    }
     try {
       const result = await api.getEntityIntel(entityType, v);
       setData(result);
@@ -131,8 +200,18 @@ export default function Intelligence() {
     setShowRaw(false);
     setEnrichers([]);
     setEnrichOpen(false);
+    const nextType = type || entityType;
+    if (isIpEntityType(nextType) && isPrivateIp(value)) {
+      setData({
+        privateIp: true,
+        value,
+        type: nextType,
+      });
+      setLoading(false);
+      return;
+    }
     try {
-      const result = await api.getEntityIntel(type || entityType, value);
+      const result = await api.getEntityIntel(nextType, value);
       setData(result);
       if (result.found && result.observable) {
         try {
@@ -279,14 +358,20 @@ export default function Intelligence() {
         </section>
       )}
 
-      {data && !data.found && (
+      {data?.privateIp && (
+        <div className="intel-empty">
+          <b>{data.value}</b> is a private IP address. Intelligence lookup is skipped for private ranges.
+        </div>
+      )}
+
+      {data && !data.privateIp && !data.found && (
         <div className="intel-empty">
           No cached intelligence for <code>{data.value}</code> ({data.type || entityType}).
           Use <em>Enrich</em> to query a connector.
         </div>
       )}
 
-      {data && data.found && (
+      {data && !data.privateIp && data.found && (
         <div className="intel-results">
           <button
             className="intel-btn intel-back-btn"

@@ -11,6 +11,7 @@ Expected payload:
 """
 
 import logging
+import ipaddress
 
 from flask import Blueprint, request, jsonify, current_app
 from services.database import db
@@ -23,6 +24,22 @@ from utils.crypto import decrypt_fingerprint
 logger = logging.getLogger(__name__)
 
 collect_bp = Blueprint("collect", __name__, url_prefix="/api")
+
+
+PRIVATE_CIDRS = [
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("fc00::/7"),
+]
+
+
+def _is_private_ip(ip_value: str) -> bool:
+    try:
+        ip_obj = ipaddress.ip_address(ip_value)
+    except ValueError:
+        return False
+    return any(ip_obj in cidr for cidr in PRIVATE_CIDRS)
 
 
 @collect_bp.route("/initial", methods=["POST"])
@@ -136,7 +153,7 @@ def collect():
     enqueue_event(session_obj.id, "fingerprint")
 
     # ── Auto-trigger intel lookups for connectors in 'auto' or 'both' mode ──
-    if ip_obs is not None and client_ip:
+    if ip_obs is not None and client_ip and not _is_private_ip(client_ip):
         try:
             redis_client = get_redis()
             for key in redis_client.scan_iter(match="ofm:connector:*:mode"):

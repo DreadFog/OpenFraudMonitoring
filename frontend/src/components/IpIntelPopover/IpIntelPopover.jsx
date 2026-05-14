@@ -3,6 +3,62 @@ import { createPortal } from "react-dom";
 import { api } from "../../api";
 import "./IpIntelPopover.css";
 
+function parseIPv4(ip) {
+  const parts = ip.split(".");
+  if (parts.length !== 4) return null;
+  const nums = [];
+  for (const part of parts) {
+    if (!/^\d{1,3}$/.test(part)) return null;
+    const n = Number(part);
+    if (n < 0 || n > 255) return null;
+    nums.push(n);
+  }
+  return nums;
+}
+
+function expandIPv6(input) {
+  const ip = input.toLowerCase();
+  if (!ip.includes(":")) return null;
+  if (ip.includes(".")) return null;
+  const halves = ip.split("::");
+  if (halves.length > 2) return null;
+
+  const left = halves[0] ? halves[0].split(":").filter(Boolean) : [];
+  const right = halves[1] ? halves[1].split(":").filter(Boolean) : [];
+
+  for (const seg of [...left, ...right]) {
+    if (!/^[0-9a-f]{1,4}$/.test(seg)) return null;
+  }
+
+  if (halves.length === 1) {
+    if (left.length !== 8) return null;
+    return left;
+  }
+
+  const missing = 8 - (left.length + right.length);
+  if (missing <= 0) return null;
+  return [...left, ...Array(missing).fill("0"), ...right];
+}
+
+function isPrivateIp(ip) {
+  if (!ip) return false;
+  const cleaned = String(ip).trim().replace(/^\[(.*)\]$/, "$1");
+
+  const v4 = parseIPv4(cleaned);
+  if (v4) {
+    const [a, b] = v4;
+    return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+  }
+
+  const v6 = expandIPv6(cleaned);
+  if (v6) {
+    const first = parseInt(v6[0], 16);
+    return (first & 0xfe) === 0xfc;
+  }
+
+  return false;
+}
+
 function fmtDate(iso) {
   if (!iso) return null;
   try {
@@ -19,6 +75,7 @@ export default function IpIntelPopover({ ip }) {
   const [pos, setPos] = useState({ top: 0, left: 0 });
   const btnRef = useRef(null);
   const popoverRef = useRef(null);
+  const privateIp = isPrivateIp(ip);
 
   const updatePos = useCallback(() => {
     if (!btnRef.current) return;
@@ -49,6 +106,7 @@ export default function IpIntelPopover({ ip }) {
     }
     updatePos();
     setOpen(true);
+    if (privateIp) return;
     if (data) return;
     setLoading(true);
     try {
@@ -85,12 +143,17 @@ export default function IpIntelPopover({ ip }) {
       onClick={(e) => e.stopPropagation()}
     >
       <div className="ip-intel-popover-header">{ip}</div>
+      {privateIp && (
+        <div className="ip-intel-popover-body ip-intel-muted">
+          Private IP address. Intelligence lookup is skipped.
+        </div>
+      )}
       {loading && <div className="ip-intel-popover-body ip-intel-loading">Loading…</div>}
       {data?.error && <div className="ip-intel-popover-body ip-intel-muted">Failed to load</div>}
-      {data && !data.error && !data.found && (
+      {data && !privateIp && !data.error && !data.found && (
         <div className="ip-intel-popover-body ip-intel-muted">No intelligence cached</div>
       )}
-      {data?.found && (
+      {data?.found && !privateIp && (
         <div className="ip-intel-popover-body">
           <div className="ip-intel-row">
             <span className="ip-intel-label">AS</span>
