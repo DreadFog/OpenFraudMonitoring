@@ -10,6 +10,7 @@ const TABS = [
 
 const ADMIN_TABS = [
   { path: "/admin", label: "Administration" },
+  { path: "/rules", label: "Rules" },
 ];
 
 export default function NavHeader() {

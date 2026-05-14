@@ -12,7 +12,7 @@ rules_bp = Blueprint("rules", __name__, url_prefix="/api")
 
 @rules_bp.route("/rules", methods=["GET"])
 @require_auth
-@require_role("user", "admin")
+@require_role("admin")
 def list_rules():
     rules = Rule.query.order_by(Rule.created_at.desc()).all()
     return jsonify([r.to_dict() for r in rules]), 200
@@ -20,7 +20,7 @@ def list_rules():
 
 @rules_bp.route("/rules", methods=["POST"])
 @require_auth
-@require_role("user", "admin")
+@require_role("admin")
 def create_rule():
     data = request.get_json() or {}
     rule = Rule(
@@ -40,7 +40,7 @@ def create_rule():
 
 @rules_bp.route("/rules/<int:rule_id>", methods=["PUT"])
 @require_auth
-@require_role("user", "admin")
+@require_role("admin")
 def update_rule(rule_id):
     rule = Rule.query.get_or_404(rule_id)
     data = request.get_json() or {}
@@ -56,7 +56,7 @@ def update_rule(rule_id):
 
 @rules_bp.route("/rules/<int:rule_id>", methods=["DELETE"])
 @require_auth
-@require_role("user", "admin")
+@require_role("admin")
 def delete_rule(rule_id):
     rule = Rule.query.get_or_404(rule_id)
     RuleMatch.query.filter_by(rule_id=rule.id).delete()

@@ -6,6 +6,7 @@ import SessionDetail from "./pages/SessionDetail/SessionDetail";
 import Landing from "./pages/Landing/Landing";
 import Intelligence from "./pages/Intelligence/Intelligence";
 import Administration from "./pages/Logging/Logging";
+import RulesPage from "./pages/Rules/Rules";
 import Login from "./pages/Login/Login";
 import Profile from "./pages/Profile/Profile";
 import NavHeader from "./components/NavHeader/NavHeader";
@@ -14,6 +15,13 @@ import "./App.css";
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return children;
+}
+
+function AdminRoute({ children }) {
+  const { isAuthenticated, user } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.role !== "admin") return <Navigate to="/dashboard" replace />;
   return children;
 }
 
@@ -41,6 +49,7 @@ function App() {
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/intelligence" element={<ProtectedRoute><Intelligence /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute><Administration /></ProtectedRoute>} />
+            <Route path="/rules" element={<AdminRoute><RulesPage /></AdminRoute>} />
             <Route path="/session/:fsid" element={<ProtectedRoute><SessionDetail /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           </Routes>
