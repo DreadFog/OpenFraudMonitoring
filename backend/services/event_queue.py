@@ -8,7 +8,7 @@ skipped so that the HTTP request is never blocked.
 
 import json
 import redis as _redis_lib
-from config import Config
+from init.config import Config
 
 _client = None
 

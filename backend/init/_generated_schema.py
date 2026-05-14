@@ -1,6 +1,6 @@
 """
 Auto-generated from fpscanner_ref/types.ts on 2026-04-26 10:16:15 UTC.
-DO NOT EDIT — run `python generate_schema.py` to regenerate.
+DO NOT EDIT — run `python init/generate_schema.py` to regenerate.
 """
 
 # ── Signal fields (from FingerprintSignals interface) ──

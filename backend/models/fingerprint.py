@@ -1,7 +1,7 @@
 from services.database import db
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy import func
-from _generated_schema import SIGNAL_FIELDS, DETECTION_FIELDS, TOP_LEVEL_FIELDS
+from init._generated_schema import SIGNAL_FIELDS, DETECTION_FIELDS, TOP_LEVEL_FIELDS
 
 
 # ── Special signal values from FPScanner (non-data sentinels) ──

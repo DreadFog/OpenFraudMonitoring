@@ -17,7 +17,7 @@ import logging
 import time
 import threading
 from flask import Flask
-from config import Config
+from init.config import Config
 from services.database import init_db, db
 from services.event_queue import get_redis
 from rules import seed_default_rules

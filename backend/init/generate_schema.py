@@ -4,7 +4,7 @@ Schema generator — parses FPScanner's types.ts and produces a Python schema
 module (_generated_schema.py) that the backend consumes.
 
 Run this script whenever FPScanner updates their types:
-    python generate_schema.py
+    python init/generate_schema.py
 
 It reads:
     ../fpscanner/src/types.ts   (from the fpscanner git submodule)
@@ -234,7 +234,7 @@ def generate(source: str) -> str:
     lines = [
         '"""',
         f"Auto-generated from fpscanner_ref/types.ts on {now}.",
-        "DO NOT EDIT — run `python generate_schema.py` to regenerate.",
+        "DO NOT EDIT — run `python init/generate_schema.py` to regenerate.",
         '"""',
         "",
         "# ── Signal fields (from FingerprintSignals interface) ──",

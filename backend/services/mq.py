@@ -45,7 +45,7 @@ from typing import Optional, Callable
 import pika
 from pika.exceptions import AMQPConnectionError
 
-from config import Config
+from init.config import Config
 
 logger = logging.getLogger(__name__)
 

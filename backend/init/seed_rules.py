@@ -2,7 +2,7 @@
 Seed the database with default detection rules based on FPScanner's detections.
 
 Run once after initializing the database:
-    python seed_rules.py
+    python init/seed_rules.py
 
 These rules are auto-generated from FPScanner's FastBotDetectionDetails.
 Each detection becomes a realtime rule that checks the corresponding
@@ -15,10 +15,10 @@ are skipped.
 import logging
 
 from flask import Flask
-from config import Config
+from init.config import Config
 from services.database import init_db, db
 from models import Rule
-from _generated_schema import DETECTION_FIELDS
+from init._generated_schema import DETECTION_FIELDS
 
 # Severity → score modifier mapping (matches analysis/risk.py)
 SEVERITY_SCORES = {

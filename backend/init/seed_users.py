@@ -9,7 +9,7 @@ import logging
 from services.database import db
 from services.auth import hash_password, generate_api_token, hash_api_token
 from models.user import User, ApiToken
-from config import Config
+from init.config import Config
 
 logger = logging.getLogger(__name__)
 

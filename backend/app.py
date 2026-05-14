@@ -9,7 +9,7 @@ import os
 from flask import Flask, send_from_directory, request
 from flask_cors import CORS
 
-from config import Config
+from init.config import Config
 from services.cors_origins import dynamic_origin
 
 logging.basicConfig(
@@ -23,7 +23,7 @@ from services.log_shipper import install as install_log_shipper
 from services.auth import bcrypt
 from routes import register_routes
 from rules import seed_default_rules
-from seed_users import seed_default_admin
+from init.seed_users import seed_default_admin
 
 install_log_shipper("backend")
 

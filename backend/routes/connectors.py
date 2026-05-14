@@ -29,7 +29,7 @@ from flask import Blueprint, jsonify, request
 from services.event_queue import get_redis
 from services.mq import queue_depth, request_queue, RESPONSE_QUEUE
 from services.auth import require_auth
-from config import Config
+from init.config import Config
 
 logger = logging.getLogger(__name__)
 
