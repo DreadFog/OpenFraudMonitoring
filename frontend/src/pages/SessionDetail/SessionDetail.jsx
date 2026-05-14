@@ -144,6 +144,7 @@ export default function SessionDetail() {
           <Field label="Last Seen"    value={new Date(data.last_seen).toLocaleString()} />
           <Field label="Fingerprints" value={data.fingerprints_count} />
           <Field label="Heartbeats"   value={data.heartbeats_count} />
+          <Field label="Behavioral Events" value={data.behavioral_events_count} />
         </Section>
 
         {/* Risk Flags */}
@@ -286,41 +287,52 @@ export default function SessionDetail() {
           )}
         </Section>
 
-        {/* Recent Heartbeats */}
-        {data.heartbeats?.length > 0 && (
-          <Section title={`Recent Heartbeats (last ${data.heartbeats.length})`}>
-            <div className="hb-table-wrapper">
-              <table className="hb-table">
-                <thead>
-                  <tr>
-                    <th>Time</th>
-                    <th>URL</th>
-                    <th>Mouse</th>
-                    <th>Clicks</th>
-                    <th>Keys</th>
-                    <th>Scrolls</th>
-                    <th>Copies</th>
-                    <th>Navs</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.heartbeats.map((hb, i) => (
-                    <tr key={i}>
-                      <td className="mono">{new Date(hb.timestamp).toLocaleTimeString()}</td>
-                      <td className="mono url-cell">{hb.url || "—"}</td>
-                      <td>{hb.mouseMoves ?? "—"}</td>
-                      <td>{hb.clicks ?? "—"}</td>
-                      <td>{hb.keydowns ?? "—"}</td>
-                      <td>{hb.scrolls ?? "—"}</td>
-                      <td>{hb.copyPastes ?? "—"}</td>
-                      <td>{hb.navigationEvents ?? "—"}</td>
+        {/* Recent Events — unified heartbeats + behavioral events */}
+        {(data.heartbeats?.length > 0 || data.behavioral_events?.length > 0) && (() => {
+          const events = [
+            ...(data.heartbeats || []).map(hb => ({ ...hb, _type: "heartbeat" })),
+            ...(data.behavioral_events || []).map(be => ({ ...be, _type: "behavioral_event" })),
+          ].sort((a, b) => b.timestamp - a.timestamp);
+          
+          return (
+            <Section title={`Recent Events (${events.length})`}>
+              <div className="hb-table-wrapper">
+                <table className="hb-table">
+                  <thead>
+                    <tr>
+                      <th>Time</th>
+                      <th>Type</th>
+                      <th>URL</th>
+                      <th>Detail</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Section>
-        )}
+                  </thead>
+                  <tbody>
+                    {events.map((evt, i) => (
+                      <tr key={i}>
+                        <td className="mono">{new Date(evt.timestamp).toLocaleTimeString()}</td>
+                        <td>
+                          <span className={`event-badge event-badge--${evt._type === "heartbeat" ? "heartbeat" : evt.event_type}`}>
+                            {evt._type === "heartbeat" ? "Heartbeat" : evt.event_type}
+                          </span>
+                        </td>
+                        <td className="mono url-cell">{evt.url || "—"}</td>
+                        <td className="mono">
+                          {evt._type === "heartbeat" ? (
+                            <>
+                              M:{evt.mouseMoves ?? 0} C:{evt.clicks ?? 0} K:{evt.keydowns ?? 0} S:{evt.scrolls ?? 0} T:{evt.touches ?? 0}
+                            </>
+                          ) : (
+                            JSON.stringify(evt.data || {}).slice(0, 60)
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Section>
+          );
+        })()}
 
         {/* Raw JSON */}
         <RawJson data={data} />

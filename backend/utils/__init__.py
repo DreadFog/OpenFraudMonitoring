@@ -21,6 +21,4 @@ def extract_behavior_summary(behavior: Dict[str, Any]) -> Dict[str, int]:
         "keydowns": len(behavior.get("keydowns", [])),
         "touches": len(behavior.get("touches", [])),
         "scrolls": len(behavior.get("scrolls", [])),
-        "copyPastes": len(behavior.get("copyPastes", [])),
-        "navigationEvents": len(behavior.get("navigationEvents", [])),
     }

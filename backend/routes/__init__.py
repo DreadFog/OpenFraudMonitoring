@@ -5,6 +5,7 @@ Routes package — registers all API blueprints.
 from routes.auth import auth_bp
 from routes.collect import collect_bp
 from routes.heartbeat import heartbeat_bp
+from routes.behavioral_event import behavioral_event_bp
 from routes.sessions import sessions_bp
 from routes.stats import stats_bp
 from routes.rules import rules_bp
@@ -20,6 +21,7 @@ def register_routes(app):
     app.register_blueprint(auth_bp)
     app.register_blueprint(collect_bp)
     app.register_blueprint(heartbeat_bp)
+    app.register_blueprint(behavioral_event_bp)
     app.register_blueprint(sessions_bp)
     app.register_blueprint(stats_bp)
     app.register_blueprint(rules_bp)

@@ -5,6 +5,7 @@ Models package — re-exports all models for convenient imports.
 from models.session import Session
 from models.fingerprint import Fingerprint
 from models.heartbeat import Heartbeat
+from models.behavioral_event import BehavioralEvent
 from models.rule import Rule, RuleMatch
 from models.associations import SessionURL, BrowserSession
 from models.dashboard import Dashboard
@@ -27,6 +28,7 @@ __all__ = [
     "Session",
     "Fingerprint",
     "Heartbeat",
+    "BehavioralEvent",
     "Rule",
     "RuleMatch",
     "SessionURL",

@@ -66,8 +66,6 @@ def heartbeat():
         keydowns=behavior_summary["keydowns"],
         touches=behavior_summary["touches"],
         scrolls=behavior_summary["scrolls"],
-        copy_pastes=behavior_summary["copyPastes"],
-        navigation_events=behavior_summary["navigationEvents"],
         raw_behavior=behavior,
     )
     db.session.add(hb_record)

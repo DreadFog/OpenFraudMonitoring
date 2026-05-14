@@ -111,12 +111,45 @@
       </div>
     </div>
 
-    <!-- Right column: heartbeats -->
+    <!-- Right column: live events (heartbeats + behavioral events) -->
     <div class="panel">
-      <h2>Heartbeats</h2>
-      <div class="panel-scroll" id="hb-list">
-        <p class="muted" id="hb-placeholder">No heartbeats yet…</p>
+      <h2>Live Events</h2>
+      <div class="panel-scroll" id="event-list">
+        <p class="muted" id="event-placeholder">No events yet…</p>
       </div>
+    </div>
+  </div>
+
+  <div class="columns" style="margin-top: 16px;">
+    <!-- Dummy text field + button -->
+    <div class="panel">
+      <h2>Dummy Controls</h2>
+      <label for="dummy-text" style="font-size:13px;color:#8b949e;">Text field</label>
+      <input id="dummy-text" type="text" placeholder="Type something…"
+        style="padding:8px;border-radius:4px;border:1px solid #30363d;background:#21262d;color:#e6edf3;font-size:13px;outline:none;" />
+      <button id="dummy-btn"
+        style="padding:8px 16px;border-radius:4px;border:none;background:#238636;color:#fff;cursor:pointer;font-size:13px;align-self:flex-start;">
+        Say Hello
+      </button>
+      <pre id="dummy-output" style="min-height:24px;">…</pre>
+    </div>
+
+    <!-- Dummy login form -->
+    <div class="panel">
+      <h2>Dummy Login</h2>
+      <form id="dummy-login" style="display:flex;flex-direction:column;gap:8px;">
+        <label for="login-user" style="font-size:13px;color:#8b949e;">Username</label>
+        <input id="login-user" type="text" placeholder="Username"
+          style="padding:8px;border-radius:4px;border:1px solid #30363d;background:#21262d;color:#e6edf3;font-size:13px;outline:none;" />
+        <label for="login-pass" style="font-size:13px;color:#8b949e;">Password</label>
+        <input id="login-pass" type="password" placeholder="Password"
+          style="padding:8px;border-radius:4px;border:1px solid #30363d;background:#21262d;color:#e6edf3;font-size:13px;outline:none;" />
+        <button type="submit"
+          style="padding:8px 16px;border-radius:4px;border:none;background:#1f6feb;color:#fff;cursor:pointer;font-size:13px;align-self:flex-start;">
+          Log In
+        </button>
+      </form>
+      <pre id="login-output" style="min-height:24px;">…</pre>
     </div>
   </div>
 
@@ -129,6 +162,21 @@
   </div>
 
   <script>
+    // Dummy button
+    document.getElementById("dummy-btn").addEventListener("click", function () {
+      document.getElementById("dummy-output").textContent = "hello";
+    });
+    // Dummy login form
+    document.getElementById("dummy-login").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var user = document.getElementById("login-user").value;
+      var pass = document.getElementById("login-pass").value;
+      document.getElementById("login-output").textContent =
+        "Username: " + user + "\nPassword: " + pass;
+    });
+  </script>
+
+  <script>
     // Register hooks before ofm.js loads
     window.__OFM__ = {
       onFingerprint: function (fp) {
@@ -138,19 +186,44 @@
         el.style.display = "block";
         el.textContent = JSON.stringify(fp, null, 2);
       },
-      _hbCount: 0,
+      _eventCount: 0,
       onHeartbeat: function (hb) {
-        this._hbCount++;
-        var placeholder = document.getElementById("hb-placeholder");
+        this._eventCount++;
+        var placeholder = document.getElementById("event-placeholder");
         if (placeholder) placeholder.style.display = "none";
-        var list = document.getElementById("hb-list");
+        var list = document.getElementById("event-list");
         var entry = document.createElement("div");
         entry.className = "hb-entry";
         var label = document.createElement("div");
         label.className = "hb-label";
-        label.textContent = "Heartbeat #" + this._hbCount + " — " + new Date(hb.timestamp).toLocaleTimeString();
+        label.textContent = "Heartbeat #" + this._eventCount + " — " + new Date(hb.timestamp).toLocaleTimeString();
         var pre = document.createElement("pre");
         pre.textContent = JSON.stringify(hb, null, 2);
+        entry.appendChild(label);
+        entry.appendChild(pre);
+        list.prepend(entry);
+      },
+      onBehavioralEvent: function (evt) {
+        this._eventCount++;
+        var placeholder = document.getElementById("event-placeholder");
+        if (placeholder) placeholder.style.display = "none";
+        var list = document.getElementById("event-list");
+        var entry = document.createElement("div");
+        entry.className = "hb-entry";
+        var label = document.createElement("div");
+        label.className = "hb-label";
+        var typeBadge = '<span style="display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-left: 8px; ';
+        if (evt.event_type === "button_click") {
+          typeBadge += 'background: #238636; color: #fff;';
+        } else if (evt.event_type === "form_submit") {
+          typeBadge += 'background: #1f6feb; color: #fff;';
+        } else if (evt.event_type === "copy" || evt.event_type === "paste") {
+          typeBadge += 'background: #d29922; color: #fff;';
+        }
+        typeBadge += '">' + evt.event_type + '</span>';
+        label.innerHTML = "Event #" + this._eventCount + " — " + new Date(evt.timestamp).toLocaleTimeString() + typeBadge;
+        var pre = document.createElement("pre");
+        pre.textContent = JSON.stringify(evt, null, 2);
         entry.appendChild(label);
         entry.appendChild(pre);
         list.prepend(entry);

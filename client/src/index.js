@@ -124,7 +124,14 @@ function startHeartbeat() {
 
 function init() {
   initExtensions();
-  collect().then(() => startHeartbeat());
+  collect().then(() => {
+    // Propagate fsid to behavior extension for direct event sends
+    const behaviorExt = extensions.find(ext => ext.name === "behavior");
+    if (behaviorExt && typeof behaviorExt.setFsid === "function") {
+      behaviorExt.setFsid(_fsid);
+    }
+    startHeartbeat();
+  });
 }
 
 if (document.readyState === "loading") {

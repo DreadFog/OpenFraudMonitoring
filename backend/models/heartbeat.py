@@ -15,8 +15,6 @@ class Heartbeat(db.Model):
     keydowns = db.Column(db.Integer, default=0)
     touches = db.Column(db.Integer, default=0)
     scrolls = db.Column(db.Integer, default=0)
-    copy_pastes = db.Column(db.Integer, default=0)
-    navigation_events = db.Column(db.Integer, default=0)
     raw_behavior = db.Column(JSONB, default=dict)
     created_at = db.Column(db.DateTime, server_default=func.now())
 
@@ -31,7 +29,5 @@ class Heartbeat(db.Model):
             "keydowns": self.keydowns,
             "touches": self.touches,
             "scrolls": self.scrolls,
-            "copyPastes": self.copy_pastes,
-            "navigationEvents": self.navigation_events,
             "raw": self.raw_behavior,
         }

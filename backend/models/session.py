@@ -24,6 +24,7 @@ class Session(db.Model):
 
     fingerprints = db.relationship("Fingerprint", back_populates="session", lazy="dynamic", cascade="all, delete-orphan")
     heartbeats = db.relationship("Heartbeat", back_populates="session", lazy="dynamic", cascade="all, delete-orphan")
+    behavioral_events = db.relationship("BehavioralEvent", back_populates="session", lazy="dynamic", cascade="all, delete-orphan")
     urls = db.relationship("SessionURL", back_populates="session", lazy="dynamic", cascade="all, delete-orphan")
     browser_sessions = db.relationship("BrowserSession", back_populates="session", lazy="dynamic", cascade="all, delete-orphan")
     rule_matches = db.relationship("RuleMatch", lazy="dynamic", cascade="all, delete-orphan")

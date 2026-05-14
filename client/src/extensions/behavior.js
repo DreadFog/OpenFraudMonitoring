@@ -1,20 +1,22 @@
 /**
- * Behavior Extension — tracks user interactions (mouse, keyboard, touch,
- * scroll, clipboard, navigation) and provides a drain function for heartbeats.
+ * Behavior Extension — tracks user interactions (mouse, keyboard, touch, scroll)
+ * and sends high-signal events (button clicks, form submits, copy/paste) directly.
  *
  * Extension interface:
- *   name  – unique identifier
- *   init  – called once at startup to attach event listeners
- *   drain – called every heartbeat cycle; returns accumulated events and resets buffers
+ *   name    – unique identifier
+ *   init    – called once at startup to attach event listeners
+ *   setFsid – called after collect() resolves to set the session fsid for direct events
+ *   drain   – called every heartbeat cycle; returns accumulated low-signal events
  */
+
+import { send } from "../send.js";
+import { CFG } from "../config.js";
 
 const MAX_MOUSE   = 300;
 const MAX_CLICKS  = 100;
 const MAX_KEYS    = 200;
 const MAX_TOUCHES = 100;
 const MAX_SCROLLS = 100;
-const MAX_CLIPS   = 50;
-const MAX_NAVS    = 50;
 
 const buf = {
   mouseMoves:       [],
@@ -22,32 +24,39 @@ const buf = {
   keydowns:         [],
   touches:          [],
   scrolls:          [],
-  copyPastes:       [],
-  navigationEvents: [],
   _lastMouse:       0,
   _lastScroll:      0,
-  _lastURL:         "",
+  _fsid:            null,
 };
 
 function now() {
   return Date.now();
 }
 
-function trackNavigation() {
-  const url = location.href;
-  if (url !== buf._lastURL) {
-    if (buf.navigationEvents.length < MAX_NAVS)
-      buf.navigationEvents.push({ from: buf._lastURL, to: url, t: now() });
-    buf._lastURL = url;
+function sendDirect(eventType, data) {
+  const payload = {
+    fsid: buf._fsid,
+    timestamp: now(),
+    url: location.href,
+    event_type: eventType,
+    data,
+  };
+  send(CFG.behavioralEventEndpoint, payload);
+  
+  // Debug hook
+  if (typeof window !== "undefined" && window.__OFM__ && typeof window.__OFM__.onBehavioralEvent === "function") {
+    try { window.__OFM__.onBehavioralEvent(payload); } catch (_) {}
   }
 }
 
 export default {
   name: "behavior",
 
-  init() {
-    buf._lastURL = location.href;
+  setFsid(fsid) {
+    buf._fsid = fsid;
+  },
 
+  init() {
     document.addEventListener("mousemove", (e) => {
       const t = now();
       if (t - buf._lastMouse < 50) return;
@@ -57,8 +66,22 @@ export default {
     }, { passive: true });
 
     document.addEventListener("click", (e) => {
-      if (buf.clicks.length < MAX_CLICKS)
-        buf.clicks.push({ x: Math.round(e.clientX), y: Math.round(e.clientY), t: now(), button: e.button });
+      // Button clicks: send directly, do not buffer
+      const isButton = e.target.closest("button") || 
+                       e.target.closest("[type=submit]") || 
+                       e.target.closest("[role=button]");
+      if (isButton) {
+        sendDirect("button_click", {
+          x: Math.round(e.clientX),
+          y: Math.round(e.clientY),
+          tag: e.target.tagName.toLowerCase(),
+          text: (e.target.innerText || e.target.textContent || "").slice(0, 50),
+        });
+      } else {
+        // Non-button clicks: buffer for heartbeat
+        if (buf.clicks.length < MAX_CLICKS)
+          buf.clicks.push({ x: Math.round(e.clientX), y: Math.round(e.clientY), t: now(), button: e.button });
+      }
     }, { passive: true });
 
     document.addEventListener("keydown", (e) => {
@@ -84,36 +107,43 @@ export default {
         buf.scrolls.push([Math.round(window.scrollX), Math.round(window.scrollY), t]);
     }, { passive: true });
 
+    // Form submit: send directly
+    document.addEventListener("submit", (e) => {
+      const form = e.target;
+      const fieldNames = Array.from(form.querySelectorAll("input, select, textarea"))
+        .map(el => el.name || el.id || "")
+        .filter(Boolean);
+      sendDirect("form_submit", {
+        action: form.action || "",
+        method: form.method || "POST",
+        fieldNames,
+      });
+    }, { passive: true });
+
+    // Copy: send directly with length only (no content)
     document.addEventListener("copy", (e) => {
       const text = (e.clipboardData || window.clipboardData || { getData: () => "" }).getData("text");
-      if (buf.copyPastes.length < MAX_CLIPS)
-        buf.copyPastes.push({ type: "copy", content: text.slice(0, 100), t: now() });
+      sendDirect("copy", { length: text.length });
     }, { passive: true });
 
+    // Paste: send directly with length only (no content)
     document.addEventListener("paste", (e) => {
       const text = (e.clipboardData || window.clipboardData || { getData: () => "" }).getData("text");
-      if (buf.copyPastes.length < MAX_CLIPS)
-        buf.copyPastes.push({ type: "paste", content: text.slice(0, 100), t: now() });
+      sendDirect("paste", { length: text.length });
     }, { passive: true });
-
-    window.addEventListener("popstate", trackNavigation);
-    setInterval(trackNavigation, 1000);
   },
 
   /**
-   * Drain all accumulated behavior events. Resets buffers atomically.
-   * Called by the heartbeat loop.
+   * Drain all accumulated low-signal behavior events. Resets buffers atomically.
+   * Called by the heartbeat loop. High-signal events are sent directly and not buffered.
    */
   drain() {
-    trackNavigation();
     return {
       mouseMoves:       buf.mouseMoves.splice(0),
       clicks:           buf.clicks.splice(0),
       keydowns:         buf.keydowns.splice(0),
       touches:          buf.touches.splice(0),
       scrolls:          buf.scrolls.splice(0),
-      copyPastes:       buf.copyPastes.splice(0),
-      navigationEvents: buf.navigationEvents.splice(0),
     };
   },
 };

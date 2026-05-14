@@ -287,3 +287,34 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Event badges for unified events table */
+.event-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.event-badge--heartbeat {
+  background: #424a4f;
+  color: #c9d1d9;
+}
+
+.event-badge--button_click {
+  background: #238636;
+  color: #fff;
+}
+
+.event-badge--form_submit {
+  background: #1f6feb;
+  color: #fff;
+}
+
+.event-badge--copy,
+.event-badge--paste {
+  background: #d29922;
+  color: #fff;
+}

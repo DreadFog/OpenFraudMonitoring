@@ -4,7 +4,7 @@ Sessions endpoints - list and detail views
 
 import json
 from flask import Blueprint, request, jsonify
-from models import Session, Fingerprint, Heartbeat
+from models import Session, Fingerprint, Heartbeat, BehavioralEvent
 from models.associations import SessionURL, BrowserSession
 from models.rule import RuleMatch
 from rules.engine import build_session_query
@@ -175,6 +175,7 @@ def get_session_detail(fsid):
     urls = [u.url for u in sess.urls.all()]
     session_ids = [bs.browser_session_id for bs in sess.browser_sessions.all()]
     heartbeats_count = sess.heartbeats.count()
+    behavioral_events_count = sess.behavioral_events.count()
     fingerprints_count = sess.fingerprints.count()
 
     last_fp_row = sess.fingerprints.order_by(Fingerprint.timestamp.desc()).first()
@@ -182,7 +183,11 @@ def get_session_detail(fsid):
 
     recent_heartbeats = sess.heartbeats.order_by(
         Heartbeat.timestamp.desc()
-    ).limit(20).all()
+    ).limit(50).all()
+
+    recent_behavioral_events = sess.behavioral_events.order_by(
+        BehavioralEvent.timestamp.desc()
+    ).limit(50).all()
 
     return jsonify({
         "fsid": fsid,
@@ -194,9 +199,11 @@ def get_session_detail(fsid):
         "urls": urls,
         "session_ids": session_ids,
         "heartbeats_count": heartbeats_count,
+        "behavioral_events_count": behavioral_events_count,
         "fingerprints_count": fingerprints_count,
         "latest_fingerprint": latest_fingerprint,
         "heartbeats": [hb.to_summary() for hb in recent_heartbeats],
+        "behavioral_events": [be.to_dict() for be in recent_behavioral_events],
     }), 200
 
 
@@ -215,6 +222,7 @@ def delete_session(fsid):
     # Explicitly delete children (lazy="dynamic" prevents ORM cascade)
     Fingerprint.query.filter_by(session_id=sess.id).delete()
     Heartbeat.query.filter_by(session_id=sess.id).delete()
+    BehavioralEvent.query.filter_by(session_id=sess.id).delete()
     SessionURL.query.filter_by(session_id=sess.id).delete()
     BrowserSession.query.filter_by(session_id=sess.id).delete()
     RuleMatch.query.filter_by(session_id=sess.id).delete()

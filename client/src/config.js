@@ -6,8 +6,9 @@
 const SERVER = typeof __OFM_SERVER_URL__ !== "undefined" ? __OFM_SERVER_URL__ : "";
 
 export const CFG = {
-  serverUrl:         SERVER,
-  collectEndpoint:   `${SERVER}/api/initial`,
-  heartbeatEndpoint: `${SERVER}/api/heartbeat`,
-  heartbeatMs:       30_000,
+  serverUrl:              SERVER,
+  collectEndpoint:        `${SERVER}/api/initial`,
+  heartbeatEndpoint:      `${SERVER}/api/heartbeat`,
+  behavioralEventEndpoint: `${SERVER}/api/behavioral_event`,
+  heartbeatMs:            30_000,
 };
