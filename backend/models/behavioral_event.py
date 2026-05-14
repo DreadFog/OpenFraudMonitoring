@@ -5,6 +5,10 @@ from sqlalchemy import func
 
 class BehavioralEvent(db.Model):
     __tablename__ = "behavioral_events"
+    __table_args__ = (
+        db.Index("ix_behavioral_events_session_event_type", "session_id", "event_type"),
+        db.Index("ix_behavioral_events_event_type_timestamp", "event_type", "timestamp"),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     session_id = db.Column(db.Integer, db.ForeignKey("sessions.id"), nullable=False, index=True)

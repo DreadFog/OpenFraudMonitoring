@@ -10,7 +10,7 @@ from models import Session, Fingerprint
 from rules.engine import build_session_query
 from services.schema import get_field_meta
 from services.auth import require_auth, require_role
-from custom_filters import get_custom_aggregate
+from filters import get_custom_aggregate
 
 dashboards_bp = Blueprint("dashboards", __name__, url_prefix="/api")
 

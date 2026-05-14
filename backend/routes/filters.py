@@ -6,7 +6,7 @@ from flask import Blueprint, request, jsonify
 from services.database import db
 from services.schema import get_schema, get_field_meta
 from services.auth import require_auth
-from custom_filters import get_custom_suggestions
+from filters import get_custom_suggestions
 
 filters_bp = Blueprint("filters", __name__, url_prefix="/api")
 

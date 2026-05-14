@@ -9,7 +9,7 @@ Used by:
 
 from sqlalchemy import and_, or_
 from services.schema import get_field_meta
-from custom_filters import get_custom_handler
+from filters import get_custom_handler
 
 # Lazy model resolution to avoid circular imports
 _models = {}
@@ -69,7 +69,7 @@ def build_session_query(filters, logic="AND", base_query=None):
     Each filter condition targeting a Fingerprint field is wrapped in an EXISTS
     subquery so that the result is always a set of Session rows.
 
-    Custom filters (registered in custom_filters.py) are dispatched to their
+    Custom filters (registered in filters/ package) are dispatched to their
     handler functions instead of being resolved via model column.
 
     Args:

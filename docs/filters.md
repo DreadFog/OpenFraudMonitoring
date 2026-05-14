@@ -61,6 +61,35 @@ For boolean fields, returns `["true", "false"]`. For number fields, returns `[]`
 
 ## Available Fields
 
+### Behavioral custom fields
+
+These fields are computed from the `behavioral_events` table and can be used in
+both dashboard filtering and rules.
+
+| Field name | Label | Type | Notes |
+|------------|-------|------|-------|
+| `behavior_button_click_count` | Behavior: Button Click Count | number | All-time per-session count of `button_click` events |
+| `behavior_form_submit_count` | Behavior: Form Submit Count | number | All-time per-session count of `form_submit` events |
+| `behavior_copy_count` | Behavior: Copy Count | number | All-time per-session count of `copy` events |
+| `behavior_paste_count` | Behavior: Paste Count | number | All-time per-session count of `paste` events |
+| `behavior_button_text` | Behavior: Button Text | string | Matches `data.text` in button click events |
+| `behavior_form_action` | Behavior: Form Action | string | Matches `data.action` in form submit events |
+| `behavior_form_method` | Behavior: Form Method | string | Matches `data.method` in form submit events |
+| `behavior_event_url` | Behavior: Event URL | string | Matches URL on behavioral events |
+
+Count fields support numeric operators (`=`, `≠`, `>`, `≥`, `<`, `≤`).
+String fields support string operators (`=`, `≠`, `contains`, `not contains`,
+`starts with`, `ends with`).
+
+Examples:
+
+```
+{"field":"behavior_copy_count","op":"gt","value":"5"}
+{"field":"behavior_form_submit_count","op":"gte","value":"3"}
+{"field":"behavior_button_text","op":"contains","value":"Log In"}
+{"field":"behavior_form_action","op":"eq","value":"/checkout"}
+```
+
 ### Session-level fields
 
 These are stored directly on the `sessions` table.

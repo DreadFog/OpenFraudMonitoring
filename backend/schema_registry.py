@@ -4,15 +4,15 @@ Schema registry — single source of truth for filterable fields.
 Aggregates:
   1. Session-level columns (hardcoded below)
   2. Auto-generated FPScanner fields (_generated_schema.py)
-  3. Custom filters (custom_filters.py) — manually maintained
+    3. Custom filters (filters/ package) — manually maintained
 
 To regenerate FPScanner fields after upstream updates:
     python generate_schema.py
-To add custom filters, edit custom_filters.py.
+To add custom filters, edit backend/filters/*.py.
 """
 
 from _generated_schema import SIGNAL_FIELDS, DETECTION_FIELDS, TOP_LEVEL_FIELDS
-from custom_filters import get_custom_fields
+from filters import get_custom_fields
 
 OPERATORS = {
     "string": [
@@ -84,7 +84,7 @@ for f in DETECTION_FIELDS:
         "column": f["column"],
     })
 
-# Custom filters (from custom_filters.py — manually maintained)
+# Custom filters (from filters/ package — manually maintained)
 # These have no model/column; they are dispatched to handler functions.
 for f in get_custom_fields():
     SCHEMA_FIELDS.append({

@@ -167,6 +167,38 @@ This also removes all associated `RuleMatch` rows.
 }
 ```
 
+### Behavioral: many copy/paste events
+
+```json
+{
+  "name": "HEAVY_CLIPBOARD_ACTIVITY",
+  "description": "Flags sessions with unusually high clipboard usage",
+  "rule_type": "realtime",
+  "logic": "OR",
+  "conditions": [
+    {"field": "behavior_copy_count", "op": "gte", "value": "6"},
+    {"field": "behavior_paste_count", "op": "gte", "value": "6"}
+  ],
+  "score_modifier": 20
+}
+```
+
+### Behavioral: suspicious form action
+
+```json
+{
+  "name": "SUSPICIOUS_FORM_TARGET",
+  "description": "Flags sessions posting forms to suspicious endpoints",
+  "rule_type": "realtime",
+  "logic": "AND",
+  "conditions": [
+    {"field": "behavior_form_submit_count", "op": "gte", "value": "3"},
+    {"field": "behavior_form_action", "op": "contains", "value": "checkout"}
+  ],
+  "score_modifier": 15
+}
+```
+
 ## How It Works Internally
 
 1. `routes/collect.py` and `routes/heartbeat.py` push `{"session_id": <int>, "type": "fingerprint"|"heartbeat"}` to the Redis list `ofm:events`.
