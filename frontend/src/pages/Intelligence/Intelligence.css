@@ -169,6 +169,26 @@
   color: #e6edf3;
 }
 
+.intel-filters-card {
+  margin-bottom: 12px;
+}
+
+.intel-filter-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.intel-filter-row .intel-input {
+  min-width: 220px;
+}
+
+.intel-filter-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
 /* Results */
 .intel-results {
   display: flex;
@@ -422,4 +442,14 @@
 .intel-enrich-scope {
   font-size: 11px;
   color: #8b949e;
+}
+
+@media (max-width: 900px) {
+  .intel-filter-row {
+    flex-direction: column;
+  }
+
+  .intel-filter-actions {
+    flex-wrap: wrap;
+  }
 }

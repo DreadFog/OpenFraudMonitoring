@@ -22,6 +22,7 @@ Sample created bundle based on the IPInfo connector
 """
 
 import logging
+import json
 from datetime import datetime
 from typing import Optional
 
@@ -46,7 +47,7 @@ logger = logging.getLogger(__name__)
 _TYPE_MAP = {
     "ipv4-addr":         (StixIPv4Addr,        lambda o: o.get("value", "")),
     "ipv6-addr":         (StixIPv6Addr,        lambda o: o.get("value", "")),
-    "user-agent":        (StixUserAgent,       lambda o: o.get("string", "")),
+    "user-agent":        (StixUserAgent,       lambda o: o.get("value") or o.get("string", "")),
     "autonomous-system": (StixAutonomousSystem, lambda o: str(o.get("number", ""))),
     "indicator":         (StixIndicator,       lambda o: o.get("pattern", "")[:2048]),
     "malware":           (StixMalware,         lambda o: o.get("name", "")),
@@ -72,7 +73,12 @@ def _upsert_typed(obj: dict, source_connector_id: int = None) -> None:
         return
 
     if otype == "location":
-        # Only treat as Country if a country code is present.
+        # Treat only country-like locations as StixCountry rows.
+        loc_type = (obj.get("x_ofm_location_type") or obj.get("x_opencti_location_type") or "").strip().lower()
+        if loc_type and loc_type != "country":
+            return
+
+        # Country may be ISO code or country name in external exports.
         country = obj.get("country")
         if not country:
             return
@@ -142,6 +148,12 @@ def ingest_bundle(bundle: dict, source_connector_id: int = None) -> int:
     Persist all objects from a STIX 2.1 bundle.  Returns the number of
     objects written/updated.
     """
+    if hasattr(bundle, "serialize"):
+        try:
+            bundle = json.loads(bundle.serialize())
+        except Exception:
+            logger.exception("Failed to serialize STIX bundle object")
+            return 0
     if not isinstance(bundle, dict):
         return 0
     objects = bundle.get("objects") or []

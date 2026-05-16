@@ -127,6 +127,10 @@ export default function Intelligence() {
   const [entities, setEntities] = useState([]);
   const [entitiesLoading, setEntitiesLoading] = useState(false);
   const [limit, setLimit] = useState(25);
+  const [filterSchema, setFilterSchema] = useState([]);
+  const [filters, setFilters] = useState([]);
+  const [filterLogic, setFilterLogic] = useState("AND");
+  const [filterDrafts, setFilterDrafts] = useState([{ field: "", op: "", value: "" }]);
 
   // Fetch available entity types on mount
   useEffect(() => {
@@ -140,16 +144,76 @@ export default function Intelligence() {
       .catch(() => setAvailableTypes([]));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-load latest entities when type or limit changes
+  // Fetch filter schema when entity type changes
+  useEffect(() => {
+    if (!entityType) {
+      setFilterSchema([]);
+      return;
+    }
+
+    api.getIntelFilterSchema(entityType)
+      .then((r) => {
+        setFilterSchema(r.fields || []);
+        setFilterDrafts([{ field: "", op: "", value: "" }]);
+        setFilters([]);
+      })
+      .catch(() => {
+        setFilterSchema([]);
+        setFilterDrafts([{ field: "", op: "", value: "" }]);
+        setFilters([]);
+      });
+  }, [entityType]);
+
+  // Auto-load latest entities when type/limit/filters change
   useEffect(() => {
     if (!entityType) return;
     setEntitiesLoading(true);
     setEntities([]);
-    api.listEntities(entityType, limit)
+    api.listEntities(entityType, limit, filters, filterLogic)
       .then((r) => setEntities(r.entities || []))
       .catch(() => setEntities([]))
       .finally(() => setEntitiesLoading(false));
-  }, [entityType, limit]);
+  }, [entityType, limit, filters, filterLogic]);
+
+  const schemaFieldByName = (name) => filterSchema.find((f) => f.name === name);
+
+  const addFilterDraft = () => {
+    setFilterDrafts((prev) => [...prev, { field: "", op: "", value: "" }]);
+  };
+
+  const removeFilterDraft = (idx) => {
+    setFilterDrafts((prev) => {
+      const next = prev.filter((_, i) => i !== idx);
+      return next.length ? next : [{ field: "", op: "", value: "" }];
+    });
+  };
+
+  const updateFilterDraft = (idx, patch) => {
+    setFilterDrafts((prev) => prev.map((row, i) => (i === idx ? { ...row, ...patch } : row)));
+  };
+
+  const applyFilters = () => {
+    const next = [];
+    for (const row of filterDrafts) {
+      if (!row.field || !row.op) continue;
+      const meta = schemaFieldByName(row.field);
+      if (!meta) continue;
+      const rawValue = row.value;
+      if (meta.type !== "boolean" && String(rawValue || "").trim() === "") continue;
+      next.push({
+        field: row.field,
+        op: row.op,
+        value: meta.type === "boolean" ? String(rawValue || "false") : String(rawValue),
+      });
+    }
+    setFilters(next);
+  };
+
+  const clearFilters = () => {
+    setFilterDrafts([{ field: "", op: "", value: "" }]);
+    setFilters([]);
+    setFilterLogic("AND");
+  };
 
   const runSearch = async (e) => {
     if (e) e.preventDefault();
@@ -300,6 +364,90 @@ export default function Intelligence() {
           )}
         </div>
       </form>
+
+      {!data && entityType && (
+        <section className="intel-card intel-filters-card">
+          <div className="intel-card-head">
+            <h2>Filters</h2>
+            <span className="intel-count">{filters.length} active</span>
+            <select
+              className="intel-limit-select"
+              value={filterLogic}
+              onChange={(e) => setFilterLogic(e.target.value)}
+            >
+              <option value="AND">Match all (AND)</option>
+              <option value="OR">Match any (OR)</option>
+            </select>
+          </div>
+
+          {filterDrafts.map((row, idx) => {
+            const meta = schemaFieldByName(row.field);
+            const operators = meta?.operators || [];
+            const isBoolean = meta?.type === "boolean";
+            return (
+              <div key={idx} className="intel-filter-row">
+                <select
+                  className="intel-select"
+                  value={row.field}
+                  onChange={(e) => updateFilterDraft(idx, { field: e.target.value, op: "", value: "" })}
+                >
+                  <option value="">Field…</option>
+                  {filterSchema.map((f) => (
+                    <option key={f.name} value={f.name}>{f.label}</option>
+                  ))}
+                </select>
+
+                <select
+                  className="intel-select"
+                  value={row.op}
+                  onChange={(e) => updateFilterDraft(idx, { op: e.target.value })}
+                  disabled={!row.field}
+                >
+                  <option value="">Operator…</option>
+                  {operators.map((op) => (
+                    <option key={op} value={op}>{op}</option>
+                  ))}
+                </select>
+
+                {isBoolean ? (
+                  <select
+                    className="intel-select"
+                    value={row.value || "false"}
+                    onChange={(e) => updateFilterDraft(idx, { value: e.target.value })}
+                    disabled={!row.op}
+                  >
+                    <option value="true">true</option>
+                    <option value="false">false</option>
+                  </select>
+                ) : (
+                  <input
+                    className="intel-input"
+                    type="text"
+                    value={row.value}
+                    onChange={(e) => updateFilterDraft(idx, { value: e.target.value })}
+                    placeholder={meta ? `Value (${meta.type})` : "Value…"}
+                    disabled={!row.op}
+                  />
+                )}
+
+                <button
+                  className="intel-btn"
+                  type="button"
+                  onClick={() => removeFilterDraft(idx)}
+                >
+                  Remove
+                </button>
+              </div>
+            );
+          })}
+
+          <div className="intel-filter-actions">
+            <button className="intel-btn" type="button" onClick={addFilterDraft}>+ Add filter</button>
+            <button className="intel-btn intel-btn-primary" type="button" onClick={applyFilters}>Apply filters</button>
+            <button className="intel-btn" type="button" onClick={clearFilters}>Clear</button>
+          </div>
+        </section>
+      )}
 
       {refreshNote && <div className="intel-note">{refreshNote}</div>}
       {error && <div className="intel-error">{error}</div>}

@@ -6,6 +6,7 @@ import "./NavHeader.css";
 const TABS = [
   { path: "/dashboard", label: "Dashboard" },
   { path: "/intelligence", label: "Intelligence" },
+  { path: "/exports", label: "Exports" },
 ];
 
 const ADMIN_TABS = [

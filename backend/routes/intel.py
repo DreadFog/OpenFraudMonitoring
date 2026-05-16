@@ -20,6 +20,7 @@ POST /api/intel/ingest
 """
 
 import ipaddress
+import json
 from datetime import datetime, timedelta
 import logging
 
@@ -29,35 +30,13 @@ from services.database import db
 from services.mq import publish_intel_request
 from services.intel_ingest import ingest_bundle
 from services.auth import require_auth, require_role
+from services.stix_filters import TYPE_TO_MODEL, get_filter_schema, apply_filters
 from models import (
     Session,
-    StixIPv4Addr,
-    StixIPv6Addr,
-    StixUserAgent,
-    StixAutonomousSystem,
-    StixCountry,
-    StixIndicator,
-    StixMalware,
-    StixCampaign,
-    StixIntrusionSet,
     StixRelationship,
 )
 
 intel_bp = Blueprint("intel", __name__, url_prefix="/api/intel")
-
-
-# Map relationship target / source types to their backing model.
-_TYPE_TO_MODEL = {
-    "ipv4-addr": StixIPv4Addr,
-    "ipv6-addr": StixIPv6Addr,
-    "user-agent": StixUserAgent,
-    "autonomous-system": StixAutonomousSystem,
-    "location": StixCountry,
-    "indicator": StixIndicator,
-    "malware": StixMalware,
-    "campaign": StixCampaign,
-    "intrusion-set": StixIntrusionSet,
-}
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +47,7 @@ def _stix_id_type(stix_id: str) -> str:
 def _resolve(stix_id: str):
     """Look up a STIX object across the per-type tables by stix_id."""
     t = _stix_id_type(stix_id)
-    Model = _TYPE_TO_MODEL.get(t)
+    Model = TYPE_TO_MODEL.get(t)
     if not Model:
         return None
     return Model.query.filter_by(stix_id=stix_id).first()
@@ -93,7 +72,7 @@ def _detect_ip_model(ip: str):
         v = ipaddress.ip_address(ip).version
     except (ValueError, TypeError):
         return None
-    return StixIPv4Addr if v == 4 else StixIPv6Addr
+    return TYPE_TO_MODEL["ipv4-addr"] if v == 4 else TYPE_TO_MODEL["ipv6-addr"]
 
 
 def _build_entity_response(obs, stix_type: str):
@@ -195,7 +174,7 @@ def get_ip_intel(value):
     if obs is None:
         return jsonify({"found": False, "value": value}), 200
 
-    stix_type = "ipv4-addr" if Model is StixIPv4Addr else "ipv6-addr"
+    stix_type = "ipv4-addr" if Model is TYPE_TO_MODEL["ipv4-addr"] else "ipv6-addr"
     return jsonify(_build_entity_response(obs, stix_type)), 200
 
 
@@ -214,7 +193,7 @@ def get_entity_intel():
     if not stix_type or not value:
         return jsonify({"error": "type and value are required"}), 400
 
-    Model = _TYPE_TO_MODEL.get(stix_type)
+    Model = TYPE_TO_MODEL.get(stix_type)
     if Model is None:
         return jsonify({"error": f"unknown entity type: {stix_type}"}), 400
 
@@ -225,12 +204,29 @@ def get_entity_intel():
     return jsonify(_build_entity_response(obs, stix_type)), 200
 
 
+@intel_bp.route("/filter-schema", methods=["GET"])
+@require_auth
+def filter_schema():
+    """Return filter schema for an entity type (or all known types)."""
+    stix_type = (request.args.get("type") or "").strip().lower()
+    if stix_type:
+        schema = get_filter_schema(stix_type)
+        if schema is None:
+            return jsonify({"error": f"unknown entity type: {stix_type}"}), 400
+        return jsonify({"type": stix_type, "fields": schema}), 200
+
+    all_schemas = {}
+    for t in TYPE_TO_MODEL:
+        all_schemas[t] = get_filter_schema(t) or []
+    return jsonify({"schemas": all_schemas}), 200
+
+
 @intel_bp.route("/types", methods=["GET"])
 @require_auth
 def entity_types():
     """Return the list of STIX entity types that have at least one record."""
     available = []
-    for stix_type, Model in _TYPE_TO_MODEL.items():
+    for stix_type, Model in TYPE_TO_MODEL.items():
         count = Model.query.count()
         if count > 0:
             available.append({"type": stix_type, "count": count})
@@ -243,25 +239,48 @@ def list_entities():
     """Return the latest N entities of a given STIX type.
 
     Query params:
-        type   – STIX type key (e.g. ipv4-addr, user-agent)
-        limit  – max results (default 25, max 500)
+        type    – STIX type key (e.g. ipv4-addr, user-agent)
+        limit   – max results (default 25, max 500)
+        logic   – AND | OR (default AND)
+        filters – JSON array of conditions [{field, op, value}, ...]
     """
     stix_type = (request.args.get("type") or "").strip().lower()
+    logic = (request.args.get("logic") or "AND").strip().upper()
+    filters_raw = request.args.get("filters", "[]")
+
     try:
         limit = min(max(1, int(request.args.get("limit", "25"))), 500)
     except (ValueError, TypeError):
         limit = 25
 
-    Model = _TYPE_TO_MODEL.get(stix_type)
+    try:
+        filters = json.loads(filters_raw)
+    except (ValueError, TypeError):
+        return jsonify({"error": "invalid filters JSON"}), 400
+
+    if not isinstance(filters, list):
+        return jsonify({"error": "filters must be an array"}), 400
+
+    if logic not in ("AND", "OR"):
+        return jsonify({"error": "logic must be AND or OR"}), 400
+
+    Model = TYPE_TO_MODEL.get(stix_type)
     if Model is None:
         return jsonify({"error": f"unknown entity type: {stix_type}"}), 400
 
     days = int(current_app.config.get("INTEL_DECAY_DAYS", 7))
-    rows = Model.query.order_by(Model.created_at_platform.desc()).limit(limit).all()
+    query = Model.query
+    query, err = apply_filters(query, stix_type, filters, logic=logic)
+    if err:
+        return jsonify({"error": err}), 400
+
+    rows = query.order_by(Model.created_at_platform.desc()).limit(limit).all()
     _apply_decay(rows, days)
 
     return jsonify({
         "type": stix_type,
+        "logic": logic,
+        "filters_applied": len(filters),
         "entities": [
             {**r.to_dict(), "stix_type": stix_type}
             for r in rows

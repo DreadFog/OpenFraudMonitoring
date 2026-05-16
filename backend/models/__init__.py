@@ -11,6 +11,7 @@ from models.associations import SessionURL, BrowserSession
 from models.dashboard import Dashboard
 from models.user import User, ApiToken
 from models.cors import AllowedOrigin
+from models.taxii_feed import TaxiiFeed
 from models.stix import (
     StixIPv4Addr,
     StixIPv6Addr,
@@ -37,6 +38,7 @@ __all__ = [
     "User",
     "ApiToken",
     "AllowedOrigin",
+    "TaxiiFeed",
     "StixIPv4Addr",
     "StixIPv6Addr",
     "StixUserAgent",

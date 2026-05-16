@@ -38,11 +38,10 @@ def create_app():
     app.config.from_object(Config)
     init_db(app)
 
-    # Retry — the DB container may still be initializing on first boot
+    # Retry seeding in case dependencies are not fully ready.
     with app.app_context():
         for attempt in range(1, 11):
             try:
-                db.create_all()
                 seed_default_rules()
                 break
             except Exception as e:

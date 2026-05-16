@@ -6,6 +6,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": "http://localhost:5000",
+      "/taxii2": "http://localhost:5000",
       "/ofm.js": "http://localhost:5000",
     },
   },

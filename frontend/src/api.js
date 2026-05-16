@@ -313,8 +313,22 @@ export const api = {
     return res.json();
   },
 
-  listEntities: async (type, limit = 25) => {
-    const res = await authFetch(`/api/intel/entities?type=${encodeURIComponent(type)}&limit=${limit}`);
+  getIntelFilterSchema: async (type) => {
+    const params = type ? `?type=${encodeURIComponent(type)}` : "";
+    const res = await authFetch(`/api/intel/filter-schema${params}`);
+    if (!res.ok) throw new Error("Failed to fetch intel filter schema");
+    return res.json();
+  },
+
+  listEntities: async (type, limit = 25, filters = [], logic = "AND") => {
+    const params = new URLSearchParams();
+    params.set("type", type);
+    params.set("limit", String(limit));
+    params.set("logic", logic || "AND");
+    if (Array.isArray(filters) && filters.length > 0) {
+      params.set("filters", JSON.stringify(filters));
+    }
+    const res = await authFetch(`/api/intel/entities?${params.toString()}`);
     if (!res.ok) throw new Error("Failed to fetch entities");
     return res.json();
   },
@@ -333,6 +347,50 @@ export const api = {
     const params = entityType ? `?entity_type=${encodeURIComponent(entityType)}` : "";
     const res = await authFetch(`/api/connectors/enrichers${params}`);
     if (!res.ok) throw new Error("Failed to fetch enrichers");
+    return res.json();
+  },
+
+  // ── TAXII Feeds ──
+
+  listTaxiiFeeds: async (includeInactive = false) => {
+    const params = includeInactive ? "?include_inactive=true" : "";
+    const res = await authFetch(`/api/taxii-feeds${params}`);
+    if (!res.ok) throw new Error("Failed to fetch TAXII feeds");
+    return res.json();
+  },
+
+  createTaxiiFeed: async (payload) => {
+    const res = await authFetch("/api/taxii-feeds", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || "Failed to create TAXII feed");
+    }
+    return res.json();
+  },
+
+  updateTaxiiFeed: async (id, payload) => {
+    const res = await authFetch(`/api/taxii-feeds/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || "Failed to update TAXII feed");
+    }
+    return res.json();
+  },
+
+  deleteTaxiiFeed: async (id) => {
+    const res = await authFetch(`/api/taxii-feeds/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || "Failed to delete TAXII feed");
+    }
     return res.json();
   },
 
