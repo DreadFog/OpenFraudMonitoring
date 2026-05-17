@@ -110,14 +110,29 @@ export default {
     // Form submit: send directly
     document.addEventListener("submit", (e) => {
       const form = e.target;
-      const fieldNames = Array.from(form.querySelectorAll("input, select, textarea"))
-        .map(el => el.name || el.id || "")
-        .filter(Boolean);
-      sendDirect("form_submit", {
+      const fields = Array.from(form.querySelectorAll("input, select, textarea"))
+        .map(el => ({
+          name: el.name || el.id || "",
+          type: el.type || "",
+          ...(CFG.captureFormValues && { value: el.value || "" }),
+        }))
+        .filter(f => f.name);
+      
+      const fieldNames = fields.map(f => f.name);
+      const payload = {
         action: form.action || "",
         method: form.method || "POST",
         fieldNames,
-      });
+      };
+      
+      if (CFG.captureFormValues) {
+        payload.fields = fields;
+        console.debug("[OFM] Form submit with captured values:", payload);
+      } else {
+        console.debug("[OFM] Form submit without captured values (captureFormValues=" + CFG.captureFormValues + ")");
+      }
+      
+      sendDirect("form_submit", payload);
     }, { passive: true });
 
     // Copy: send directly with length only (no content)

