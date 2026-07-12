@@ -30,13 +30,23 @@ OpenFraudMonitoring is a multi-service system that collects browser fingerprints
 
 | Service | Image/Stack | Purpose |
 |---------|------------|---------|
-| `backend` | Python 3.11 / Flask | REST API — receives fingerprints and heartbeats, serves data to the dashboard, routes enrichment requests |
+| `backend` | Python 3.11 / Flask | REST API — receives fingerprints and heartbeats, serves data to the dashboard, routes enrichment requests, JWT/API-token auth (RBAC), TAXII 2.1 server |
 | `worker` | Same image, `python worker.py` | Consumes events from Redis, evaluates detection rules, updates risk scores, ingests STIX bundles from connectors |
 | `frontend` | React / Vite / nginx | Dashboard UI with customizable widgets, intelligence browser, logging page |
 | `db` | PostgreSQL 16 | Persistent storage (sessions + STIX intel) |
 | `redis` | Redis 7 | Event queue between backend and worker, connector heartbeats and metadata |
 | `rabbitmq` | RabbitMQ 3.13 | Message bus for connector intel request/response |
 | `connector-*` | Python 3.11 | Pluggable enrichment connectors (see [connectors.md](connectors.md)) |
+
+## Authentication & Authorization
+
+All dashboard and admin endpoints require authentication; ingestion endpoints (`/api/initial`, `/api/heartbeat`, `/api/behavioral_event`) are public.
+
+- **Login** (`POST /api/auth/login`) returns a short-lived **JWT** (HS256, signed with `JWT_SECRET`, expiry `JWT_EXPIRY_HOURS`, default 24h).
+- **API tokens** (format `ofm_<32 hex>`, stored SHA-256 hashed) provide non-interactive access. Both JWTs and API tokens are sent as `Authorization: Bearer <token>`.
+- **Roles**: `user`, `admin`, `connector`. Connector accounts have no password and are used to attribute ingested intel to its source.
+- Enforced by the `@require_auth` and `@require_role(...)` decorators in `services/auth.py`.
+- A default admin is seeded on startup from `OFM_ADMIN_USERNAME` / `OFM_ADMIN_PASSWORD`. `OFM_ADMIN_TOKEN` is the shared token connectors use to call `POST /api/intel/ingest`.
 
 ## Data Flow
 
@@ -47,7 +57,7 @@ A browser loads `ofm.js`. On page load, the client:
 2. FPScanner generates a deterministic `fsid` (JA4-inspired fingerprint ID)
 3. The encrypted fingerprint is sent to `POST /api/initial`
 
-Every 30 seconds, a heartbeat with behavioral data (mouse, clicks, keys, scrolls, copy/paste) is sent to `POST /api/heartbeat`.
+Every 30 seconds, a heartbeat with low-signal behavioral data (mouse, clicks, keys, scrolls) is sent to `POST /api/heartbeat`. High-signal events (button clicks, form submits, copy/paste) are sent immediately to `POST /api/behavioral_event`.
 
 ### 2. Ingestion (Backend)
 
@@ -64,6 +74,9 @@ On `/api/heartbeat`:
 - Look up the session via the browser session ID
 - Store a `Heartbeat` row with denormalized behavior counts + raw JSONB
 - Push a Redis event
+
+On `/api/behavioral_event`:
+- Store a `BehavioralEvent` row (`event_type`, `url`, `data` JSONB) linked to the session. These power the `behavior_*` filter/rule fields (see [filters.md](filters.md)).
 
 ### 3. Rule Evaluation (Worker)
 
@@ -122,6 +135,8 @@ sessions
   │     │   copy_pastes, navigation_events
   │     └── raw_behavior (JSONB)
   │
+  ├──< behavioral_events
+  │     └── id, session_id, timestamp, event_type, url, data (JSONB)
   ├──< session_urls (session_id, url — unique pair)
   └──< browser_sessions (session_id, browser_session_id — unique)
 
@@ -132,6 +147,14 @@ rules
 
 dashboards
   ├── id, name, widgets (JSONB), created_at, updated_at
+
+users
+  ├── id, username, password_hash (nullable), role (user|admin|connector)
+  ├── is_active, created_at, updated_at
+  └──< api_tokens (token_hash [SHA-256], token_prefix, name, expires_at)
+
+allowed_origins   ← dynamic CORS allowlist (origin, enabled)
+taxii_feeds       ← published TAXII 2.1 collections (uuid, name, filters)
 ```
 
 ### STIX 2.1 Tables
@@ -183,28 +206,37 @@ STIX IDs are deterministic (UUIDv5 with OASIS namespace + canonical JSON), ensur
 
 ```
 backend/
-  config.py              # Centralized env-based config
-  app.py                 # Flask app factory, route registration
+  init/config.py         # Centralized env-based config
+  app.py                 # Flask app factory, dynamic CORS, route registration
   worker.py              # Redis consumer + periodic evaluator + STIX ingest
   services/
     database.py          # SQLAlchemy setup
+    auth.py              # Password hashing, JWT, API tokens, auth decorators
     event_queue.py       # Redis queue helpers
     schema.py            # Schema registry (filterable fields)
     mq.py                # RabbitMQ publish helpers
     intel_ingest.py      # STIX bundle → database ingestion
     stix_store.py        # get_or_create helpers for STIX entities
+    stix_filters.py      # STIX filtering for TAXII feeds
+    cors_origins.py      # Dynamic CORS origin validation
     log_shipper.py       # Centralized log shipping to Redis
   models/
     session.py           # Session model (with STIX observable FKs)
     fingerprint.py       # Fingerprint model + extract_fields()
     heartbeat.py         # Heartbeat model + to_summary()
+    behavioral_event.py  # BehavioralEvent model (high-signal events)
     rule.py              # Rule + RuleMatch models
     associations.py      # SessionURL, BrowserSession
     dashboard.py         # Dashboard model (widget layouts)
+    user.py              # User + ApiToken models (auth/RBAC)
+    cors.py              # AllowedOrigin model (dynamic CORS)
+    taxii_feed.py        # TaxiiFeed model (published collections)
     stix.py              # All STIX 2.1 models (9 entity types + relationship)
   routes/
+    auth.py              # /api/auth — login, profile, tokens, user CRUD
     collect.py           # POST /api/initial (creates STIX observables)
     heartbeat.py         # POST /api/heartbeat
+    behavioral_event.py  # POST /api/behavioral_event
     sessions.py          # GET/DELETE /api/sessions
     stats.py             # GET /api/stats
     rules.py             # CRUD /api/rules
@@ -212,9 +244,13 @@ backend/
     intel.py             # Intelligence endpoints (entity lookup, enrichment)
     connectors.py        # Connector status, enricher listing, logs
     dashboards.py        # CRUD /api/dashboards
+    cors.py              # /api/admin/cors — CORS allowlist management
+    taxii.py             # /taxii2 — TAXII 2.1 server
+    taxii_feeds.py       # /api/taxii-feeds — feed management
   rules/
     engine.py            # Filter → SQLAlchemy query builder
     defaults/            # Built-in detection rules (JSON)
+  filters/               # Behavioral filter registry + IP filters + suggestions
   analysis/
     risk.py              # Built-in risk scoring (bot detection)
 
@@ -241,6 +277,11 @@ frontend/
       Intelligence/      # STIX entity browser + enrichment
       Logging/           # Connector health + system logs
       Landing/           # Welcome page
+      Login/             # Authentication
+      Profile/           # Password change + API token management
+      Users/             # Admin user management
+      Rules/             # Admin rule management
+      Exports/           # TAXII feed / data exports
     components/
       FilterBuilder/     # Composable filter conditions
       WidgetWizard/      # Widget creation wizard
@@ -250,12 +291,31 @@ frontend/
 
 ## API Endpoints
 
+All `/api/*` endpoints except the ingestion ones require an `Authorization: Bearer <token>` header (JWT or API token). Admin-only endpoints additionally require the `admin` role.
+
+### Authentication
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/auth/login` | Log in, returns a JWT |
+| GET | `/api/auth/me` | Current user profile + token metadata |
+| PUT | `/api/auth/password` | Change own password |
+| GET | `/api/auth/tokens` | List own API tokens |
+| POST | `/api/auth/tokens` | Create an API token (raw value returned once) |
+| DELETE | `/api/auth/tokens/<id>` | Revoke an API token |
+| GET | `/api/auth/users` | List users (admin) |
+| POST | `/api/auth/users` | Create user (admin) |
+| PUT | `/api/auth/users/<id>` | Update user (admin) |
+| DELETE | `/api/auth/users/<id>` | Delete user (admin) |
+| POST | `/api/auth/users/<id>/tokens` | Issue a token for another user (admin) |
+
 ### Session & Collection
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/initial` | Receive initial fingerprint |
-| POST | `/api/heartbeat` | Receive behavioral update |
+| POST | `/api/initial` | Receive initial fingerprint (public) |
+| POST | `/api/heartbeat` | Receive behavioral update (public) |
+| POST | `/api/behavioral_event` | Receive a high-signal behavioral event (public) |
 | GET | `/api/sessions` | List sessions (supports `?filters=[...]`) |
 | GET | `/api/sessions/<fsid>` | Session detail |
 | DELETE | `/api/sessions/<fsid>` | Delete session and all child data |
@@ -290,6 +350,7 @@ frontend/
 | GET | `/api/intel/types` | List entity types with counts |
 | GET | `/api/intel/entities?type=&limit=` | List latest entities of a type |
 | GET | `/api/intel/entity?type=&value=` | Full entity detail (relationships, AS, country, session count) |
+| GET | `/api/intel/filter-schema?type=` | Filterable field schema for an entity type |
 | GET | `/api/intel/ip/<value>` | IP-specific lookup (used by the popover) |
 | POST | `/api/intel/lookup` | Enqueue enrichment request to a connector |
 | POST | `/api/intel/ingest` | Direct STIX bundle ingest (connector auth) |
@@ -301,6 +362,30 @@ frontend/
 | GET | `/api/connectors/status` | All connector status (health, mode, type, scope, queue depth) |
 | GET | `/api/connectors/enrichers?entity_type=` | List healthy enrichers for an entity type |
 | GET | `/api/connectors/logs?tail=100` | Recent system log entries |
+
+### Admin — CORS Allowlist
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/admin/cors/origins` | List allowed origins |
+| POST | `/api/admin/cors/origins` | Add an allowed origin |
+| DELETE | `/api/admin/cors/origins/<id>` | Remove an origin |
+| PATCH | `/api/admin/cors/origins/<id>/toggle` | Enable/disable an origin |
+
+### TAXII 2.1
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/taxii-feeds` | List published feeds |
+| GET | `/api/taxii-feeds/<id>` | Feed detail |
+| POST | `/api/taxii-feeds` | Create a feed |
+| PUT | `/api/taxii-feeds/<id>` | Update a feed |
+| DELETE | `/api/taxii-feeds/<id>` | Delete a feed |
+| GET | `/taxii2/` | TAXII discovery |
+| GET | `/taxii2/default/` | API root |
+| GET | `/taxii2/default/collections/` | List collections |
+| GET | `/taxii2/default/collections/<id>/` | Collection metadata |
+| GET | `/taxii2/default/collections/<id>/objects/` | STIX objects in a collection |
 
 ## Built-in Risk Scoring
 
