@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { ResponsiveGridLayout, useContainerWidth } from "react-grid-layout";
 import { api } from "../../api";
+import { usePersistentState } from "../../hooks/usePersistentState";
 import FilterBuilder from "../../components/FilterBuilder/FilterBuilder";
 import WidgetWizard from "../../components/WidgetWizard/WidgetWizard";
 import IpIntelPopover from "../../components/IpIntelPopover/IpIntelPopover";
@@ -165,12 +166,12 @@ export default function Dashboard() {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [schema, setSchema] = useState([]);
-  const [filters, setFilters] = useState([]);
+  const [filters, setFilters] = usePersistentState("dashboard.filters", []);
   const [connected, setConnected] = useState(true);
-  const [sortBy, setSortBy] = useState("last_seen");
-  const [sortOrder, setSortOrder] = useState("desc");
+  const [sortBy, setSortBy] = usePersistentState("dashboard.sortBy", "last_seen");
+  const [sortOrder, setSortOrder] = usePersistentState("dashboard.sortOrder", "desc");
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = usePersistentState("dashboard.perPage", 10);
   const [totalSessions, setTotalSessions] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const navigate = useNavigate();
@@ -512,7 +513,17 @@ export default function Dashboard() {
                     : `${Math.round(timeSinceLastSeen / 86400)}d ago`;
 
                 return (
-                  <tr key={session.full_fsid} onClick={() => navigate(`/session/${session.full_fsid}`)}>
+                  <tr
+                    key={session.full_fsid}
+                    onClick={() => navigate(`/session/${session.full_fsid}`)}
+                    onAuxClick={(e) => {
+                      if (e.button === 1) {
+                        e.preventDefault();
+                        window.open(`/session/${session.full_fsid}`, "_blank", "noopener");
+                      }
+                    }}
+                    onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }}
+                  >
                     <td className="device-id">{session.fsid}</td>
                     <td>{session.client_ip} <IpIntelPopover ip={session.client_ip} /></td>
                     <td>

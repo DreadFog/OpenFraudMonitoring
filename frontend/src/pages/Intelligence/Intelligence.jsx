@@ -1,6 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { api } from "../../api";
+import { usePersistentState } from "../../hooks/usePersistentState";
 import "./Intelligence.css";
+
+function entityUrl(type, value) {
+  return `/intelligence?type=${encodeURIComponent(type)}&value=${encodeURIComponent(value)}`;
+}
+
+function openEntityInNewTab(type, value) {
+  window.open(entityUrl(type, value), "_blank", "noopener");
+}
 
 function parseIPv4(ip) {
   const parts = ip.split(".");
@@ -77,7 +87,14 @@ function ObjectLabel({ obj, onClick }) {
   const { stix_type, value, raw } = obj;
   const r = raw || {};
   const wrap = (content) => onClick
-    ? <span className="intel-link" onClick={(e) => { e.stopPropagation(); onClick(stix_type, value); }}>{content}</span>
+    ? <span
+        className="intel-link"
+        onClick={(e) => { e.stopPropagation(); onClick(stix_type, value); }}
+        onAuxClick={(e) => {
+          if (e.button === 1) { e.preventDefault(); e.stopPropagation(); openEntityInNewTab(stix_type, value); }
+        }}
+        onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }}
+      >{content}</span>
     : <span>{content}</span>;
   if (stix_type === "indicator") return wrap(<><b>indicator</b> · {r.name || r.pattern || value}</>);
   if (stix_type === "malware") return wrap(<><b>malware</b> · {r.name || value}</>);
@@ -113,7 +130,8 @@ const TYPE_PLACEHOLDERS = {
 };
 
 export default function Intelligence() {
-  const [entityType, setEntityType] = useState("");
+  const [searchParams] = useSearchParams();
+  const [entityType, setEntityType] = usePersistentState("intel.entityType", "");
   const [availableTypes, setAvailableTypes] = useState([]);
   const [query, setQuery] = useState("");
   const [data, setData] = useState(null);
@@ -126,22 +144,41 @@ export default function Intelligence() {
   const [enrichOpen, setEnrichOpen] = useState(false);
   const [entities, setEntities] = useState([]);
   const [entitiesLoading, setEntitiesLoading] = useState(false);
-  const [limit, setLimit] = useState(25);
+  const [limit, setLimit] = usePersistentState("intel.limit", 25);
   const [filterSchema, setFilterSchema] = useState([]);
-  const [filters, setFilters] = useState([]);
-  const [filterLogic, setFilterLogic] = useState("AND");
-  const [filterDrafts, setFilterDrafts] = useState([{ field: "", op: "", value: "" }]);
+  const [filters, setFilters] = usePersistentState("intel.filters", []);
+  const [filterLogic, setFilterLogic] = usePersistentState("intel.filterLogic", "AND");
+  const [filterDrafts, setFilterDrafts] = usePersistentState("intel.filterDrafts", [{ field: "", op: "", value: "" }]);
+
+  // Filters are scoped to a specific entity type's schema. We must not clear
+  // persisted filters on the very first schema load (mount), only when the user
+  // actually switches entity type afterwards.
+  const didLoadSchema = useRef(false);
 
   // Fetch available entity types on mount
   useEffect(() => {
+    const deepLinkType = searchParams.get("type");
     api.getIntelTypes()
       .then((r) => {
-        setAvailableTypes(r.types || []);
-        if (r.types?.length > 0 && !entityType) {
-          setEntityType(r.types[0].type);
+        const types = r.types || [];
+        setAvailableTypes(types);
+        if (types.length > 0) {
+          // Fall back to the first type if nothing is stored or the stored type
+          // is no longer available. Skip the fallback when a deep-link is present,
+          // since selectEntity below sets the entity type from the URL.
+          const stored = entityType && types.some((t) => t.type === entityType);
+          if (!stored && !deepLinkType) setEntityType(types[0].type);
         }
       })
       .catch(() => setAvailableTypes([]));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Deep-link support: load the entity from ?type=&value= on mount (used when
+  // opening an entity in a new tab via middle-click).
+  useEffect(() => {
+    const t = searchParams.get("type");
+    const v = searchParams.get("value");
+    if (t && v) selectEntity(t, v);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch filter schema when entity type changes
@@ -151,18 +188,24 @@ export default function Intelligence() {
       return;
     }
 
+    const clearIfSwitched = () => {
+      if (didLoadSchema.current) {
+        setFilterDrafts([{ field: "", op: "", value: "" }]);
+        setFilters([]);
+      }
+      didLoadSchema.current = true;
+    };
+
     api.getIntelFilterSchema(entityType)
       .then((r) => {
         setFilterSchema(r.fields || []);
-        setFilterDrafts([{ field: "", op: "", value: "" }]);
-        setFilters([]);
+        clearIfSwitched();
       })
       .catch(() => {
         setFilterSchema([]);
-        setFilterDrafts([{ field: "", op: "", value: "" }]);
-        setFilters([]);
+        clearIfSwitched();
       });
-  }, [entityType]);
+  }, [entityType]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-load latest entities when type/limit/filters change
   useEffect(() => {
@@ -490,6 +533,10 @@ export default function Intelligence() {
                       key={ent.stix_id}
                       className="intel-entity-row"
                       onClick={() => selectEntity(entityType, ent.value)}
+                      onAuxClick={(e) => {
+                        if (e.button === 1) { e.preventDefault(); openEntityInNewTab(entityType, ent.value); }
+                      }}
+                      onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }}
                     >
                       <td className="intel-entity-value">{ent.value}</td>
                       <td>{fmtDate(ent.created_at_platform)}</td>
