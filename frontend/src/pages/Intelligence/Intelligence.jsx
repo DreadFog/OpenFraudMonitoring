@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { usePersistentState } from "../../hooks/usePersistentState";
+import { buildGraphUrl, stixSeed } from "../Graph/graphLink";
 import "./Intelligence.css";
 
 function entityUrl(type, value) {
@@ -131,6 +132,7 @@ const TYPE_PLACEHOLDERS = {
 
 export default function Intelligence() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [entityType, setEntityType] = usePersistentState("intel.entityType", "");
   const [availableTypes, setAvailableTypes] = useState([]);
   const [query, setQuery] = useState("");
@@ -406,6 +408,16 @@ export default function Intelligence() {
             </div>
           )}
         </div>
+        {data && data.found && data.observable && (
+          <button
+            className="intel-btn"
+            type="button"
+            onClick={() => navigate(buildGraphUrl([stixSeed(data.observable.stix_type, data.observable.value)]))}
+            title="Explore this entity in the graph view"
+          >
+            🕸 Explore in graph
+          </button>
+        )}
       </form>
 
       {!data && entityType && (

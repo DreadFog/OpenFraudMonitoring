@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import IpIntelPopover from "../../components/IpIntelPopover/IpIntelPopover";
+import { buildGraphUrl, sessionSeed } from "../Graph/graphLink";
 import "./SessionDetail.css";
 
 function Field({ label, value, popoverIp }) {
@@ -125,6 +126,9 @@ export default function SessionDetail() {
         <button className="back-btn" onClick={() => navigate("/")}>← Back</button>
         <h1>Session Detail</h1>
         <span className={`risk-badge ${riskClass}`}>{data.risk_score}</span>
+        <button className="graph-explore-btn" onClick={() => navigate(buildGraphUrl([sessionSeed(data.fsid)]))}>
+          🕸 Explore in graph
+        </button>
         <button className="delete-btn" onClick={handleDelete} disabled={deleting}>
           {deleting ? "Deleting…" : "🗑 Delete"}
         </button>

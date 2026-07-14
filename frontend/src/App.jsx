@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard/Dashboard";
 import SessionDetail from "./pages/SessionDetail/SessionDetail";
 import Landing from "./pages/Landing/Landing";
 import Intelligence from "./pages/Intelligence/Intelligence";
+import Graph from "./pages/Graph/Graph";
 import ExportsPage from "./pages/Exports/Exports";
 import Administration from "./pages/Logging/Logging";
 import RulesPage from "./pages/Rules/Rules";
@@ -49,6 +50,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/intelligence" element={<ProtectedRoute><Intelligence /></ProtectedRoute>} />
+            <Route path="/graph" element={<ProtectedRoute><Graph /></ProtectedRoute>} />
             <Route path="/exports" element={<ProtectedRoute><ExportsPage /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute><Administration /></ProtectedRoute>} />
             <Route path="/rules" element={<AdminRoute><RulesPage /></AdminRoute>} />

@@ -33,8 +33,34 @@ def _create_all_safely():
             conn.commit()
 
 
+# Idempotent column additions for tables that already exist in older
+# deployments.  This repo has no migration tool, so `create_all` will not add
+# new columns to existing tables — we apply the small set of additive changes
+# here.  Each statement is safe to run repeatedly.
+_COLUMN_UPGRADES = [
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS settings JSONB NOT NULL DEFAULT '{}'::jsonb",
+]
+
+
+def _apply_column_upgrades():
+    """Apply additive column upgrades on PostgreSQL (no-op elsewhere)."""
+    engine = db.engine
+    if engine.dialect.name != "postgresql":
+        return
+    with engine.connect() as conn:
+        conn.execute(text("SELECT pg_advisory_lock(:k)"), {"k": _SCHEMA_INIT_LOCK_KEY})
+        try:
+            for stmt in _COLUMN_UPGRADES:
+                conn.execute(text(stmt))
+            conn.commit()
+        finally:
+            conn.execute(text("SELECT pg_advisory_unlock(:k)"), {"k": _SCHEMA_INIT_LOCK_KEY})
+            conn.commit()
+
+
 def init_db(app):
     """Initialize the database with the Flask app"""
     db.init_app(app)
     with app.app_context():
         _create_all_safely()
+        _apply_column_upgrades()

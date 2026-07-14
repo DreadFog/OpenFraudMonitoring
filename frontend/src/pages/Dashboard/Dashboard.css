@@ -820,3 +820,31 @@ body {
   font-size: 13px;
   cursor: pointer;
 }
+
+.selection-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+}
+
+.selection-count {
+  font-size: 13px;
+  color: #c9d1d9;
+  font-weight: 600;
+}
+
+.sessions-table th.select-col,
+.sessions-table td.select-col {
+  width: 32px;
+  text-align: center;
+}
+
+.sessions-table td.select-col input,
+.sessions-table th.select-col input {
+  cursor: pointer;
+}

@@ -51,6 +51,22 @@
   transition: background 0.15s;
 }
 
+.graph-explore-btn {
+  margin-left: auto;
+  padding: 6px 14px;
+  background: #17223b;
+  color: #93c5fd;
+  border: 1px solid #274060;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+
+.graph-explore-btn:hover {
+  background: #274060;
+}
+
 .delete-btn:hover:not(:disabled) {
   background: #6e2b2b;
 }

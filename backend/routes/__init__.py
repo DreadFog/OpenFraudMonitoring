@@ -16,6 +16,8 @@ from routes.taxii import taxii_bp
 from routes.taxii_feeds import taxii_feeds_bp
 from routes.connectors import connectors_bp
 from routes.cors import cors_bp
+from routes.settings import settings_bp
+from routes.graph import graph_bp
 
 
 def register_routes(app):
@@ -34,3 +36,5 @@ def register_routes(app):
     app.register_blueprint(taxii_feeds_bp)
     app.register_blueprint(connectors_bp)
     app.register_blueprint(cors_bp)
+    app.register_blueprint(settings_bp)
+    app.register_blueprint(graph_bp)

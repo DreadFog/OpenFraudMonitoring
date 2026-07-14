@@ -6,6 +6,7 @@ import { usePersistentState } from "../../hooks/usePersistentState";
 import FilterBuilder from "../../components/FilterBuilder/FilterBuilder";
 import WidgetWizard from "../../components/WidgetWizard/WidgetWizard";
 import IpIntelPopover from "../../components/IpIntelPopover/IpIntelPopover";
+import { buildGraphUrl, sessionSeed } from "../Graph/graphLink";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import "./Dashboard.css";
@@ -174,6 +175,7 @@ export default function Dashboard() {
   const [perPage, setPerPage] = usePersistentState("dashboard.perPage", 10);
   const [totalSessions, setTotalSessions] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [selectedFsids, setSelectedFsids] = useState(() => new Set());
   const navigate = useNavigate();
   const { containerRef, width: containerWidth } = useContainerWidth({ initialWidth: 1200 });
 
@@ -363,6 +365,35 @@ export default function Dashboard() {
     return sortOrder === "asc" ? " ▲" : " ▼";
   };
 
+  const toggleSelected = (fsid) => {
+    setSelectedFsids((prev) => {
+      const next = new Set(prev);
+      if (next.has(fsid)) next.delete(fsid);
+      else next.add(fsid);
+      return next;
+    });
+  };
+
+  const allPageSelected = sessions.length > 0 && sessions.every((s) => selectedFsids.has(s.full_fsid));
+
+  const toggleSelectAllPage = () => {
+    setSelectedFsids((prev) => {
+      const next = new Set(prev);
+      if (allPageSelected) {
+        sessions.forEach((s) => next.delete(s.full_fsid));
+      } else {
+        sessions.forEach((s) => next.add(s.full_fsid));
+      }
+      return next;
+    });
+  };
+
+  const exploreSelectedInGraph = () => {
+    const seeds = Array.from(selectedFsids).map((fsid) => sessionSeed(fsid));
+    if (seeds.length === 0) return;
+    navigate(buildGraphUrl(seeds));
+  };
+
   if (loading) {
     return <div className="container"><p>Loading...</p></div>;
   }
@@ -454,6 +485,17 @@ export default function Dashboard() {
 
       {/* Sessions Table */}
       <div className="table-wrapper">
+        {selectedFsids.size > 0 && (
+          <div className="selection-bar">
+            <span className="selection-count">{selectedFsids.size} selected</span>
+            <button className="dash-btn" onClick={exploreSelectedInGraph}>
+              🕸 Explore in graph
+            </button>
+            <button className="dash-btn" onClick={() => setSelectedFsids(new Set())}>
+              Clear selection
+            </button>
+          </div>
+        )}
         {sessions.length === 0 ? (
           <p className="empty-message">
             No sessions yet — load a page with ofm.js included.
@@ -462,6 +504,14 @@ export default function Dashboard() {
           <table className="sessions-table">
             <thead>
               <tr>
+                <th className="select-col">
+                  <input
+                    type="checkbox"
+                    checked={allPageSelected}
+                    onChange={toggleSelectAllPage}
+                    title="Select all on this page"
+                  />
+                </th>
                 <th>Device ID</th>
                 <th>IP Address</th>
                 <th>Risk Score</th>
@@ -524,6 +574,13 @@ export default function Dashboard() {
                     }}
                     onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }}
                   >
+                    <td className="select-col" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedFsids.has(session.full_fsid)}
+                        onChange={() => toggleSelected(session.full_fsid)}
+                      />
+                    </td>
                     <td className="device-id">{session.fsid}</td>
                     <td>{session.client_ip} <IpIntelPopover ip={session.client_ip} /></td>
                     <td>

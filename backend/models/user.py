@@ -4,6 +4,7 @@ User and API token models for authentication and RBAC.
 
 from services.database import db
 from sqlalchemy import func
+from sqlalchemy.dialects.postgresql import JSONB
 
 
 class User(db.Model):
@@ -14,6 +15,10 @@ class User(db.Model):
     password_hash = db.Column(db.String(256), nullable=True)  # nullable for connector-role users
     role = db.Column(db.String(32), nullable=False, default="user")  # user | admin | connector
     is_active = db.Column(db.Boolean, default=True, nullable=False)
+    # Per-user preferences (graph visualization settings, future user-scoped
+    # settings). Stored as a JSON object; see services/settings.py for the
+    # canonical defaults and merge semantics.
+    settings = db.Column(JSONB, nullable=False, default=dict, server_default="{}")
     created_at = db.Column(db.DateTime, server_default=func.now(), nullable=False)
     updated_at = db.Column(db.DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
 
@@ -25,6 +30,7 @@ class User(db.Model):
             "username": self.username,
             "role": self.role,
             "is_active": self.is_active,
+            "settings": self.settings or {},
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../AuthContext";
 import { api } from "../../api";
 import CorsSettings from "../../components/CorsSettings/CorsSettings";
+import GraphGlobalSettings from "../../components/GraphGlobalSettings/GraphGlobalSettings";
 import UserManagement from "../Users/Users";
 import "./Logging.css";
 
@@ -144,6 +145,8 @@ export default function Administration() {
       </section>
 
       {isAdmin && <CorsSettings />}
+
+      {isAdmin && <GraphGlobalSettings />}
 
       {isAdmin && (
         <section className="logging-card">

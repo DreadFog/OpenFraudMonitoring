@@ -104,6 +104,7 @@ All variables are in [`.env.example`](.env.example). Key ones:
 - [Connectors](docs/connectors.md) — how enrichment connectors work, how to build your own
 - [Rules](docs/rules.md) — how to create and manage detection rules
 - [Filters](docs/filters.md) — how filtering works, schema fields, code mapping
+- [Graph Explorer](docs/graph.md) — interactive graph view: nodes, expansions, bulk expand, settings
 
 ## License
 

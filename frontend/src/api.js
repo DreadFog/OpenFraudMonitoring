@@ -407,4 +407,83 @@ export const api = {
     if (!res.ok) throw new Error("Failed to fetch logs");
     return res.json();
   },
+
+  // ── Settings ──
+
+  getMySettings: async () => {
+    const res = await authFetch("/api/settings/me");
+    if (!res.ok) throw new Error("Failed to fetch settings");
+    return res.json();
+  },
+
+  updateMySettings: async (patch) => {
+    const res = await authFetch("/api/settings/me", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) throw new Error("Failed to update settings");
+    return res.json();
+  },
+
+  getGlobalSettings: async () => {
+    const res = await authFetch("/api/settings/global");
+    if (!res.ok) throw new Error("Failed to fetch global settings");
+    return res.json();
+  },
+
+  updateGlobalSettings: async (patch) => {
+    const res = await authFetch("/api/settings/global", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || "Failed to update global settings");
+    }
+    return res.json();
+  },
+
+  // ── Graph exploration ──
+
+  graphSeed: async (seeds) => {
+    const res = await authFetch("/api/graph/seed", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ seeds }),
+    });
+    if (!res.ok) throw new Error("Failed to build graph");
+    return res.json();
+  },
+
+  graphExpansions: async (ref, knownIds = []) => {
+    const res = await authFetch("/api/graph/expansions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ref, known_ids: knownIds }),
+    });
+    if (!res.ok) throw new Error("Failed to fetch expansions");
+    return res.json();
+  },
+
+  graphExpand: async (ref, key) => {
+    const res = await authFetch("/api/graph/expand", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ref, key }),
+    });
+    if (!res.ok) throw new Error("Failed to expand node");
+    return res.json();
+  },
+
+  graphLinks: async (ref, knownIds = []) => {
+    const res = await authFetch("/api/graph/links", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ref, known_ids: knownIds }),
+    });
+    if (!res.ok) throw new Error("Failed to compute links");
+    return res.json();
+  },
 };

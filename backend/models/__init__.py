@@ -10,6 +10,7 @@ from models.rule import Rule, RuleMatch
 from models.associations import SessionURL, BrowserSession
 from models.dashboard import Dashboard
 from models.user import User, ApiToken
+from models.app_setting import AppSetting
 from models.cors import AllowedOrigin
 from models.taxii_feed import TaxiiFeed
 from models.stix import (
@@ -37,6 +38,7 @@ __all__ = [
     "Dashboard",
     "User",
     "ApiToken",
+    "AppSetting",
     "AllowedOrigin",
     "TaxiiFeed",
     "StixIPv4Addr",
