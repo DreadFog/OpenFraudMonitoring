@@ -18,6 +18,7 @@ from services.settings import (
     get_global_settings,
     set_global_setting,
     GRAPH_EXPAND_WARN_THRESHOLD_KEY,
+    CLIPBOARD_CENSOR_KEY,
 )
 
 logger = logging.getLogger(__name__)
@@ -49,6 +50,7 @@ def get_globals():
 # Keys that admins are allowed to set, with their validators.
 _ALLOWED_GLOBAL_KEYS = {
     GRAPH_EXPAND_WARN_THRESHOLD_KEY: lambda v: int(v) if int(v) >= 1 else None,
+    CLIPBOARD_CENSOR_KEY: lambda v: bool(v) if isinstance(v, bool) else (str(v).strip().lower() in ("true", "1", "yes")),
 }
 
 

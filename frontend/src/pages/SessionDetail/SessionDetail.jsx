@@ -40,6 +40,177 @@ function RawJson({ data }) {
   );
 }
 
+/* ── Session timeline ── */
+
+const EVENT_META = {
+  button_click: { icon: "🖱", label: "Button click" },
+  form_submit: { icon: "📝", label: "Form submit" },
+  copy: { icon: "📋", label: "Copy" },
+  paste: { icon: "📎", label: "Paste" },
+};
+
+function eventMeta(type) {
+  return EVENT_META[type] || { icon: "•", label: (type || "event").replace(/_/g, " ") };
+}
+
+function fmtTime(ms) {
+  if (!ms) return "—";
+  return new Date(ms).toLocaleTimeString();
+}
+
+function fmtFull(ms) {
+  if (!ms) return "—";
+  return new Date(ms).toLocaleString();
+}
+
+/**
+ * Build a timeline grouped into "visit" boxes (a contiguous run of events that
+ * share the same URL). Within each box, consecutive heartbeats are collapsed
+ * into a single aggregated item carrying the first/last time and summed counts.
+ */
+function buildTimeline(heartbeats, events) {
+  const items = [
+    ...(heartbeats || []).map((h) => ({ kind: "heartbeat", timestamp: h.timestamp, url: h.url || "", hb: h })),
+    ...(events || []).map((e) => ({ kind: "event", timestamp: e.timestamp, url: e.url || "", event: e })),
+  ].sort((a, b) => a.timestamp - b.timestamp);
+
+  const boxes = [];
+  let cur = null;
+  for (const it of items) {
+    if (!cur || cur.url !== it.url) {
+      cur = { url: it.url, start: it.timestamp, end: it.timestamp, items: [] };
+      boxes.push(cur);
+    }
+    cur.end = it.timestamp;
+    cur.items.push(it);
+  }
+
+  for (const box of boxes) {
+    const agg = [];
+    let run = null;
+    for (const it of box.items) {
+      if (it.kind === "heartbeat") {
+        if (!run) {
+          run = {
+            kind: "heartbeat_group",
+            first: it.timestamp,
+            last: it.timestamp,
+            count: 0,
+            sums: { mouseMoves: 0, clicks: 0, keydowns: 0, scrolls: 0, touches: 0 },
+          };
+          agg.push(run);
+        }
+        run.last = it.timestamp;
+        run.count += 1;
+        run.sums.mouseMoves += it.hb.mouseMoves || 0;
+        run.sums.clicks += it.hb.clicks || 0;
+        run.sums.keydowns += it.hb.keydowns || 0;
+        run.sums.scrolls += it.hb.scrolls || 0;
+        run.sums.touches += it.hb.touches || 0;
+      } else {
+        run = null;
+        agg.push(it);
+      }
+    }
+    box.agg = agg;
+  }
+  return boxes;
+}
+
+function DetailRow({ k, v }) {
+  return (
+    <div className="tl-detail-row">
+      <span className="tl-detail-key">{k}</span>
+      <span className="tl-detail-val">{v}</span>
+    </div>
+  );
+}
+
+function TimelineItem({ item }) {
+  const [open, setOpen] = useState(false);
+
+  if (item.kind === "heartbeat_group") {
+    const label = item.count > 1 ? `${item.count} heartbeats` : "Heartbeat";
+    return (
+      <div className="tl-item tl-item--heartbeat">
+        <button className="tl-item-head" onClick={() => setOpen((o) => !o)}>
+          <span className="tl-dot" />
+          <span className="tl-item-label">🫀 {label}</span>
+          <span className="tl-item-time">
+            {fmtTime(item.first)}{item.count > 1 ? ` – ${fmtTime(item.last)}` : ""}
+          </span>
+          <span className="tl-caret">{open ? "▾" : "▸"}</span>
+        </button>
+        {open && (
+          <div className="tl-item-detail">
+            <DetailRow k="Heartbeats" v={item.count} />
+            <DetailRow k="First" v={fmtFull(item.first)} />
+            <DetailRow k="Last" v={fmtFull(item.last)} />
+            <DetailRow k="Mouse moves" v={item.sums.mouseMoves} />
+            <DetailRow k="Clicks" v={item.sums.clicks} />
+            <DetailRow k="Keydowns" v={item.sums.keydowns} />
+            <DetailRow k="Scrolls" v={item.sums.scrolls} />
+            <DetailRow k="Touches" v={item.sums.touches} />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const e = item.event;
+  const meta = eventMeta(e.event_type);
+  const details = Object.entries(e.data || {});
+  return (
+    <div className={`tl-item tl-item--${e.event_type}`}>
+      <button className="tl-item-head" onClick={() => setOpen((o) => !o)}>
+        <span className="tl-dot" />
+        <span className="tl-item-label">{meta.icon} {meta.label}</span>
+        <span className="tl-item-time">{fmtTime(e.timestamp)}</span>
+        <span className="tl-caret">{open ? "▾" : "▸"}</span>
+      </button>
+      {open && (
+        <div className="tl-item-detail">
+          <DetailRow k="Time" v={fmtFull(e.timestamp)} />
+          {details.map(([k, v]) => (
+            <DetailRow key={k} k={k} v={typeof v === "object" ? JSON.stringify(v) : String(v)} />
+          ))}
+          {details.length === 0 && <div className="tl-empty">No additional details.</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SessionTimeline({ heartbeats, events }) {
+  const boxes = buildTimeline(heartbeats, events);
+  const total = (heartbeats?.length || 0) + (events?.length || 0);
+
+  return (
+    <div className="sd-section sd-timeline-section">
+      <h3 className="sd-section-title">Activity Timeline ({total} events)</h3>
+      {boxes.length === 0 ? (
+        <p className="empty-note">No activity recorded.</p>
+      ) : (
+        <div className="timeline">
+          {boxes.map((box, i) => (
+            <div className="tl-box" key={i}>
+              <div className="tl-box-head">
+                <span className="tl-url" title={box.url || "(no URL)"}>{box.url || "(no URL)"}</span>
+                <span className="tl-range">{fmtTime(box.start)} – {fmtTime(box.end)}</span>
+              </div>
+              <div className="tl-items">
+                {box.agg.map((it, j) => (
+                  <TimelineItem item={it} key={j} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SessionDetail() {
   const { fsid } = useParams();
   const navigate = useNavigate();
@@ -134,7 +305,8 @@ export default function SessionDetail() {
         </button>
       </header>
 
-      <div className="sd-body">
+      <div className="sd-body sd-body--split">
+        <div className="sd-col-left">
         {/* Overview */}
         <Section title="Overview">
           <Field label="Fingerprint ID (fsid)" value={data.fsid} />
@@ -278,68 +450,13 @@ export default function SessionDetail() {
           <Field label="Webcams"       value={media.webcams} />
         </Section>
 
-        {/* URLs Visited */}
-        <Section title={`URLs Visited (${(data.urls || []).length})`}>
-          {(data.urls || []).length === 0 ? (
-            <p className="empty-note">No URLs recorded.</p>
-          ) : (
-            <div className="urls-list">
-              {(data.urls || []).map((url, i) => (
-                <div key={i} className="url-item">{url}</div>
-              ))}
-            </div>
-          )}
-        </Section>
+          {/* Raw JSON */}
+          <RawJson data={data} />
+        </div>
 
-        {/* Recent Events — unified heartbeats + behavioral events */}
-        {(data.heartbeats?.length > 0 || data.behavioral_events?.length > 0) && (() => {
-          const events = [
-            ...(data.heartbeats || []).map(hb => ({ ...hb, _type: "heartbeat" })),
-            ...(data.behavioral_events || []).map(be => ({ ...be, _type: "behavioral_event" })),
-          ].sort((a, b) => b.timestamp - a.timestamp);
-          
-          return (
-            <Section title={`Recent Events (${events.length})`}>
-              <div className="hb-table-wrapper">
-                <table className="hb-table">
-                  <thead>
-                    <tr>
-                      <th>Time</th>
-                      <th>Type</th>
-                      <th>URL</th>
-                      <th>Detail</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {events.map((evt, i) => (
-                      <tr key={i}>
-                        <td className="mono">{new Date(evt.timestamp).toLocaleTimeString()}</td>
-                        <td>
-                          <span className={`event-badge event-badge--${evt._type === "heartbeat" ? "heartbeat" : evt.event_type}`}>
-                            {evt._type === "heartbeat" ? "Heartbeat" : evt.event_type}
-                          </span>
-                        </td>
-                        <td className="mono url-cell">{evt.url || "—"}</td>
-                        <td className="mono">
-                          {evt._type === "heartbeat" ? (
-                            <>
-                              M:{evt.mouseMoves ?? 0} C:{evt.clicks ?? 0} K:{evt.keydowns ?? 0} S:{evt.scrolls ?? 0} T:{evt.touches ?? 0}
-                            </>
-                          ) : (
-                            JSON.stringify(evt.data || {}).slice(0, 60)
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Section>
-          );
-        })()}
-
-        {/* Raw JSON */}
-        <RawJson data={data} />
+        <div className="sd-col-right">
+          <SessionTimeline heartbeats={data.heartbeats} events={data.behavioral_events} />
+        </div>
       </div>
     </div>
   );

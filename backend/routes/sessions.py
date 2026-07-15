@@ -9,6 +9,35 @@ from models.associations import SessionURL, BrowserSession
 from models.rule import RuleMatch
 from rules.engine import build_session_query
 from services.auth import require_auth, require_role
+from services.settings import get_global_setting, CLIPBOARD_CENSOR_KEY
+
+
+def _censor_text(value):
+    """Return only the first and last character, masking the middle."""
+    s = str(value)
+    if len(s) <= 2:
+        return s
+    return s[0] + "•" * (len(s) - 2) + s[-1]
+
+
+def _censor_event(evt):
+    """Censor sensitive captured content in a behavioral-event dict.
+
+    Applies to copy/paste `text` and to the `value` of each captured
+    form-submit field. Names/types/lengths are left intact.
+    """
+    event_type = evt.get("event_type")
+    data = evt.get("data") or {}
+    if event_type in ("copy", "paste") and "text" in data:
+        evt = {**evt, "data": {**data, "text": _censor_text(data["text"])}}
+    elif event_type == "form_submit" and isinstance(data.get("fields"), list):
+        fields = [
+            {**f, "value": _censor_text(f["value"])}
+            if isinstance(f, dict) and "value" in f else f
+            for f in data["fields"]
+        ]
+        evt = {**evt, "data": {**data, "fields": fields}}
+    return evt
 
 # Platforms that are unambiguously desktop/workstation
 _WORKSTATION_PLATFORMS = {
@@ -181,13 +210,21 @@ def get_session_detail(fsid):
     last_fp_row = sess.fingerprints.order_by(Fingerprint.timestamp.desc()).first()
     latest_fingerprint = last_fp_row.data if last_fp_row else None
 
+    # Fetch the most recent events, then present them oldest-first so the
+    # session-detail timeline reads top (earliest) to bottom (latest).
     recent_heartbeats = sess.heartbeats.order_by(
         Heartbeat.timestamp.desc()
-    ).limit(50).all()
+    ).limit(2000).all()
+    recent_heartbeats.reverse()
 
     recent_behavioral_events = sess.behavioral_events.order_by(
         BehavioralEvent.timestamp.desc()
-    ).limit(50).all()
+    ).limit(2000).all()
+    recent_behavioral_events.reverse()
+
+    behavioral_events = [be.to_dict() for be in recent_behavioral_events]
+    if bool(get_global_setting(CLIPBOARD_CENSOR_KEY)):
+        behavioral_events = [_censor_event(e) for e in behavioral_events]
 
     return jsonify({
         "fsid": fsid,
@@ -203,7 +240,7 @@ def get_session_detail(fsid):
         "fingerprints_count": fingerprints_count,
         "latest_fingerprint": latest_fingerprint,
         "heartbeats": [hb.to_summary() for hb in recent_heartbeats],
-        "behavioral_events": [be.to_dict() for be in recent_behavioral_events],
+        "behavioral_events": behavioral_events,
     }), 200
 
 

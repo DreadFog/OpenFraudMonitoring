@@ -8,6 +8,8 @@ export default defineConfig({
     __FP_ENCRYPTION_KEY__: JSON.stringify(process.env.FPSCANNER_KEY || "dev-key"),
     // Debug mode — enables window.__OFM__ hooks for demo/debug pages
     __OFM_DEBUG__: process.env.OFM_DEBUG === "true",
+    // Capture the actual copied/pasted clipboard text (off by default for privacy)
+    __OFM_CAPTURE_CLIPBOARD__: process.env.OFM_CAPTURE_CLIPBOARD === "true",
   },
   resolve: {
     alias: {

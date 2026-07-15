@@ -135,16 +135,28 @@ export default {
       sendDirect("form_submit", payload);
     }, { passive: true });
 
-    // Copy: send directly with length only (no content)
+    // Copy: the copied text is the current selection — clipboardData.getData()
+    // returns empty during a `copy` event, so read the selection instead.
     document.addEventListener("copy", (e) => {
-      const text = (e.clipboardData || window.clipboardData || { getData: () => "" }).getData("text");
-      sendDirect("copy", { length: text.length });
+      let text = "";
+      try {
+        text = (window.getSelection && window.getSelection().toString()) || "";
+      } catch (_) { /* ignore */ }
+      if (!text) {
+        try { text = (e.clipboardData || window.clipboardData || { getData: () => "" }).getData("text") || ""; } catch (_) { /* ignore */ }
+      }
+      const data = { length: text.length };
+      if (CFG.captureClipboard) data.text = text;
+      sendDirect("copy", data);
     }, { passive: true });
 
-    // Paste: send directly with length only (no content)
+    // Paste: the pasted text is available from clipboardData during a `paste` event.
     document.addEventListener("paste", (e) => {
-      const text = (e.clipboardData || window.clipboardData || { getData: () => "" }).getData("text");
-      sendDirect("paste", { length: text.length });
+      let text = "";
+      try { text = (e.clipboardData || window.clipboardData || { getData: () => "" }).getData("text") || ""; } catch (_) { /* ignore */ }
+      const data = { length: text.length };
+      if (CFG.captureClipboard) data.text = text;
+      sendDirect("paste", data);
     }, { passive: true });
   },
 

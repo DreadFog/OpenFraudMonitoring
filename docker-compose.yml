@@ -46,6 +46,7 @@ services:
       args:
         OFM_SERVER_URL: ${OFM_SERVER_URL:-}
         OFM_DEBUG: ${OFM_DEBUG:-true}
+        OFM_CAPTURE_CLIPBOARD: ${OFM_CAPTURE_CLIPBOARD:-false}
     ports:
       - "${PORT:-5000}:5000"
     environment:
@@ -95,6 +96,7 @@ services:
         OFM_SERVER_URL: ${OFM_SERVER_URL:-}
         FPSCANNER_KEY: ${FPSCANNER_KEY:-dev-key}
         OFM_DEBUG: ${OFM_DEBUG:-true}
+        OFM_CAPTURE_CLIPBOARD: ${OFM_CAPTURE_CLIPBOARD:-false}
     ports:
       - "30000:3000"
     depends_on:
