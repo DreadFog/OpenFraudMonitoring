@@ -303,6 +303,53 @@ def lookup():
     return jsonify({"request_id": request_id, "connector": connector}), 202
 
 
+@intel_bp.route("/entity-sessions", methods=["GET"])
+@require_auth
+def get_entity_sessions():
+    """Get the latest sessions linked to a STIX entity.
+    
+    Query params:
+        type    – STIX type key (e.g. ipv4-addr, user-agent)
+        value   – value to search for (exact match)
+        limit   – max results (default 10, max 100)
+    """
+    stix_type = (request.args.get("type") or "").strip().lower()
+    value = (request.args.get("value") or "").strip()
+    
+    if not stix_type or not value:
+        return jsonify({"error": "type and value are required"}), 400
+    
+    Model = TYPE_TO_MODEL.get(stix_type)
+    if Model is None:
+        return jsonify({"error": f"unknown entity type: {stix_type}"}), 400
+    
+    obs = Model.query.filter_by(value=value).first()
+    if obs is None:
+        return jsonify({"sessions": []}), 200
+    
+    try:
+        limit = min(max(1, int(request.args.get("limit", "10"))), 100)
+    except (ValueError, TypeError):
+        limit = 10
+    
+    # Query sessions linked to this entity based on type
+    sessions = []
+    if stix_type in ("ipv4-addr", "ipv6-addr"):
+        sessions = Session.query.filter_by(
+            ip_observable_id=obs.id, ip_observable_type=stix_type
+        ).order_by(Session.last_seen.desc()).limit(limit).all()
+    elif stix_type == "user-agent":
+        sessions = Session.query.filter_by(
+            user_agent_observable_id=obs.id
+        ).order_by(Session.last_seen.desc()).limit(limit).all()
+    
+    return jsonify({
+        "entity_type": stix_type,
+        "entity_value": value,
+        "sessions": [s.to_dict() for s in sessions],
+    }), 200
+
+
 @intel_bp.route("/ingest", methods=["POST"])
 @require_auth
 @require_role("connector", "admin")

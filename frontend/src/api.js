@@ -307,6 +307,12 @@ export const api = {
     return res.json();
   },
 
+  getEntitySessions: async (type, value, limit = 10) => {
+    const res = await authFetch(`/api/intel/entity-sessions?type=${encodeURIComponent(type)}&value=${encodeURIComponent(value)}&limit=${limit}`);
+    if (!res.ok) throw new Error("Failed to fetch entity sessions");
+    return res.json();
+  },
+
   getIntelTypes: async () => {
     const res = await authFetch("/api/intel/types");
     if (!res.ok) throw new Error("Failed to fetch intel types");

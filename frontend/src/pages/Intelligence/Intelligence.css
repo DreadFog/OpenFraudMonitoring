@@ -453,3 +453,46 @@
     flex-wrap: wrap;
   }
 }
+
+/* Session row styling */
+.intel-session-row {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.intel-session-row:hover {
+  background: #161b22;
+}
+
+.intel-session-id {
+  font-family: monospace;
+  color: #58a6ff;
+  font-size: 11px;
+  word-break: break-all;
+}
+
+.intel-risk-score {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.intel-risk-high {
+  background: #3a0f0a;
+  color: #f85149;
+  border: 1px solid #da3633;
+}
+
+.intel-risk-medium {
+  background: #3a2e0a;
+  color: #d29922;
+  border: 1px solid #ae8800;
+}
+
+.intel-risk-low {
+  background: #0f3a1a;
+  color: #3fb950;
+  border: 1px solid #238636;
+}

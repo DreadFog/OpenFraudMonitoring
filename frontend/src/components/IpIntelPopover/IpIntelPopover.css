@@ -39,6 +39,10 @@
   background: #0d1117;
   border-bottom: 1px solid #21262d;
   font-family: monospace;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
 }
 
 .ip-intel-popover-body {
@@ -99,4 +103,27 @@
   color: #8b949e;
   font-size: 11px;
   white-space: nowrap;
+}
+
+.ip-intel-browse-btn {
+  background: #238636;
+  border: 1px solid #2ea043;
+  color: #f6f8fa;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ip-intel-browse-btn:hover {
+  background: #2ea043;
+  border-color: #3fb950;
+}
+
+.ip-intel-browse-btn:active {
+  background: #238636;
 }

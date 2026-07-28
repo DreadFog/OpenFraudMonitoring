@@ -148,6 +148,8 @@ export default function Intelligence() {
   const [entitiesLoading, setEntitiesLoading] = useState(false);
   const [limit, setLimit] = usePersistentState("intel.limit", 25);
   const [filterSchema, setFilterSchema] = useState([]);
+  const [sessions, setSessions] = useState([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
   const [filters, setFilters] = usePersistentState("intel.filters", []);
   const [filterLogic, setFilterLogic] = usePersistentState("intel.filterLogic", "AND");
   const [filterDrafts, setFilterDrafts] = usePersistentState("intel.filterDrafts", [{ field: "", op: "", value: "" }]);
@@ -267,6 +269,7 @@ export default function Intelligence() {
     setLoading(true);
     setError("");
     setData(null);
+    setSessions([]);
     setShowRaw(false);
     setEnrichers([]);
     setEnrichOpen(false);
@@ -289,6 +292,16 @@ export default function Intelligence() {
         } catch {
           setEnrichers([]);
         }
+        // Fetch linked sessions
+        try {
+          setSessionsLoading(true);
+          const sessionsResult = await api.getEntitySessions(result.observable.stix_type, v, 10);
+          setSessions(sessionsResult.sessions || []);
+        } catch {
+          setSessions([]);
+        } finally {
+          setSessionsLoading(false);
+        }
       }
     } catch (err) {
       setError(err.message || "Lookup failed");
@@ -306,6 +319,7 @@ export default function Intelligence() {
     setLoading(true);
     setError("");
     setData(null);
+    setSessions([]);
     setShowRaw(false);
     setEnrichers([]);
     setEnrichOpen(false);
@@ -328,6 +342,16 @@ export default function Intelligence() {
           setEnrichers(er.enrichers || []);
         } catch {
           setEnrichers([]);
+        }
+        // Fetch linked sessions
+        try {
+          setSessionsLoading(true);
+          const sessionsResult = await api.getEntitySessions(result.observable.stix_type, value, 10);
+          setSessions(sessionsResult.sessions || []);
+        } catch {
+          setSessions([]);
+        } finally {
+          setSessionsLoading(false);
         }
       }
     } catch (err) {
@@ -656,6 +680,52 @@ export default function Intelligence() {
                           <div>Start: {fmtDate(r.start_time)}</div>
                           <div>Stop: {fmtDate(r.stop_time)}</div>
                         </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          <section className="intel-card">
+            <div className="intel-card-head">
+              <h2>Latest Sessions</h2>
+              <span className="intel-count">
+                {sessionsLoading ? "loading…" : `${sessions.length} shown`}
+              </span>
+            </div>
+            {sessions.length === 0 && !sessionsLoading && (
+              <p className="intel-muted">No sessions linked to this entity.</p>
+            )}
+            {sessions.length > 0 && (
+              <div className="intel-table-wrap">
+                <table className="intel-table">
+                  <thead>
+                    <tr>
+                      <th>Session ID</th>
+                      <th>Risk Score</th>
+                      <th>Client IP</th>
+                      <th>First Seen</th>
+                      <th>Last Seen</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sessions.map((s) => (
+                      <tr
+                        key={s.fsid}
+                        className="intel-session-row"
+                        onClick={() => navigate(`/session/${encodeURIComponent(s.fsid)}`)}
+                      >
+                        <td className="intel-session-id">{s.fsid}</td>
+                        <td>
+                          <span className={`intel-risk-score intel-risk-${s.risk_score > 70 ? "high" : s.risk_score > 40 ? "medium" : "low"}`}>
+                            {s.risk_score}
+                          </span>
+                        </td>
+                        <td>{s.client_ip || "—"}</td>
+                        <td>{fmtDate(s.first_seen && new Date(s.first_seen))}</td>
+                        <td>{fmtDate(s.last_seen && new Date(s.last_seen))}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import "./IpIntelPopover.css";
 
@@ -59,6 +60,14 @@ function isPrivateIp(ip) {
   return false;
 }
 
+function getIpType(ip) {
+  if (!ip) return null;
+  const cleaned = String(ip).trim().replace(/^\[(.*)\]$/, "$1");
+  if (parseIPv4(cleaned)) return "ipv4-addr";
+  if (expandIPv6(cleaned)) return "ipv6-addr";
+  return null;
+}
+
 function fmtDate(iso) {
   if (!iso) return null;
   try {
@@ -76,6 +85,7 @@ export default function IpIntelPopover({ ip }) {
   const btnRef = useRef(null);
   const popoverRef = useRef(null);
   const privateIp = isPrivateIp(ip);
+  const navigate = useNavigate();
 
   const updatePos = useCallback(() => {
     if (!btnRef.current) return;
@@ -119,6 +129,14 @@ export default function IpIntelPopover({ ip }) {
     }
   };
 
+  const handleBrowseIp = () => {
+    const ipType = getIpType(ip);
+    if (ipType) {
+      navigate(`/intelligence?type=${encodeURIComponent(ipType)}&value=${encodeURIComponent(ip)}`);
+      setOpen(false);
+    }
+  };
+
   if (!ip) return null;
 
   // Extract malware names from relationships
@@ -142,7 +160,17 @@ export default function IpIntelPopover({ ip }) {
       style={{ top: pos.top, left: pos.left }}
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="ip-intel-popover-header">{ip}</div>
+      <div className="ip-intel-popover-header">
+        {ip}
+        <button
+          className="ip-intel-browse-btn"
+          onClick={handleBrowseIp}
+          title="Browse IP in Intelligence page"
+          type="button"
+        >
+          Browse
+        </button>
+      </div>
       {privateIp && (
         <div className="ip-intel-popover-body ip-intel-muted">
           Private IP address. Intelligence lookup is skipped.
