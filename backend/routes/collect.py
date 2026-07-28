@@ -74,6 +74,16 @@ def collect():
     forwarded = request.headers.get("X-Forwarded-For", "")
     client_ip = ip_ext.get("ip") or (forwarded.split(",")[0].strip() if forwarded else "") or request.remote_addr
 
+    # If environment variable set, ignore sessions from private IPs
+    save_private_ip = current_app.config.get("OFM_SAVE_PRIVATE_IP", False)
+    if not save_private_ip and _is_private_ip(client_ip):
+        logger.debug(f"Ignoring fingerprint from private IP {client_ip}.")
+        return jsonify({
+                "ok": True,
+                "fsid": None,
+                "session_id": None,
+            }), 200
+
     # Find or create session keyed by fsid
     session_obj = Session.query.filter_by(fsid=fsid).first()
     if not session_obj:

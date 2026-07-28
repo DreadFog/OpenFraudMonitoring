@@ -832,6 +832,49 @@ body {
   border-radius: 6px;
 }
 
+.table-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.group-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #c9d1d9;
+  cursor: pointer;
+}
+
+.session-group-row {
+  cursor: pointer;
+  background: #12161d;
+}
+
+.session-group-row:hover {
+  background: #1b222c;
+}
+
+.group-caret {
+  display: inline-block;
+  width: 14px;
+  color: #8b949e;
+}
+
+.session-child-row {
+  background: #0d1117;
+}
+
+.session-child-row .device-id {
+  color: #8b949e;
+}
+
+.child-indent {
+  color: #6e7681;
+}
+
 .selection-count {
   font-size: 13px;
   color: #c9d1d9;

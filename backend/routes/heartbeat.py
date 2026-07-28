@@ -11,14 +11,30 @@ Expected payload:
   }
 """
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from services.database import db
 from models import Session, Heartbeat, SessionURL
 from utils import extract_behavior_summary
 from services.event_queue import enqueue_event
+import logging
+import ipaddress
 
+logger = logging.getLogger(__name__)
 heartbeat_bp = Blueprint("heartbeat", __name__, url_prefix="/api")
 
+PRIVATE_CIDRS = [
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("fc00::/7"),
+]
+
+def _is_private_ip(ip_value: str) -> bool:
+    try:
+        ip_obj = ipaddress.ip_address(ip_value)
+    except ValueError:
+        return False
+    return any(ip_obj in cidr for cidr in PRIVATE_CIDRS)
 
 @heartbeat_bp.route("/heartbeat", methods=["POST"])
 def heartbeat():
@@ -46,6 +62,12 @@ def heartbeat():
         # Fallback: find most recent session from this IP
         forwarded = request.headers.get("X-Forwarded-For", "")
         client_ip = (forwarded.split(",")[0].strip() if forwarded else "") or request.remote_addr
+        # If env variable set, ignore heartbeats from private IP addresses.
+        save_private_ip = current_app.config.get("OFM_SAVE_PRIVATE_IP", False)
+        if not save_private_ip and _is_private_ip(client_ip):
+            logger.debug(f"Ignoring heartbeat from private IP {client_ip}.")
+            return jsonify({"ok": True}), 200
+        
         session_obj = Session.query.filter_by(client_ip=client_ip).order_by(
             Session.last_seen.desc()
         ).first()

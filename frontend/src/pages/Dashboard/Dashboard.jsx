@@ -162,6 +162,70 @@ function WidgetCard({ widget, data, editMode, onEdit, onRemove }) {
   );
 }
 
+/* ── Session row helpers ── */
+function riskClassOf(score) {
+  return score >= 60 ? "risk-high" : score >= 30 ? "risk-med" : "risk-low";
+}
+
+function deviceTypeLabel(s) {
+  return s.is_mobile ? "📱 Mobile" : s.is_workstation ? "💻 Workstation" : "❓ Unknown";
+}
+
+function timeAgo(lastSeen) {
+  const secs = Math.round((Date.now() - lastSeen) / 1000);
+  if (secs < 60) return `${secs}s ago`;
+  if (secs < 3600) return `${Math.round(secs / 60)}m ago`;
+  if (secs < 86400) return `${Math.round(secs / 3600)}h ago`;
+  return `${Math.round(secs / 86400)}d ago`;
+}
+
+/**
+ * Group SUCCESSIVE sessions from the same IP: within an IP, a session joins the
+ * current group when it starts less than an hour after the group's latest end.
+ * Returns an array of groups ordered by most recent activity first.
+ */
+const ONE_HOUR_MS = 3600 * 1000;
+function groupSuccessiveByIp(sessions) {
+  const byIp = new Map();
+  for (const s of sessions) {
+    const ip = s.client_ip || "unknown";
+    if (!byIp.has(ip)) byIp.set(ip, []);
+    byIp.get(ip).push(s);
+  }
+  const groups = [];
+  for (const [ip, list] of byIp) {
+    const sorted = [...list].sort(
+      (a, b) => (a.first_seen || a.last_seen) - (b.first_seen || b.last_seen)
+    );
+    let cur = null;
+    for (const s of sorted) {
+      const start = s.first_seen || s.last_seen;
+      const end = s.last_seen || s.first_seen;
+      if (cur && start - cur.end < ONE_HOUR_MS) {
+        cur.sessions.push(s);
+        cur.end = Math.max(cur.end, end);
+        cur.maxScore = Math.max(cur.maxScore, s.risk_score || 0);
+        cur.lastSeen = Math.max(cur.lastSeen, s.last_seen || 0);
+        if ((s.last_seen || 0) >= cur.rep.last_seen) cur.rep = s;
+      } else {
+        cur = {
+          ip,
+          key: `${ip}:${start}`,
+          sessions: [s],
+          start,
+          end,
+          maxScore: s.risk_score || 0,
+          lastSeen: s.last_seen || 0,
+          rep: s,
+        };
+        groups.push(cur);
+      }
+    }
+  }
+  groups.sort((a, b) => b.lastSeen - a.lastSeen);
+  return groups;
+}
+
 /* ── Main Dashboard ── */
 export default function Dashboard() {
   const [sessions, setSessions] = useState([]);
@@ -176,6 +240,8 @@ export default function Dashboard() {
   const [totalSessions, setTotalSessions] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedFsids, setSelectedFsids] = useState(() => new Set());
+  const [groupByIp, setGroupByIp] = usePersistentState("dashboard.groupByIp", false);
+  const [expandedGroups, setExpandedGroups] = useState(() => new Set());
   const navigate = useNavigate();
   const { containerRef, width: containerWidth } = useContainerWidth({ initialWidth: 1200 });
 
@@ -394,6 +460,98 @@ export default function Dashboard() {
     navigate(buildGraphUrl(seeds));
   };
 
+  const toggleGroupExpanded = (key) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleGroupSelected = (group) => {
+    const fsids = group.sessions.map((s) => s.full_fsid);
+    const allSelected = fsids.every((f) => selectedFsids.has(f));
+    setSelectedFsids((prev) => {
+      const next = new Set(prev);
+      if (allSelected) fsids.forEach((f) => next.delete(f));
+      else fsids.forEach((f) => next.add(f));
+      return next;
+    });
+  };
+
+  // Render a single session as a table row.
+  const renderSessionRow = (session, isChild = false) => (
+    <tr
+      key={session.full_fsid}
+      className={isChild ? "session-child-row" : ""}
+      onClick={() => navigate(`/session/${session.full_fsid}`)}
+      onAuxClick={(e) => {
+        if (e.button === 1) {
+          e.preventDefault();
+          window.open(`/session/${session.full_fsid}`, "_blank", "noopener");
+        }
+      }}
+      onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }}
+    >
+      <td className="select-col" onClick={(e) => e.stopPropagation()}>
+        <input
+          type="checkbox"
+          checked={selectedFsids.has(session.full_fsid)}
+          onChange={() => toggleSelected(session.full_fsid)}
+        />
+      </td>
+      <td className="device-id">{isChild ? <span className="child-indent">↳ </span> : null}{session.fsid}</td>
+      <td>{session.client_ip} <IpIntelPopover ip={session.client_ip} /></td>
+      <td><span className={`risk-badge ${riskClassOf(session.risk_score)}`}>{session.risk_score}</span></td>
+      <td>
+        {session.flags.slice(0, 2).map((flag, i) => (
+          <span key={i} className="flag">{flag.split(":")[0]}</span>
+        ))}
+        {session.flags.length > 2 && <span className="flag">+{session.flags.length - 2}</span>}
+      </td>
+      <td>{deviceTypeLabel(session)}</td>
+      <td>{session.language}</td>
+      <td>{session.urls_count}</td>
+      <td>{session.heartbeats}</td>
+      <td className="time-ago">{timeAgo(session.last_seen)}</td>
+    </tr>
+  );
+
+  // Render an aggregated group row (multiple successive sessions from one IP).
+  const renderGroupRow = (group) => {
+    const expanded = expandedGroups.has(group.key);
+    const fsids = group.sessions.map((s) => s.full_fsid);
+    const allSelected = fsids.every((f) => selectedFsids.has(f));
+    const flags = [...new Set(group.sessions.flatMap((s) => s.flags || []))];
+    const urls = group.sessions.reduce((n, s) => n + (s.urls_count || 0), 0);
+    const heartbeats = group.sessions.reduce((n, s) => n + (s.heartbeats || 0), 0);
+    return (
+      <tr key={group.key} className="session-group-row" onClick={() => toggleGroupExpanded(group.key)}>
+        <td className="select-col" onClick={(e) => e.stopPropagation()}>
+          <input type="checkbox" checked={allSelected} onChange={() => toggleGroupSelected(group)} />
+        </td>
+        <td className="device-id">
+          <span className="group-caret">{expanded ? "▾" : "▸"}</span>
+          {group.sessions.length} sessions
+        </td>
+        <td>{group.ip} <IpIntelPopover ip={group.ip} /></td>
+        <td><span className={`risk-badge ${riskClassOf(group.maxScore)}`}>{group.maxScore}</span></td>
+        <td>
+          {flags.slice(0, 2).map((flag, i) => (
+            <span key={i} className="flag">{flag.split(":")[0]}</span>
+          ))}
+          {flags.length > 2 && <span className="flag">+{flags.length - 2}</span>}
+        </td>
+        <td>{deviceTypeLabel(group.rep)}</td>
+        <td>{group.rep.language}</td>
+        <td>{urls}</td>
+        <td>{heartbeats}</td>
+        <td className="time-ago">{timeAgo(group.lastSeen)}</td>
+      </tr>
+    );
+  };
+
   if (loading) {
     return <div className="container"><p>Loading...</p></div>;
   }
@@ -485,6 +643,16 @@ export default function Dashboard() {
 
       {/* Sessions Table */}
       <div className="table-wrapper">
+        <div className="table-controls">
+          <label className="group-toggle">
+            <input
+              type="checkbox"
+              checked={groupByIp}
+              onChange={(e) => setGroupByIp(e.target.checked)}
+            />
+            Group successive sessions by IP
+          </label>
+        </div>
         {selectedFsids.size > 0 && (
           <div className="selection-bar">
             <span className="selection-count">{selectedFsids.size} selected</span>
@@ -536,76 +704,16 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {sessions.map((session) => {
-                const riskClass =
-                  session.risk_score >= 60
-                    ? "risk-high"
-                    : session.risk_score >= 30
-                    ? "risk-med"
-                    : "risk-low";
-
-                const deviceType = session.is_mobile
-                  ? "📱 Mobile"
-                  : session.is_workstation
-                  ? "💻 Workstation"
-                  : "❓ Unknown";
-
-                const timeSinceLastSeen = Math.round(
-                  (Date.now() - session.last_seen) / 1000
-                );
-                const timeStr =
-                  timeSinceLastSeen < 60
-                    ? `${timeSinceLastSeen}s ago`
-                    : timeSinceLastSeen < 3600
-                    ? `${Math.round(timeSinceLastSeen / 60)}m ago`
-                    : timeSinceLastSeen < 86400
-                    ? `${Math.round(timeSinceLastSeen / 3600)}h ago`
-                    : `${Math.round(timeSinceLastSeen / 86400)}d ago`;
-
-                return (
-                  <tr
-                    key={session.full_fsid}
-                    onClick={() => navigate(`/session/${session.full_fsid}`)}
-                    onAuxClick={(e) => {
-                      if (e.button === 1) {
-                        e.preventDefault();
-                        window.open(`/session/${session.full_fsid}`, "_blank", "noopener");
-                      }
-                    }}
-                    onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }}
-                  >
-                    <td className="select-col" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selectedFsids.has(session.full_fsid)}
-                        onChange={() => toggleSelected(session.full_fsid)}
-                      />
-                    </td>
-                    <td className="device-id">{session.fsid}</td>
-                    <td>{session.client_ip} <IpIntelPopover ip={session.client_ip} /></td>
-                    <td>
-                      <span className={`risk-badge ${riskClass}`}>
-                        {session.risk_score}
-                      </span>
-                    </td>
-                    <td>
-                      {session.flags.slice(0, 2).map((flag, i) => (
-                        <span key={i} className="flag">
-                          {flag.split(":")[0]}
-                        </span>
-                      ))}
-                      {session.flags.length > 2 && (
-                        <span className="flag">+{session.flags.length - 2}</span>
-                      )}
-                    </td>
-                    <td>{deviceType}</td>
-                    <td>{session.language}</td>
-                    <td>{session.urls_count}</td>
-                    <td>{session.heartbeats}</td>
-                    <td className="time-ago">{timeStr}</td>
-                  </tr>
-                );
-              })}
+              {groupByIp
+                ? groupSuccessiveByIp(sessions).flatMap((group) => {
+                    if (group.sessions.length === 1) return [renderSessionRow(group.sessions[0])];
+                    const rows = [renderGroupRow(group)];
+                    if (expandedGroups.has(group.key)) {
+                      rows.push(...group.sessions.map((s) => renderSessionRow(s, true)));
+                    }
+                    return rows;
+                  })
+                : sessions.map((session) => renderSessionRow(session))}
             </tbody>
           </table>
         )}
