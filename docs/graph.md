@@ -94,7 +94,7 @@ expand, say, only the Autonomous System or only the Country from an IP. Flags an
 metadata options are presented in **searchable dropdowns** because a node may
 have many of them.
 
-### Property whitelist (v1)
+### Property whitelist
 
 Property nodes are limited to a curated whitelist so the graph stays readable:
 
@@ -104,6 +104,15 @@ Property nodes are limited to a curated whitelist so the graph stays readable:
 | `timezone` | Timezone | `locale_internationalization_timezone` |
 | `language` | Language | `locale_languages_language` |
 | `screen_resolution` | Screen Resolution | `device_screen_resolution_width` × `_height` |
+| `cpu_count` | CPU Count | `device_cpu_count` |
+| `webgl_vendor` | WebGL Vendor | `graphics_web_gl_vendor` |
+| `webgl_renderer` | WebGL Renderer | `graphics_web_gl_renderer` |
+| `locale_language` | Locale Language | `locale_internationalization_locale_language` |
+| `hev_platform` | UA-CH Platform | `browser_high_entropy_values_platform` |
+| `hev_architecture` | UA-CH Architecture | `browser_high_entropy_values_architecture` |
+| `color_scheme` | Color Scheme | `device_media_queries_prefers_color_scheme` |
+| `canvas_fingerprint` | Canvas Fingerprint | `graphics_canvas_canvas_fingerprint` |
+| `pointer_type` | Pointer Type | `device_media_queries_pointer` |
 
 ## Auto-linking
 

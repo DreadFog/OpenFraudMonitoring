@@ -55,6 +55,43 @@ PROPERTY_FIELDS = {
         ],
         "join": "x",
     },
+    "cpu_count": {
+        "label": "CPU Count",
+        "columns": ["device_cpu_count"],
+        "type": "number",
+    },
+    "webgl_vendor": {
+        "label": "WebGL Vendor",
+        "columns": ["graphics_web_gl_vendor"],
+    },
+    "webgl_renderer": {
+        "label": "WebGL Renderer",
+        "columns": ["graphics_web_gl_renderer"],
+    },
+    "locale_language": {
+        "label": "Locale Language",
+        "columns": ["locale_internationalization_locale_language"],
+    },
+    "hev_platform": {
+        "label": "UA-CH Platform",
+        "columns": ["browser_high_entropy_values_platform"],
+    },
+    "hev_architecture": {
+        "label": "UA-CH Architecture",
+        "columns": ["browser_high_entropy_values_architecture"],
+    },
+    "color_scheme": {
+        "label": "Color Scheme",
+        "columns": ["device_media_queries_prefers_color_scheme"],
+    },
+    "canvas_fingerprint": {
+        "label": "Canvas Fingerprint",
+        "columns": ["graphics_canvas_canvas_fingerprint"],
+    },
+    "pointer_type": {
+        "label": "Pointer Type",
+        "columns": ["device_media_queries_pointer"],
+    },
 }
 
 
@@ -226,8 +263,10 @@ def _property_filter(field: str, value: str):
     if meta is None:
         return None
     cols = meta["columns"]
+    is_number = meta.get("type") == "number"
     if len(cols) == 1:
-        return getattr(Fingerprint, cols[0]) == value
+        typed_value = float(value) if is_number else value
+        return getattr(Fingerprint, cols[0]) == typed_value
     # Composite (e.g. resolution "WxH")
     sep = meta.get("join", "x")
     parts = str(value).split(sep)
