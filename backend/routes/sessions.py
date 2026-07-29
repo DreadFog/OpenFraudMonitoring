@@ -5,6 +5,7 @@ Sessions endpoints - list and detail views
 import json
 from flask import Blueprint, request, jsonify
 from models import Session, Fingerprint, Heartbeat, BehavioralEvent
+from models.behavioral_event import CopyEvent, PasteEvent, FormSubmitEvent, ButtonClickEvent, TYPED_EVENT_MODELS
 from models.associations import SessionURL, BrowserSession
 from models.rule import RuleMatch
 from rules.engine import build_session_query
@@ -23,21 +24,28 @@ def _censor_text(value):
 def _censor_event(evt):
     """Censor sensitive captured content in a behavioral-event dict.
 
-    Applies to copy/paste `text` and to the `value` of each captured
-    form-submit field. Names/types/lengths are left intact.
+    Applies to copy/paste `text` (flat field in the new typed schema).
+    Form-submit field values are not captured in the new schema (only names).
     """
     event_type = evt.get("event_type")
-    data = evt.get("data") or {}
-    if event_type in ("copy", "paste") and "text" in data:
-        evt = {**evt, "data": {**data, "text": _censor_text(data["text"])}}
-    elif event_type == "form_submit" and isinstance(data.get("fields"), list):
-        fields = [
-            {**f, "value": _censor_text(f["value"])}
-            if isinstance(f, dict) and "value" in f else f
-            for f in data["fields"]
-        ]
-        evt = {**evt, "data": {**data, "fields": fields}}
+    if event_type in ("copy", "paste") and evt.get("text"):
+        evt = {**evt, "text": _censor_text(evt["text"])}
     return evt
+
+
+def _fetch_typed_events(session_id: int, limit: int = 2000) -> list[dict]:
+    """Return all typed behavioral events for a session, sorted oldest-first.
+
+    Queries all 4 typed tables, merges, sorts by timestamp, and applies the
+    given limit (keeping the most recent *limit* events).
+    """
+    rows = []
+    for Model in TYPED_EVENT_MODELS.values():
+        rows.extend(Model.query.filter_by(session_id=session_id).all())
+    rows.sort(key=lambda r: r.timestamp or 0, reverse=True)
+    rows = rows[:limit]
+    rows.reverse()  # present oldest-first in the timeline
+    return [r.to_dict() for r in rows]
 
 # Platforms that are unambiguously desktop/workstation
 _WORKSTATION_PLATFORMS = {
@@ -204,7 +212,10 @@ def get_session_detail(fsid):
     urls = [u.url for u in sess.urls.all()]
     session_ids = [bs.browser_session_id for bs in sess.browser_sessions.all()]
     heartbeats_count = sess.heartbeats.count()
-    behavioral_events_count = sess.behavioral_events.count()
+    behavioral_events_count = sum(
+        Model.query.filter_by(session_id=sess.id).count()
+        for Model in TYPED_EVENT_MODELS.values()
+    )
     fingerprints_count = sess.fingerprints.count()
 
     last_fp_row = sess.fingerprints.order_by(Fingerprint.timestamp.desc()).first()
@@ -217,12 +228,7 @@ def get_session_detail(fsid):
     ).limit(2000).all()
     recent_heartbeats.reverse()
 
-    recent_behavioral_events = sess.behavioral_events.order_by(
-        BehavioralEvent.timestamp.desc()
-    ).limit(2000).all()
-    recent_behavioral_events.reverse()
-
-    behavioral_events = [be.to_dict() for be in recent_behavioral_events]
+    behavioral_events = _fetch_typed_events(sess.id, limit=2000)
     if bool(get_global_setting(CLIPBOARD_CENSOR_KEY)):
         behavioral_events = [_censor_event(e) for e in behavioral_events]
 
@@ -259,7 +265,12 @@ def delete_session(fsid):
     # Explicitly delete children (lazy="dynamic" prevents ORM cascade)
     Fingerprint.query.filter_by(session_id=sess.id).delete()
     Heartbeat.query.filter_by(session_id=sess.id).delete()
-    BehavioralEvent.query.filter_by(session_id=sess.id).delete()
+    BehavioralEvent.query.filter_by(session_id=sess.id).delete()  # legacy table
+    from models.behavioral_event import CopyEvent, PasteEvent, FormSubmitEvent, ButtonClickEvent
+    CopyEvent.query.filter_by(session_id=sess.id).delete()
+    PasteEvent.query.filter_by(session_id=sess.id).delete()
+    FormSubmitEvent.query.filter_by(session_id=sess.id).delete()
+    ButtonClickEvent.query.filter_by(session_id=sess.id).delete()
     SessionURL.query.filter_by(session_id=sess.id).delete()
     BrowserSession.query.filter_by(session_id=sess.id).delete()
     RuleMatch.query.filter_by(session_id=sess.id).delete()

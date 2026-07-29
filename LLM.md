@@ -29,7 +29,7 @@ Dense technical reference for LLMs. Self-hosted browser fingerprinting, behavior
 
 1. Browser loads `ofm.js` → fpscanner runs, generates deterministic `fsid` → encrypted payload → `POST /api/initial`.
 2. Backend decrypts (XOR+Base64, key=`FPSCANNER_KEY`), upserts `Session` by `fsid`, stores raw fingerprint (JSONB) + denormalized `fingerprints` columns, creates/links STIX IP + user-agent observables, pushes `{"session_id":N,"type":"fingerprint"}` to Redis `ofm:events`, auto-triggers `auto`/`both` connectors.
-3. Every 30s: behavioral heartbeat → `POST /api/heartbeat`. High-signal events (button click, form submit, copy/paste) → `POST /api/behavioral_event` (stored in `behavioral_events`).
+3. Every 30s: behavioral heartbeat → `POST /api/heartbeat`. High-signal events (button click, form submit, copy/paste) → `POST /api/behavioral_event` (stored in typed tables, see DB schema).
 4. Worker: realtime loop `BRPOP ofm:events` evaluates enabled `realtime` rules on the triggering session; periodic loop (every `PERIODIC_INTERVAL_SECONDS`) evaluates `periodic` rules over all sessions. Matches create `RuleMatch`, append rule name to `session.flags`, add `score_modifier` (capped 100).
 5. Connectors consume `intel.requests.<name>` (exchange `ofm.intel`), call external API, publish STIX bundle to `intel.responses`; worker `ingest_bundle()` persists per-type STIX tables.
 6. Frontend polls `GET /api/sessions` (~10s) with `?filters=[...]`.
@@ -85,7 +85,8 @@ Dense technical reference for LLMs. Self-hosted browser fingerprinting, behavior
 
 ## Database schema (key)
 
-- `sessions`: id, fsid, risk_score, flags(JSONB), client_ip, ip_observable_type/id, user_agent_observable_id, first/last_seen. Children: `fingerprints` (raw JSONB + `automation_*`, `device_*`, `browser_*`, `graphics_*`, `codecs_*`, `locale_*`, `det_*` [21 detection bools], `fast_bot_detection`, `url`), `heartbeats` (counts + `raw_behavior` JSONB), `behavioral_events` (session_id, event_type, url, data JSONB), `session_urls`, `browser_sessions`.
+- `sessions`: id, fsid, risk_score, flags(JSONB), client_ip, ip_observable_type/id, user_agent_observable_id, first/last_seen. Children: `fingerprints` (raw JSONB + `automation_*`, `device_*`, `browser_*`, `graphics_*`, `codecs_*`, `locale_*`, `det_*` [21 detection bools], `fast_bot_detection`, `url`), `heartbeats` (counts + `raw_behavior` JSONB), **typed behavioral event tables** (see below), `session_urls`, `browser_sessions`.
+- **Typed behavioral event tables** (replaced legacy `behavioral_events` JSONB table): `beh_copy` (`CopyEvent`: length, text?, source_tag/id/name/type, form_action), `beh_paste` (`PasteEvent`: length, text?, target_tag/id/name/type, form_action), `beh_form_submit` (`FormSubmitEvent`: action, method, field_names JSONB array + GIN index), `beh_button_click` (`ButtonClickEvent`: x, y, tag, text). Legacy `behavioral_events` table kept in DB (no new writes) for backward compat.
 - `rules` (conditions JSONB, rule_type realtime|periodic, logic AND|OR, score_modifier, period_seconds) → `rule_matches`.
 - `dashboards` (widgets JSONB). `users` (+`settings` JSONB per-user prefs), `api_tokens`, `allowed_origins`, `taxii_feeds`, `app_settings` (key PK, value JSONB — global settings e.g. `graph.expand_warn_threshold`).
 - **STIX tables** (shared cols: id, stix_id[unique], value[indexed], created_at_platform, last_refreshed_at, decayed, raw JSONB): `stix_ipv4_addr`, `stix_ipv6_addr`, `stix_user_agent`, `stix_autonomous_system`, `stix_country`, `stix_indicator`, `stix_malware`, `stix_campaign`, `stix_intrusion_set`, `stix_relationship` (source_ref/target_ref cross-table STIX IDs). STIX IDs deterministic (UUIDv5) → dedup. `decayed` set once older than `INTEL_DECAY_DAYS`.
@@ -94,7 +95,8 @@ Dense technical reference for LLMs. Self-hosted browser fingerprinting, behavior
 
 - Condition format: `{"field","op","value"}`. Field registry: `services/schema.py` `SCHEMA_FIELDS` (name, label, type, model, column). Fingerprint fields auto-generated from fpscanner `types.ts` (`signals.*`, `fastBotDetectionDetails.*`).
 - Ops — string: `eq neq contains not_contains starts_with ends_with` (ILIKE); number: `eq neq gt gte lt lte`; boolean: `eq` ("true"/"false").
-- Behavioral virtual fields (computed from `behavioral_events`): `behavior_button_click_count`, `behavior_form_submit_count`, `behavior_copy_count`, `behavior_paste_count`, `behavior_button_text`, `behavior_form_action`, `behavior_form_method`, `behavior_event_url`.
+- Behavioral custom fields (computed from typed event tables): counts — `behavior_button_click_count`, `behavior_form_submit_count`, `behavior_copy_count`, `behavior_paste_count`; content — `behavior_button_text`, `behavior_form_action`, `behavior_form_method`, `behavior_form_field_name` (array contains), `behavior_event_url`; DOM context — `behavior_paste_target_name`, `behavior_paste_target_id`, `behavior_copy_source_name`, `behavior_copy_source_id`.
+- Sequence conditions (periodic rules only): `{"type":"sequence","steps":[{"event_type":"paste","filters":[...]},{"event_type":"form_submit","filters":[...]}]}` — Python-side greedy ordered scan. See `docs/rules.md` for full syntax and field reference.
 - Autocomplete `GET /api/suggest`: string→`DISTINCT ILIKE LIMIT 20`, boolean→`["true","false"]`, number→`[]`.
 
 ## Connectors (`connectors/`)

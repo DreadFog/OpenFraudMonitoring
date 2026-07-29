@@ -57,13 +57,30 @@ def create_app():
 app = create_app()
 
 
-def _apply_rule_matches(rules, session_id=None):
-    """Evaluate a list of rules; create RuleMatch rows for new matches."""
+def _apply_rule_matches(rules, session_id=None, active_since=None):
+    """Evaluate a list of rules; create RuleMatch rows for new matches.
+
+    Args:
+        rules:        list of Rule objects to evaluate.
+        session_id:   if set, restrict evaluation to a single session (realtime).
+        active_since: if set (Unix timestamp float), restrict periodic evaluation
+                      to sessions whose last_seen >= this value.  Ignored when
+                      session_id is provided.
+    """
     from models import Rule, RuleMatch, Session
     from rules.engine import evaluate_rule
 
     for rule in rules:
-        matching = evaluate_rule(rule, session_id=session_id)
+        # Build a narrowed base query for periodic rules to avoid full-table scans.
+        base_query = None
+        if session_id is None and active_since is not None:
+            base_query = Session.query.filter(Session.last_seen >= active_since)
+
+        matching = evaluate_rule(rule, session_id=session_id, base_query=base_query)
+        logger.debug(
+            "[rule] %s (%s) → %d candidate(s) matched",
+            rule.name, rule.rule_type, len(matching),
+        )
         for session in matching:
             existing = RuleMatch.query.filter_by(
                 rule_id=rule.id, session_id=session.id
@@ -82,6 +99,15 @@ def _apply_rule_matches(rules, session_id=None):
                     session_id=session.id,
                     score_change=rule.score_modifier,
                 ))
+                logger.debug(
+                    "[rule] %s → NEW match on session fsid=%s score+%d (now %d)",
+                    rule.name, session.fsid, rule.score_modifier, session.risk_score,
+                )
+            else:
+                logger.debug(
+                    "[rule] %s → session fsid=%s already flagged, skipping",
+                    rule.name, session.fsid,
+                )
     db.session.commit()
 
 
@@ -116,8 +142,17 @@ def process_realtime_events():
 # ── Periodic rule evaluator ─────────────────────────────────────────────────
 
 def process_periodic_rules():
+    # On startup, scan all sessions (last_run=0 covers everything).
+    # After each run, only sessions with last_seen >= the previous run timestamp
+    # are considered, which avoids a full-table scan on large deployments.
+    #
+    # NOTE: Session.last_seen is stored in JavaScript milliseconds (ms).
+    # We keep last_run in ms as well so the DB comparison is unit-consistent.
+    last_run = 0.0  # ms — 0 means "scan all" on first run
+
     while True:
         time.sleep(Config.PERIODIC_INTERVAL_SECONDS)
+        run_started_at = time.time() * 1000  # convert to ms to match last_seen
         try:
             with app.app_context():
                 from models import Rule
@@ -125,9 +160,18 @@ def process_periodic_rules():
                     enabled=True, rule_type="periodic"
                 ).all()
                 if rules:
-                    _apply_rule_matches(rules)
+                    logger.debug(
+                        "[periodic] starting scan: %d rule(s), active_since=%.0f",
+                        len(rules), last_run,
+                    )
+                    _apply_rule_matches(rules, active_since=last_run)
+                    logger.debug("[periodic] scan complete")
         except Exception as e:
             logger.error("Periodic error: %s", e)
+        else:
+            # Only advance the cursor on a successful run so we don't miss
+            # sessions if an exception occurs mid-scan.
+            last_run = run_started_at
 
 
 # ── Entry point ─────────────────────────────────────────────────────────────

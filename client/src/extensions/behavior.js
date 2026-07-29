@@ -147,6 +147,20 @@ export default {
       }
       const data = { length: text.length };
       if (CFG.captureClipboard) data.text = text;
+
+      // DOM context: capture which element had focus at copy time
+      try {
+        const el = document.activeElement;
+        if (el && el !== document.body) {
+          data.sourceTag = el.tagName.toLowerCase();
+          data.sourceId = el.id || "";
+          data.sourceName = el.name || "";
+          data.sourceType = el.type || "";
+          const form = el.closest && el.closest("form");
+          data.formAction = form ? (form.action || "") : "";
+        }
+      } catch (_) { /* ignore */ }
+
       sendDirect("copy", data);
     }, { passive: true });
 
@@ -156,6 +170,20 @@ export default {
       try { text = (e.clipboardData || window.clipboardData || { getData: () => "" }).getData("text") || ""; } catch (_) { /* ignore */ }
       const data = { length: text.length };
       if (CFG.captureClipboard) data.text = text;
+
+      // DOM context: e.target is the element that received the paste
+      try {
+        const el = e.target;
+        if (el && el !== document.body) {
+          data.targetTag = el.tagName.toLowerCase();
+          data.targetId = el.id || "";
+          data.targetName = el.name || "";
+          data.targetType = el.type || "";
+          const form = el.closest && el.closest("form");
+          data.formAction = form ? (form.action || "") : "";
+        }
+      } catch (_) { /* ignore */ }
+
       sendDirect("paste", data);
     }, { passive: true });
   },

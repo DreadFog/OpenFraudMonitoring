@@ -44,4 +44,4 @@ class RuleMatch(db.Model):
     score_change = db.Column(db.Integer, default=0)
 
     rule = db.relationship("Rule")
-    session = db.relationship("Session")
+    session = db.relationship("Session", overlaps="rule_matches")

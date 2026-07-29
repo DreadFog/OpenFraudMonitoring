@@ -14,21 +14,62 @@ Expected payload:
 import logging
 from flask import Blueprint, request, jsonify
 from services.database import db
-from models import Session, BehavioralEvent
+from models import Session, TYPED_EVENT_MODELS
 from services.event_queue import enqueue_event
 
 logger = logging.getLogger(__name__)
 
 behavioral_event_bp = Blueprint("behavioral_event", __name__, url_prefix="/api")
 
-# Allowed event types
-ALLOWED_EVENT_TYPES = {"button_click", "form_submit", "copy", "paste"}
+# Allowed event types (must match TYPED_EVENT_MODELS keys)
+ALLOWED_EVENT_TYPES = set(TYPED_EVENT_MODELS.keys())
+
+
+def _build_typed_event(Model, session_id, timestamp, url, data):
+    """Construct a typed event model instance from the ingested payload dict."""
+    kwargs = {"session_id": session_id, "timestamp": timestamp, "url": url}
+
+    if Model.EVENT_TYPE == "copy":
+        kwargs.update({
+            "length": int(data.get("length") or 0),
+            "text": data.get("text") or None,
+            "source_tag": str(data.get("sourceTag") or "")[:64],
+            "source_id": str(data.get("sourceId") or "")[:256],
+            "source_name": str(data.get("sourceName") or "")[:256],
+            "source_type": str(data.get("sourceType") or "")[:64],
+            "form_action": str(data.get("formAction") or "")[:2048],
+        })
+    elif Model.EVENT_TYPE == "paste":
+        kwargs.update({
+            "length": int(data.get("length") or 0),
+            "text": data.get("text") or None,
+            "target_tag": str(data.get("targetTag") or "")[:64],
+            "target_id": str(data.get("targetId") or "")[:256],
+            "target_name": str(data.get("targetName") or "")[:256],
+            "target_type": str(data.get("targetType") or "")[:64],
+            "form_action": str(data.get("formAction") or "")[:2048],
+        })
+    elif Model.EVENT_TYPE == "form_submit":
+        kwargs.update({
+            "action": str(data.get("action") or "")[:2048],
+            "method": str(data.get("method") or "")[:16],
+            "field_names": data.get("fieldNames") or [],
+        })
+    elif Model.EVENT_TYPE == "button_click":
+        kwargs.update({
+            "x": int(data["x"]) if data.get("x") is not None else None,
+            "y": int(data["y"]) if data.get("y") is not None else None,
+            "tag": str(data.get("tag") or "")[:64],
+            "text": str(data.get("text") or "")[:512],
+        })
+
+    return Model(**kwargs)
 
 
 @behavioral_event_bp.route("/behavioral_event", methods=["POST"])
 def behavioral_event():
     """
-    Receive and store a behavioral event.
+    Receive and store a behavioral event in the appropriate typed table.
     """
     payload = request.get_json() or {}
 
@@ -47,7 +88,6 @@ def behavioral_event():
     if fsid:
         session_obj = Session.query.filter_by(fsid=fsid).first()
     if not session_obj:
-        # Fallback: find most recent session from this IP
         forwarded = request.headers.get("X-Forwarded-For", "")
         client_ip = (forwarded.split(",")[0].strip() if forwarded else "") or request.remote_addr
         session_obj = Session.query.filter_by(client_ip=client_ip).order_by(
@@ -57,15 +97,10 @@ def behavioral_event():
     if not session_obj:
         return jsonify({"ok": False, "error": "session not found"}), 404
 
-    # Create and store behavioral event
-    be = BehavioralEvent(
-        session_id=session_obj.id,
-        timestamp=timestamp,
-        url=url,
-        event_type=event_type,
-        data=data,
-    )
-    db.session.add(be)
+    # Dispatch to the appropriate typed model
+    Model = TYPED_EVENT_MODELS[event_type]
+    event_obj = _build_typed_event(Model, session_obj.id, timestamp, url, data)
+    db.session.add(event_obj)
     session_obj.last_seen = timestamp
     db.session.commit()
 

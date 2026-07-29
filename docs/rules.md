@@ -167,21 +167,101 @@ This also removes all associated `RuleMatch` rows.
 }
 ```
 
-### Behavioral: many copy/paste events
+### Behavioral: many copy/paste events (periodic)
+
+Behavioral event counts come from the typed event tables (`beh_copy`, `beh_paste`,
+etc.) and are evaluated at the session level. Use `"rule_type": "periodic"` since
+counts need the full session history rather than a single triggering event.
 
 ```json
 {
-  "name": "HEAVY_CLIPBOARD_ACTIVITY",
-  "description": "Flags sessions with unusually high clipboard usage",
-  "rule_type": "realtime",
-  "logic": "OR",
+  "name": "excessiveCopyPaste",
+  "description": "Flags sessions with high clipboard activity — potential credential stuffing",
+  "rule_type": "periodic",
+  "logic": "AND",
   "conditions": [
-    {"field": "behavior_copy_count", "op": "gte", "value": "6"},
-    {"field": "behavior_paste_count", "op": "gte", "value": "6"}
+    {"field": "behavior_copy_count", "op": "gt", "value": "3"},
+    {"field": "behavior_paste_count", "op": "gt", "value": "3"}
   ],
-  "score_modifier": 20
+  "score_modifier": 10
 }
 ```
+
+### Behavioral: paste into a specific form field
+
+```json
+{
+  "name": "pasteIntoPassword",
+  "description": "User pasted into a password field — common in credential stuffing",
+  "rule_type": "periodic",
+  "logic": "AND",
+  "conditions": [
+    {"field": "behavior_paste_target_name", "op": "eq", "value": "password"}
+  ],
+  "score_modifier": 15
+}
+```
+
+### Behavioral: submit a form containing a specific field
+
+```json
+{
+  "name": "loginFormSubmit",
+  "description": "Session submitted a form with a password field",
+  "rule_type": "periodic",
+  "logic": "AND",
+  "conditions": [
+    {"field": "behavior_form_field_name", "op": "eq", "value": "password"}
+  ],
+  "score_modifier": 5
+}
+```
+
+### Behavioral: sequence — paste followed by login submit
+
+Sequence conditions detect ordered event chains and are only valid in `"periodic"`
+rules with `"AND"` logic. Each step specifies an `event_type` and optional
+per-field filters. The sequence is satisfied if the steps occur in order within
+the session's full event timeline.
+
+```json
+{
+  "name": "pasteBeforeLoginSubmit",
+  "description": "User pasted something then submitted a form with a password field",
+  "rule_type": "periodic",
+  "logic": "AND",
+  "conditions": [
+    {
+      "type": "sequence",
+      "steps": [
+        {
+          "event_type": "paste",
+          "filters": [{"field": "target_name", "op": "eq", "value": "password"}]
+        },
+        {
+          "event_type": "form_submit",
+          "filters": [{"field": "field_names", "op": "contains", "value": "password"}]
+        }
+      ]
+    }
+  ],
+  "score_modifier": 25
+}
+```
+
+**Sequence step filter fields** — names map directly to typed model columns:
+
+| `event_type` | Available `field` values |
+|---|---|
+| `copy` | `url`, `length`, `source_tag`, `source_id`, `source_name`, `source_type`, `form_action` |
+| `paste` | `url`, `length`, `target_tag`, `target_id`, `target_name`, `target_type`, `form_action` |
+| `form_submit` | `url`, `action`, `method`, `field_names` (array — supports `eq`/`contains`/`starts_with`/`ends_with`) |
+| `button_click` | `url`, `x`, `y`, `tag`, `text` |
+
+**Constraints:**
+- Sequence conditions require `"rule_type": "periodic"` (validated at rule creation).
+- A rule may mix regular conditions and sequence conditions (AND logic only).
+- Minimum 2 steps per sequence condition.
 
 ### Behavioral: suspicious form action
 
@@ -189,7 +269,7 @@ This also removes all associated `RuleMatch` rows.
 {
   "name": "SUSPICIOUS_FORM_TARGET",
   "description": "Flags sessions posting forms to suspicious endpoints",
-  "rule_type": "realtime",
+  "rule_type": "periodic",
   "logic": "AND",
   "conditions": [
     {"field": "behavior_form_submit_count", "op": "gte", "value": "3"},

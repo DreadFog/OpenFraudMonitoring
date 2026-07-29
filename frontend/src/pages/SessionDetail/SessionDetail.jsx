@@ -53,6 +53,66 @@ function eventMeta(type) {
   return EVENT_META[type] || { icon: "•", label: (type || "event").replace(/_/g, " ") };
 }
 
+/** Return a brief inline summary shown in the collapsed item header. */
+function eventSummary(e) {
+  switch (e.event_type) {
+    case "button_click": return e.text ? `"${e.text}"` : e.tag || "";
+    case "form_submit":  return e.action ? new URL(e.action, location.href).pathname : (e.field_names || []).join(", ");
+    case "copy":         return e.length != null ? `${e.length} chars${e.source_name ? ` from ${e.source_name}` : ""}` : "";
+    case "paste":        return e.length != null ? `${e.length} chars${e.target_name ? ` → ${e.target_name}` : ""}` : "";
+    default:             return "";
+  }
+}
+
+/**
+ * Return [{k, v}] pairs for the expandable detail panel of a typed event.
+ * Entries with null/undefined/"" values are omitted.
+ */
+function getEventDetails(e) {
+  const row = (k, v) => ({ k, v });
+  const skip = (v) => v === null || v === undefined || v === "" || (Array.isArray(v) && v.length === 0);
+
+  switch (e.event_type) {
+    case "button_click": return [
+      row("Tag",  e.tag),
+      row("Text", e.text),
+      row("X",    e.x),
+      row("Y",    e.y),
+    ].filter(r => !skip(r.v));
+
+    case "form_submit": return [
+      row("Action",      e.action),
+      row("Method",      e.method),
+      row("Field names", (e.field_names || []).join(", ")),
+    ].filter(r => !skip(r.v));
+
+    case "copy": return [
+      row("Length",      e.length),
+      row("Source name", e.source_name),
+      row("Source type", e.source_type),
+      row("Source tag",  e.source_tag),
+      row("Source ID",   e.source_id),
+      row("Form action", e.form_action),
+      row("Text",        e.text),
+    ].filter(r => !skip(r.v));
+
+    case "paste": return [
+      row("Length",      e.length),
+      row("Target name", e.target_name),
+      row("Target type", e.target_type),
+      row("Target tag",  e.target_tag),
+      row("Target ID",   e.target_id),
+      row("Form action", e.form_action),
+      row("Text",        e.text),
+    ].filter(r => !skip(r.v));
+
+    default: return Object.entries(e)
+      .filter(([k]) => !["event_type", "timestamp", "url"].includes(k))
+      .map(([k, v]) => row(k, typeof v === "object" ? JSON.stringify(v) : v))
+      .filter(r => !skip(r.v));
+  }
+}
+
 function fmtTime(ms) {
   if (!ms) return "—";
   return new Date(ms).toLocaleTimeString();
@@ -159,19 +219,20 @@ function TimelineItem({ item }) {
 
   const e = item.event;
   const meta = eventMeta(e.event_type);
-  const details = Object.entries(e.data || {});
+  const summary = eventSummary(e);
+  const details = getEventDetails(e);
   return (
     <div className={`tl-item tl-item--${e.event_type}`}>
       <button className="tl-item-head" onClick={() => setOpen((o) => !o)}>
         <span className="tl-dot" />
-        <span className="tl-item-label">{meta.icon} {meta.label}</span>
+        <span className="tl-item-label">{meta.icon} {meta.label}{summary ? <span className="tl-item-summary"> — {summary}</span> : null}</span>
         <span className="tl-item-time">{fmtTime(e.timestamp)}</span>
         <span className="tl-caret">{open ? "▾" : "▸"}</span>
       </button>
       {open && (
         <div className="tl-item-detail">
           <DetailRow k="Time" v={fmtFull(e.timestamp)} />
-          {details.map(([k, v]) => (
+          {details.map(({ k, v }) => (
             <DetailRow key={k} k={k} v={typeof v === "object" ? JSON.stringify(v) : String(v)} />
           ))}
           {details.length === 0 && <div className="tl-empty">No additional details.</div>}

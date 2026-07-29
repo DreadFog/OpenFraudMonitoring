@@ -60,6 +60,7 @@ services:
       OFM_ADMIN_PASSWORD: ${OFM_ADMIN_PASSWORD:-admin}
       OFM_ADMIN_TOKEN: ${OFM_ADMIN_TOKEN:-dev-admin-token}
       INTEL_DECAY_DAYS: ${INTEL_DECAY_DAYS:-7}
+      OFM_SAVE_PRIVATE_IP: ${OFM_SAVE_PRIVATE_IP:-false}
     depends_on:
       db:
         condition: service_healthy

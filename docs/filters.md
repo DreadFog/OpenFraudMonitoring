@@ -63,21 +63,44 @@ For boolean fields, returns `["true", "false"]`. For number fields, returns `[]`
 
 ### Behavioral custom fields
 
-These fields are computed from the `behavioral_events` table and can be used in
-both dashboard filtering and rules.
+These fields are computed from the typed behavioral event tables (`beh_copy`,
+`beh_paste`, `beh_form_submit`, `beh_button_click`) and can be used in both
+dashboard filtering and rules.
+
+#### Event counts
+
+| Field name | Label | Type | Source table |
+|------------|-------|------|--------------|
+| `behavior_button_click_count` | Behavior: Button Click Count | number | `beh_button_click` |
+| `behavior_form_submit_count` | Behavior: Form Submit Count | number | `beh_form_submit` |
+| `behavior_copy_count` | Behavior: Copy Count | number | `beh_copy` |
+| `behavior_paste_count` | Behavior: Paste Count | number | `beh_paste` |
+
+Count fields support numeric operators (`=`, `≠`, `>`, `≥`, `<`, `≤`).
+
+#### Event content fields
 
 | Field name | Label | Type | Notes |
 |------------|-------|------|-------|
-| `behavior_button_click_count` | Behavior: Button Click Count | number | All-time per-session count of `button_click` events |
-| `behavior_form_submit_count` | Behavior: Form Submit Count | number | All-time per-session count of `form_submit` events |
-| `behavior_copy_count` | Behavior: Copy Count | number | All-time per-session count of `copy` events |
-| `behavior_paste_count` | Behavior: Paste Count | number | All-time per-session count of `paste` events |
-| `behavior_button_text` | Behavior: Button Text | string | Matches `data.text` in button click events |
-| `behavior_form_action` | Behavior: Form Action | string | Matches `data.action` in form submit events |
-| `behavior_form_method` | Behavior: Form Method | string | Matches `data.method` in form submit events |
-| `behavior_event_url` | Behavior: Event URL | string | Matches URL on behavioral events |
+| `behavior_button_text` | Behavior: Button Text | string | Matches `text` in button click events |
+| `behavior_form_action` | Behavior: Form Action | string | Matches `action` in form submit events |
+| `behavior_form_method` | Behavior: Form Method | string | Matches `method` in form submit events |
+| `behavior_form_field_name` | Behavior: Form Field Name | string | Matches any entry in `field_names` array of form submit events |
+| `behavior_event_url` | Behavior: Event URL | string | Matches `url` across all event types |
 
-Count fields support numeric operators (`=`, `≠`, `>`, `≥`, `<`, `≤`).
+#### Paste target context (requires updated `ofm.js` client)
+
+| Field name | Label | Type | Notes |
+|------------|-------|------|-------|
+| `behavior_paste_target_name` | Behavior: Paste Target Name | string | `name` attribute of the pasted-into element |
+| `behavior_paste_target_id` | Behavior: Paste Target ID | string | `id` attribute of the pasted-into element |
+
+#### Copy source context (requires updated `ofm.js` client)
+
+| Field name | Label | Type | Notes |
+|------------|-------|------|-------|
+| `behavior_copy_source_name` | Behavior: Copy Source Name | string | `name` attribute of the element in focus at copy time |
+| `behavior_copy_source_id` | Behavior: Copy Source ID | string | `id` attribute of the element in focus at copy time |
 String fields support string operators (`=`, `≠`, `contains`, `not contains`,
 `starts with`, `ends with`).
 

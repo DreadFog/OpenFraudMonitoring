@@ -1,6 +1,12 @@
-"""Behavioral-event custom filters and suggestions."""
+"""Behavioral-event custom filters and suggestions.
 
-from sqlalchemy import func
+All handlers query the typed behavioral event tables (beh_copy, beh_paste,
+beh_form_submit, beh_button_click) introduced to replace the legacy JSONB
+behavioral_events table.
+"""
+
+from sqlalchemy import func, cast
+from sqlalchemy.dialects.postgresql import JSONB
 
 from .registry import register_custom_filter
 from .suggestions import (
@@ -8,150 +14,227 @@ from .suggestions import (
     suggest_behavior_form_action,
     suggest_behavior_form_method,
     suggest_behavior_event_url,
+    suggest_behavior_form_field_name,
+    suggest_behavior_paste_target_name,
+    suggest_behavior_copy_source_name,
 )
 
 
-def _build_behavior_count_condition(event_type: str, op: str, value):
-    """Build scalar count condition for per-session behavioral event totals."""
-    from models import Session, BehavioralEvent
+# ─────────────────────────────────────────────────────────────────────────────
+# Count helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _count_filter(Model, query, op, value):
+    """Apply a count comparison on a typed event model for the current session."""
+    from models import Session
 
     try:
         target = int(float(value))
     except (ValueError, TypeError):
-        return None
+        return query.filter(False)
 
     count_expr = (
-        BehavioralEvent.query.with_entities(func.count(BehavioralEvent.id))
-        .filter(
-            BehavioralEvent.session_id == Session.id,
-            BehavioralEvent.event_type == event_type,
-        )
+        Model.query.with_entities(func.count(Model.id))
+        .filter(Model.session_id == Session.id)
         .correlate(Session)
         .scalar_subquery()
     )
 
+    ops = {
+        "eq":  count_expr == target,
+        "neq": count_expr != target,
+        "gt":  count_expr > target,
+        "gte": count_expr >= target,
+        "lt":  count_expr < target,
+        "lte": count_expr <= target,
+    }
+    cond = ops.get(op)
+    if cond is None:
+        return query.filter(False)
+    return query.filter(cond)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# String column EXISTS helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _string_exists_filter(Model, column_name, query, op, value):
+    """Apply an EXISTS condition matching a string column on a typed event model."""
+    from models import Session
+
+    column = getattr(Model, column_name)
+    base = Model.query.filter(
+        Model.session_id == Session.id,
+        column != None,   # noqa: E711
+        column != "",
+    )
+
     if op == "eq":
-        return count_expr == target
-    if op == "neq":
-        return count_expr != target
-    if op == "gt":
-        return count_expr > target
-    if op == "gte":
-        return count_expr >= target
-    if op == "lt":
-        return count_expr < target
-    if op == "lte":
-        return count_expr <= target
-    return None
-
-
-def _handle_behavior_count(query, event_type: str, op: str, value):
-    cond = _build_behavior_count_condition(event_type, op, value)
-    if cond is None:
-        return query.filter(False)
-    return query.filter(cond)
-
-
-def _build_behavior_field_match(event_type: str, key: str | None, op: str, value):
-    """Build EXISTS/NOT EXISTS condition for event field string matching."""
-    from models import Session, BehavioralEvent
-
-    if key:
-        column = BehavioralEvent.data[key].astext
+        exists = base.filter(column == str(value)).exists()
+    elif op == "neq":
+        exists = ~base.filter(column == str(value)).exists()
+    elif op == "contains":
+        exists = base.filter(column.ilike(f"%{value}%")).exists()
+    elif op == "not_contains":
+        exists = ~base.filter(column.ilike(f"%{value}%")).exists()
+    elif op == "starts_with":
+        exists = base.filter(column.ilike(f"{value}%")).exists()
+    elif op == "ends_with":
+        exists = base.filter(column.ilike(f"%{value}")).exists()
     else:
-        column = BehavioralEvent.url
-
-    base = BehavioralEvent.query.filter(
-        BehavioralEvent.session_id == Session.id,
-        BehavioralEvent.event_type == event_type,
-        column != None,  # noqa: E711
-        column != "",
-    )
-
-    if op in ("eq", "neq"):
-        matched = base.filter(column == str(value))
-        exists = matched.exists()
-        return ~exists if op == "neq" else exists
-
-    if op in ("contains", "not_contains"):
-        matched = base.filter(column.ilike(f"%{value}%"))
-        exists = matched.exists()
-        return ~exists if op == "not_contains" else exists
-
-    if op == "starts_with":
-        return base.filter(column.ilike(f"{value}%")).exists()
-
-    if op == "ends_with":
-        return base.filter(column.ilike(f"%{value}")).exists()
-
-    return None
-
-
-def _handle_behavior_field(query, event_type: str, key: str | None, op: str, value):
-    cond = _build_behavior_field_match(event_type, key, op, value)
-    if cond is None:
         return query.filter(False)
-    return query.filter(cond)
+
+    return query.filter(exists)
 
 
-def _handle_behavior_button_click_count(query, op, value):
-    return _handle_behavior_count(query, "button_click", op, value)
+# ─────────────────────────────────────────────────────────────────────────────
+# JSONB array (field_names) helpers
+# ─────────────────────────────────────────────────────────────────────────────
 
+def _form_field_name_filter(query, op, value):
+    """Filter sessions that have a form_submit event whose field_names contains value."""
+    from models import Session, FormSubmitEvent
 
-def _handle_behavior_form_submit_count(query, op, value):
-    return _handle_behavior_count(query, "form_submit", op, value)
-
-
-def _handle_behavior_copy_count(query, op, value):
-    return _handle_behavior_count(query, "copy", op, value)
-
-
-def _handle_behavior_paste_count(query, op, value):
-    return _handle_behavior_count(query, "paste", op, value)
-
-
-def _handle_behavior_button_text(query, op, value):
-    return _handle_behavior_field(query, "button_click", "text", op, value)
-
-
-def _handle_behavior_form_action(query, op, value):
-    return _handle_behavior_field(query, "form_submit", "action", op, value)
-
-
-def _handle_behavior_form_method(query, op, value):
-    return _handle_behavior_field(query, "form_submit", "method", op, value)
-
-
-def _handle_behavior_event_url(query, op, value):
-    from models import Session, BehavioralEvent
-
-    column = BehavioralEvent.url
-    base = BehavioralEvent.query.filter(
-        BehavioralEvent.session_id == Session.id,
-        column != "",
+    base = FormSubmitEvent.query.filter(
+        FormSubmitEvent.session_id == Session.id,
     )
 
     if op in ("eq", "neq"):
-        matched = base.filter(column == str(value))
+        # PostgreSQL JSONB ? operator: checks whether array contains exact string
+        matched = base.filter(
+            FormSubmitEvent.field_names.cast(JSONB).op("?")(str(value))
+        )
         exists = matched.exists()
         return query.filter(~exists if op == "neq" else exists)
 
-    if op in ("contains", "not_contains"):
-        matched = base.filter(column.ilike(f"%{value}%"))
-        exists = matched.exists()
-        return query.filter(~exists if op == "not_contains" else exists)
+    if op in ("contains", "not_contains", "starts_with", "ends_with"):
+        # Unnest the JSONB array and apply string matching on each element
+        from services.database import db
+        from sqlalchemy import text as sa_text
 
-    if op == "starts_with":
-        return query.filter(base.filter(column.ilike(f"{value}%")).exists())
-
-    if op == "ends_with":
-        return query.filter(base.filter(column.ilike(f"%{value}")).exists())
+        elem = func.jsonb_array_elements_text(FormSubmitEvent.field_names).column_valued("elem")
+        if op == "contains":
+            matched = base.filter(
+                db.session.query(elem).filter(elem.ilike(f"%{value}%")).correlate(FormSubmitEvent).exists()
+            )
+        elif op == "not_contains":
+            matched = base.filter(
+                ~db.session.query(elem).filter(elem.ilike(f"%{value}%")).correlate(FormSubmitEvent).exists()
+            )
+        elif op == "starts_with":
+            matched = base.filter(
+                db.session.query(elem).filter(elem.ilike(f"{value}%")).correlate(FormSubmitEvent).exists()
+            )
+        elif op == "ends_with":
+            matched = base.filter(
+                db.session.query(elem).filter(elem.ilike(f"%{value}")).correlate(FormSubmitEvent).exists()
+            )
+        return query.filter(matched.exists())
 
     return query.filter(False)
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Individual handlers (wired to registry below)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _handle_behavior_copy_count(query, op, value):
+    from models import CopyEvent
+    return _count_filter(CopyEvent, query, op, value)
+
+
+def _handle_behavior_paste_count(query, op, value):
+    from models import PasteEvent
+    return _count_filter(PasteEvent, query, op, value)
+
+
+def _handle_behavior_form_submit_count(query, op, value):
+    from models import FormSubmitEvent
+    return _count_filter(FormSubmitEvent, query, op, value)
+
+
+def _handle_behavior_button_click_count(query, op, value):
+    from models import ButtonClickEvent
+    return _count_filter(ButtonClickEvent, query, op, value)
+
+
+def _handle_behavior_button_text(query, op, value):
+    from models import ButtonClickEvent
+    return _string_exists_filter(ButtonClickEvent, "text", query, op, value)
+
+
+def _handle_behavior_form_action(query, op, value):
+    from models import FormSubmitEvent
+    return _string_exists_filter(FormSubmitEvent, "action", query, op, value)
+
+
+def _handle_behavior_form_method(query, op, value):
+    from models import FormSubmitEvent
+    return _string_exists_filter(FormSubmitEvent, "method", query, op, value)
+
+
+def _handle_behavior_event_url(query, op, value):
+    """Match the url column across all typed event tables (any event type)."""
+    from models import Session, CopyEvent, PasteEvent, FormSubmitEvent, ButtonClickEvent
+
+    def _url_exists(Model, op, value):
+        base = Model.query.filter(
+            Model.session_id == Session.id,
+            Model.url != "",
+        )
+        if op == "eq":
+            return base.filter(Model.url == str(value)).exists()
+        if op == "neq":
+            return ~base.filter(Model.url == str(value)).exists()
+        if op == "contains":
+            return base.filter(Model.url.ilike(f"%{value}%")).exists()
+        if op == "not_contains":
+            return ~base.filter(Model.url.ilike(f"%{value}%")).exists()
+        if op == "starts_with":
+            return base.filter(Model.url.ilike(f"{value}%")).exists()
+        if op == "ends_with":
+            return base.filter(Model.url.ilike(f"%{value}")).exists()
+        return None
+
+    from sqlalchemy import or_
+    conds = [c for m in (CopyEvent, PasteEvent, FormSubmitEvent, ButtonClickEvent)
+             if (c := _url_exists(m, op, value)) is not None]
+    if not conds:
+        return query.filter(False)
+    return query.filter(or_(*conds))
+
+
+def _handle_behavior_form_field_name(query, op, value):
+    return _form_field_name_filter(query, op, value)
+
+
+def _handle_behavior_paste_target_name(query, op, value):
+    from models import PasteEvent
+    return _string_exists_filter(PasteEvent, "target_name", query, op, value)
+
+
+def _handle_behavior_paste_target_id(query, op, value):
+    from models import PasteEvent
+    return _string_exists_filter(PasteEvent, "target_id", query, op, value)
+
+
+def _handle_behavior_copy_source_name(query, op, value):
+    from models import CopyEvent
+    return _string_exists_filter(CopyEvent, "source_name", query, op, value)
+
+
+def _handle_behavior_copy_source_id(query, op, value):
+    from models import CopyEvent
+    return _string_exists_filter(CopyEvent, "source_id", query, op, value)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Registration
+# ─────────────────────────────────────────────────────────────────────────────
+
 def register_filters():
     """Register behavioral-event custom filters."""
+    # Counts
     register_custom_filter(
         "behavior_button_click_count", "Behavior: Button Click Count", "number",
         _handle_behavior_button_click_count,
@@ -168,6 +251,7 @@ def register_filters():
         "behavior_paste_count", "Behavior: Paste Count", "number",
         _handle_behavior_paste_count,
     )
+    # Form fields
     register_custom_filter(
         "behavior_button_text", "Behavior: Button Text", "string",
         _handle_behavior_button_text,
@@ -188,3 +272,29 @@ def register_filters():
         _handle_behavior_event_url,
         suggest=suggest_behavior_event_url,
     )
+    register_custom_filter(
+        "behavior_form_field_name", "Behavior: Form Field Name", "string",
+        _handle_behavior_form_field_name,
+        suggest=suggest_behavior_form_field_name,
+    )
+    # Paste target context
+    register_custom_filter(
+        "behavior_paste_target_name", "Behavior: Paste Target Name", "string",
+        _handle_behavior_paste_target_name,
+        suggest=suggest_behavior_paste_target_name,
+    )
+    register_custom_filter(
+        "behavior_paste_target_id", "Behavior: Paste Target ID", "string",
+        _handle_behavior_paste_target_id,
+    )
+    # Copy source context
+    register_custom_filter(
+        "behavior_copy_source_name", "Behavior: Copy Source Name", "string",
+        _handle_behavior_copy_source_name,
+        suggest=suggest_behavior_copy_source_name,
+    )
+    register_custom_filter(
+        "behavior_copy_source_id", "Behavior: Copy Source ID", "string",
+        _handle_behavior_copy_source_id,
+    )
+

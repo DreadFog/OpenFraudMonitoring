@@ -37,7 +37,7 @@ class Config:
     HOST = os.environ.get("HOST", "0.0.0.0")
     PORT = int(os.environ.get("PORT", "5000"))
     DEBUG = os.environ.get("FLASK_DEBUG", "0") == "1"
-    OFM_SAVE_PRIVATE_IP = bool(os.environ.get("OFM_SAVE_PRIVATE_IP", False))
+    OFM_SAVE_PRIVATE_IP = os.environ.get("OFM_SAVE_PRIVATE_IP", "false").lower() in ("1", "true", "yes")
 
     # ── Worker ──
     PERIODIC_INTERVAL_SECONDS = int(os.environ.get("PERIODIC_INTERVAL_SECONDS", "60"))

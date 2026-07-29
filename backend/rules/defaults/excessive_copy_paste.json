@@ -1,0 +1,19 @@
+{
+  "name": "excessiveCopyPaste",
+  "description": "Session has more than 3 copy events and more than 3 paste events — potential credential stuffing or automated form filling.",
+  "rule_type": "periodic",
+  "logic": "AND",
+  "conditions": [
+    {
+      "field": "behavior_copy_count",
+      "op": "gt",
+      "value": "3"
+    },
+    {
+      "field": "behavior_paste_count",
+      "op": "gt",
+      "value": "3"
+    }
+  ],
+  "score_modifier": 10
+}
