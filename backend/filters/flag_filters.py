@@ -43,6 +43,33 @@ def _flag_suggest(q: str) -> list[str]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Aggregate
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _flag_aggregate(session_ids, limit: int):
+    """Count how many sessions in *session_ids* have each flag value."""
+    from collections import Counter
+    from models import Session
+
+    rows = (
+        Session.query
+        .filter(Session.id.in_(session_ids))
+        .with_entities(Session.flags)
+        .all()
+    )
+    counter = Counter()
+    for (flags,) in rows:
+        if flags:
+            for flag in flags:
+                counter[flag] += 1
+
+    return [
+        {"value": flag, "count": count}
+        for flag, count in counter.most_common(limit)
+    ]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Registration
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -53,5 +80,6 @@ def register_filters():
         field_type="string",
         handler=_flag_handler,
         suggest=_flag_suggest,
+        aggregate=_flag_aggregate,
         category="Session Metadata",
     )

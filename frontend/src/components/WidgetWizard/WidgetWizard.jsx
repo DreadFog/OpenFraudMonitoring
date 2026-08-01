@@ -1,39 +1,74 @@
 import React, { useState } from "react";
-import FilterBuilder from "../FilterBuilder/FilterBuilder";
+import { MAP_CENTER_OPTIONS } from "../../pages/Dashboard/widgets/countryLookup";
 import "./WidgetWizard.css";
 
 const WIDGET_TYPES = [
   { value: "stat", label: "Statistic", icon: "#️⃣", desc: "A single number — count of matching sessions" },
   { value: "pie", label: "Pie Chart", icon: "🥧", desc: "Distribution of values as proportional slices" },
   { value: "histogram", label: "Histogram", icon: "📊", desc: "Horizontal bar chart of value counts" },
+  { value: "vertical_histogram", label: "Bar Chart", icon: "📊", desc: "Vertical bars of a number field sorted by value" },
   { value: "weighted_list", label: "Weighted List", icon: "📋", desc: "Ranked list with proportional bars" },
+  { value: "map", label: "World Map", icon: "🗺️", desc: "Geographic session distribution by IP country" },
 ];
+
+const ZOOM_LEVELS = [
+  { value: 1, label: "1 — World view" },
+  { value: 2, label: "2 — Continental" },
+  { value: 3, label: "3 — Regional" },
+  { value: 4, label: "4 — Country" },
+  { value: 5, label: "5 — Detail" },
+];
+
+const DEFAULT_MAP_CONFIG = { centerCode: "FR", zoom: 3 };
 
 export default function WidgetWizard({ schema, onClose, onCreate, initialWidget }) {
   const isEditing = !!initialWidget;
   const [step, setStep] = useState(isEditing ? 3 : 1);
   const [type, setType] = useState(initialWidget?.type || "");
   const [field, setField] = useState(initialWidget?.field || "");
-  const [filters, setFilters] = useState(initialWidget?.filters || []);
   const [limit, setLimit] = useState(initialWidget?.limit || 10);
   const [name, setName] = useState(initialWidget?.name || "");
+  const [mapConfig, setMapConfig] = useState(initialWidget?.mapConfig || DEFAULT_MAP_CONFIG);
 
+  // stat has no field step; map has a locked field step; others have a free field step
   const needsField = type && type !== "stat";
+  const fieldIsLocked = type === "map";
 
   const canNext = () => {
     if (step === 1) return !!type;
-    if (step === 2) return !needsField || !!field;
+    if (step === 2) return fieldIsLocked || !!field;
     if (step === 3) return !!name.trim();
     return false;
+  };
+
+  const handleNext = () => {
+    if (step === 1) {
+      if (!needsField) {
+        setStep(3); // stat skips field step
+      } else {
+        if (type === "map") setField("ip_country");
+        setStep(2);
+      }
+    } else {
+      setStep((s) => s + 1);
+    }
+  };
+
+  const handleBack = () => {
+    if (step === 3 && !needsField) {
+      setStep(1); // stat came from step 1
+    } else {
+      setStep((s) => s - 1);
+    }
   };
 
   const handleCreate = () => {
     const widget = {
       type,
       name: name.trim(),
-      filters: filters.filter((f) => f.field && f.op && f.value),
       field: needsField ? field : null,
-      limit: needsField ? limit : null,
+      limit: needsField && !fieldIsLocked ? limit : null,
+      mapConfig: type === "map" ? mapConfig : undefined,
     };
     onCreate(widget);
   };
@@ -68,42 +103,42 @@ export default function WidgetWizard({ schema, onClose, onCreate, initialWidget 
             </div>
           )}
 
-          {/* Step 2: Field + Filters */}
+          {/* Step 2: Field selection */}
           {step === 2 && (
             <div className="wizard-step">
-              {needsField && (
-                <>
-                  <h3>Which field to group by?</h3>
-                  <select
-                    className="wizard-select"
-                    value={field}
-                    onChange={(e) => setField(e.target.value)}
-                  >
+              <h3>Which field to group by?</h3>
+              <select
+                className={`wizard-select ${fieldIsLocked ? "wizard-select-locked" : ""}`}
+                value={fieldIsLocked ? "ip_country" : field}
+                disabled={fieldIsLocked}
+                onChange={(e) => setField(e.target.value)}
+              >
+                {fieldIsLocked ? (
+                  <option value="ip_country">IP Country Code</option>
+                ) : (
+                  <>
                     <option value="">Select a field…</option>
-                    {schema.map((f) => (
+                    {(type === "vertical_histogram"
+                      ? schema.filter((f) => f.type === "number")
+                      : schema
+                    ).map((f) => (
                       <option key={f.name} value={f.name}>
                         {f.label}
                       </option>
                     ))}
-                  </select>
-                </>
+                  </>
+                )}
+              </select>
+              {fieldIsLocked && (
+                <p className="wizard-field-note">Field is fixed for Map widgets.</p>
               )}
-              <h3 style={{ marginTop: needsField ? 16 : 0 }}>
-                Filter the data (optional)
-              </h3>
-              <FilterBuilder
-                schema={schema}
-                filters={filters}
-                onChange={setFilters}
-                onClear={() => setFilters([])}
-              />
             </div>
           )}
 
-          {/* Step 3: Limit + Name + Size */}
+          {/* Step 3: Limit + Name + Map config */}
           {step === 3 && (
             <div className="wizard-step">
-              {needsField && (
+              {needsField && !fieldIsLocked && (
                 <>
                   <h3>Max values to show</h3>
                   <input
@@ -116,7 +151,35 @@ export default function WidgetWizard({ schema, onClose, onCreate, initialWidget 
                   />
                 </>
               )}
-              <h3 style={{ marginTop: needsField ? 16 : 0 }}>Widget name</h3>
+              {type === "map" && (
+                <>
+                  <h3>Center on</h3>
+                  <select
+                    className="wizard-select"
+                    value={mapConfig.centerCode}
+                    onChange={(e) => setMapConfig((prev) => ({ ...prev, centerCode: e.target.value }))}
+                  >
+                    {MAP_CENTER_OPTIONS.map((group) => (
+                      <optgroup key={group.group} label={group.group}>
+                        {group.options.map((o) => (
+                          <option key={o.code} value={o.code}>{o.name}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  <h3 style={{ marginTop: 16 }}>Zoom</h3>
+                  <select
+                    className="wizard-select"
+                    value={mapConfig.zoom}
+                    onChange={(e) => setMapConfig((prev) => ({ ...prev, zoom: Number(e.target.value) }))}
+                  >
+                    {ZOOM_LEVELS.map((z) => (
+                      <option key={z.value} value={z.value}>{z.label}</option>
+                    ))}
+                  </select>
+                </>
+              )}
+              <h3 style={{ marginTop: needsField || type === "map" ? 16 : 0 }}>Widget name</h3>
               <input
                 type="text"
                 className="wizard-input"
@@ -131,7 +194,7 @@ export default function WidgetWizard({ schema, onClose, onCreate, initialWidget 
 
         <footer className="wizard-footer">
           {step > 1 && (
-            <button className="wizard-btn wizard-btn-back" onClick={() => setStep((s) => s - 1)}>
+            <button className="wizard-btn wizard-btn-back" onClick={handleBack}>
               ← Back
             </button>
           )}
@@ -140,7 +203,7 @@ export default function WidgetWizard({ schema, onClose, onCreate, initialWidget 
             <button
               className="wizard-btn wizard-btn-next"
               disabled={!canNext()}
-              onClick={() => setStep((s) => s + 1)}
+              onClick={handleNext}
             >
               Next →
             </button>

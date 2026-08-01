@@ -6,6 +6,7 @@ import { usePersistentState } from "../../hooks/usePersistentState";
 import FilterBuilder from "../../components/FilterBuilder/FilterBuilder";
 import WidgetWizard from "../../components/WidgetWizard/WidgetWizard";
 import IpIntelPopover from "../../components/IpIntelPopover/IpIntelPopover";
+import WidgetCard from "./widgets/WidgetCard";
 import { buildGraphUrl, sessionSeed } from "../Graph/graphLink";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -14,101 +15,12 @@ import "./Dashboard.css";
 const GRID_COLS = 12;
 const ROW_HEIGHT = 80;
 
-const PALETTE = [
-  "#58a6ff", "#f85149", "#f0883e", "#3fb950", "#bc8cff",
-  "#79c0ff", "#d29922", "#ff7b72", "#56d364", "#e3b341",
-];
-
 const DEFAULT_WIDGETS = [
-  { type: "stat", name: "Total Sessions", filters: [], field: null, limit: null, layout: { x: 0, y: 0, w: 2, h: 2 } },
+  { type: "stat", name: "Total Sessions", field: null, limit: null, layout: { x: 0, y: 0, w: 2, h: 2 } },
   { type: "stat", name: "High Risk", filters: [{ field: "risk_score", op: "gte", value: "60" }], field: null, limit: null, layout: { x: 2, y: 0, w: 2, h: 2 } },
   { type: "stat", name: "Bots Detected", filters: [{ field: "fast_bot_detection", op: "eq", value: "true" }], field: null, limit: null, layout: { x: 4, y: 0, w: 2, h: 2 } },
   { type: "stat", name: "Low Risk", filters: [{ field: "risk_score", op: "lt", value: "30" }], field: null, limit: null, layout: { x: 6, y: 0, w: 2, h: 2 } },
 ];
-
-const STAT_COLORS = {
-  "Total Sessions": "#58a6ff",
-  "High Risk": "#f85149",
-  "Bots Detected": "#f0883e",
-  "Low Risk": "#3fb950",
-};
-
-/* ── Pie chart (pure CSS conic-gradient) ── */
-function PieChart({ groups }) {
-  const total = groups.reduce((s, g) => s + g.count, 0);
-  if (total === 0) return <p className="empty-note">No data</p>;
-
-  let cumPct = 0;
-  const stops = groups.map((g, i) => {
-    const pct = (g.count / total) * 100;
-    const start = cumPct;
-    cumPct += pct;
-    return `${PALETTE[i % PALETTE.length]} ${start}% ${cumPct}%`;
-  });
-
-  return (
-    <div className="pie-wrapper">
-      <div
-        className="pie-circle"
-        style={{ background: `conic-gradient(${stops.join(", ")})` }}
-      />
-      <div className="pie-legend">
-        {groups.map((g, i) => (
-          <div key={i} className="pie-legend-item">
-            <span className="pie-swatch" style={{ background: PALETTE[i % PALETTE.length] }} />
-            <span className="pie-legend-label">{g.value}</span>
-            <span className="pie-legend-count">{g.count}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ── Histogram (horizontal bars) ── */
-function Histogram({ groups }) {
-  const max = Math.max(...groups.map((g) => g.count), 1);
-  if (groups.length === 0) return <p className="empty-note">No data</p>;
-
-  return (
-    <div className="histogram">
-      {groups.map((g, i) => (
-        <div key={i} className="histo-row">
-          <span className="histo-label">{g.value}</span>
-          <div className="histo-bar-bg">
-            <div
-              className="histo-bar"
-              style={{
-                width: `${(g.count / max) * 100}%`,
-                background: PALETTE[i % PALETTE.length],
-              }}
-            />
-          </div>
-          <span className="histo-count">{g.count}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ── Weighted list ── */
-function WeightedList({ groups }) {
-  const max = Math.max(...groups.map((g) => g.count), 1);
-  if (groups.length === 0) return <p className="empty-note">No data</p>;
-
-  return (
-    <div className="weighted-list">
-      {groups.map((g, i) => (
-        <div key={i} className="wl-item">
-          <div className="wl-bar" style={{ width: `${(g.count / max) * 100}%` }} />
-          <span className="wl-rank">{i + 1}.</span>
-          <span className="wl-value">{g.value}</span>
-          <span className="wl-count">{g.count}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 /* ── Default layout for new widget types ── */
 function defaultLayout(type, index, existingWidgets) {
@@ -129,37 +41,6 @@ function migrateWidget(widget, index) {
   const w = sizeMap[widget.size] || (widget.type === "stat" ? 3 : 6);
   const h = widget.type === "stat" ? 2 : 3;
   return { ...widget, layout: { x: (index * 3) % GRID_COLS, y: Math.floor((index * 3) / GRID_COLS) * h, w, h } };
-}
-
-/* ── Single widget card ── */
-function WidgetCard({ widget, data, editMode, onEdit, onRemove }) {
-  const renderContent = () => {
-    if (!data) return <span className="widget-loading">…</span>;
-
-    if (widget.type === "stat") {
-      const color = STAT_COLORS[widget.name] || "#58a6ff";
-      return <div className="stat-num" style={{ color }}>{data.count ?? "—"}</div>;
-    }
-
-    const groups = data.groups || [];
-    if (widget.type === "pie") return <PieChart groups={groups} />;
-    if (widget.type === "histogram") return <Histogram groups={groups} />;
-    if (widget.type === "weighted_list") return <WeightedList groups={groups} />;
-    return null;
-  };
-
-  return (
-    <div className={`widget-card ${editMode ? "widget-edit-mode" : ""}`}>
-      {editMode && (
-        <div className="widget-toolbar">
-          <button className="widget-tb-btn widget-tb-edit" onClick={onEdit} title="Edit widget">✎</button>
-          <button className="widget-tb-btn widget-tb-delete" onClick={onRemove} title="Delete widget">×</button>
-        </div>
-      )}
-      <div className="widget-content">{renderContent()}</div>
-      <div className="stat-label">{widget.name}</div>
-    </div>
-  );
 }
 
 /* ── Session row helpers ── */
@@ -232,7 +113,6 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [schema, setSchema] = useState([]);
   const [filters, setFilters] = usePersistentState("dashboard.filters", []);
-  const [connected, setConnected] = useState(true);
   const [sortBy, setSortBy] = usePersistentState("dashboard.sortBy", "last_seen");
   const [sortOrder, setSortOrder] = usePersistentState("dashboard.sortOrder", "desc");
   const [page, setPage] = useState(1);
@@ -273,12 +153,10 @@ export default function Dashboard() {
       setTotalSessions(result.total || 0);
       setTotalPages(result.pages || 1);
       setLoading(false);
-      setConnected(true);
     } catch (err) {
       console.error(err);
       setSessions([]);
       setLoading(false);
-      setConnected(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(completeFilters), sortBy, sortOrder, page, perPage]);
@@ -289,7 +167,7 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, [loadSessions]);
 
-  // Fetch widget data whenever widgets change
+  // Fetch widget data whenever widgets or global filters change
   const loadWidgetData = useCallback(async () => {
     const results = {};
     await Promise.all(
@@ -298,7 +176,8 @@ export default function Dashboard() {
           results[i] = await api.getWidgetData({
             type: w.type,
             field: w.field,
-            filters: w.filters || [],
+            // Merge widget-level filters (e.g. default High Risk filter) with global filters
+            filters: [...(w.filters || []), ...completeFilters],
             limit: w.limit || 10,
           });
         } catch {
@@ -307,7 +186,8 @@ export default function Dashboard() {
       })
     );
     setWidgetData(results);
-  }, [widgets]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [widgets, JSON.stringify(completeFilters)]);
 
   useEffect(() => {
     loadWidgetData();
@@ -317,29 +197,32 @@ export default function Dashboard() {
 
   // ── Dashboard management ──
 
-  const loadDashboard = async (id) => {
+  const loadDashboard = async (value) => {
+    if (value === "__new__") {
+      const name = window.prompt("Dashboard name:");
+      if (!name?.trim()) return;
+      try {
+        const created = await api.createDashboard(name.trim(), []);
+        setDashboards((prev) => [...prev, created]);
+        setCurrentDashboardId(created.id);
+        setWidgets([]);
+        setEditMode(true);
+      } catch (e) {
+        alert(e.message || "Failed to create dashboard");
+      }
+      return;
+    }
     setEditMode(false);
-    if (!id) {
+    if (!value) {
       setCurrentDashboardId(null);
       setWidgets(DEFAULT_WIDGETS);
       return;
     }
+    const id = Number(value);
     const db = dashboards.find((d) => d.id === id);
     if (db) {
       setCurrentDashboardId(id);
       setWidgets((db.widgets || []).map(migrateWidget));
-    }
-  };
-
-  const saveDashboard = async () => {
-    const name = window.prompt("Dashboard name:");
-    if (!name?.trim()) return;
-    try {
-      const created = await api.createDashboard(name.trim(), widgets);
-      setDashboards((prev) => [...prev, created]);
-      setCurrentDashboardId(created.id);
-    } catch (e) {
-      alert(e.message || "Failed to save dashboard");
     }
   };
 
@@ -355,6 +238,13 @@ export default function Dashboard() {
     }
   };
 
+  const handleEditToggle = async () => {
+    if (editMode && currentDashboardId) {
+      await updateCurrentDashboard();
+    }
+    setEditMode((v) => !v);
+  };
+
   const deleteDashboard = async () => {
     if (!currentDashboardId) return;
     if (!window.confirm("Delete this saved dashboard?")) return;
@@ -363,6 +253,7 @@ export default function Dashboard() {
       setDashboards((prev) => prev.filter((d) => d.id !== currentDashboardId));
       setCurrentDashboardId(null);
       setWidgets(DEFAULT_WIDGETS);
+      setEditMode(false);
     } catch (e) {
       alert(e.message || "Failed to delete dashboard");
     }
@@ -558,46 +449,41 @@ export default function Dashboard() {
 
   return (
     <div className={`container ${editMode ? "edit-mode" : ""}`}>
-      {/* Header */}
-      <header className="header">
-        <h1>OpenFraudMonitoring Dashboard</h1>
-        <span className={`badge ${connected ? 'badge-live' : 'badge-offline'}`}>
-          {connected ? 'LIVE' : 'OFFLINE'}
-        </span>
-        <button className="refresh-btn" onClick={() => { loadSessions(); loadWidgetData(); }}>
-          ↻ Refresh
-        </button>
-      </header>
-
       {/* Dashboard management bar */}
       <div className="dashboard-bar">
         <select
           className="dashboard-select"
           value={currentDashboardId ?? ""}
-          onChange={(e) => loadDashboard(e.target.value ? Number(e.target.value) : null)}
+          disabled={editMode}
+          onChange={(e) => loadDashboard(e.target.value)}
         >
           <option value="">Default Dashboard</option>
           {dashboards.map((d) => (
-            <option key={d.id} value={d.id}>{d.name}</option>
+            <option key={d.id} value={String(d.id)}>{d.name}</option>
           ))}
+          <option value="__new__">＋ New Dashboard…</option>
         </select>
-        <button className="dash-btn" onClick={saveDashboard}>Save As…</button>
-        {currentDashboardId && (
-          <>
-            <button className="dash-btn" onClick={updateCurrentDashboard}>Update</button>
-            <button className="dash-btn dash-btn-danger" onClick={deleteDashboard}>Delete</button>
-          </>
+        {currentDashboardId && !editMode && (
+          <button className="dash-btn dash-btn-danger" onClick={deleteDashboard}>Delete</button>
         )}
         <div className="dashboard-bar-spacer" />
         {!isDefault && (
           <button
             className={`dash-btn ${editMode ? "dash-btn-edit-active" : ""}`}
-            onClick={() => setEditMode((v) => !v)}
+            onClick={handleEditToggle}
           >
             {editMode ? "✓ Done Editing" : "✎ Edit Mode"}
           </button>
         )}
       </div>
+
+      {/* Filters — above widgets, applies to both widgets and session table */}
+      <FilterBuilder
+        schema={schema}
+        filters={filters}
+        onChange={(f) => { setFilters(f); setPage(1); }}
+        onClear={clearFilters}
+      />
 
       {/* Widgets */}
       <div ref={containerRef}>
@@ -632,14 +518,6 @@ export default function Dashboard() {
           </div>
         )}
       </div>
-
-      {/* Filters */}
-      <FilterBuilder
-        schema={schema}
-        filters={filters}
-        onChange={(f) => { setFilters(f); setPage(1); }}
-        onClear={clearFilters}
-      />
 
       {/* Sessions Table */}
       <div className="table-wrapper">
@@ -684,7 +562,7 @@ export default function Dashboard() {
                 <th>IP Address</th>
                 <th>Risk Score</th>
                 <th>Flags</th>
-                <th 
+                <th
                   className="sortable-header"
                   onClick={() => handleSort("device_type")}
                   title="Click to sort"
@@ -694,7 +572,7 @@ export default function Dashboard() {
                 <th>Language</th>
                 <th>URLs Visited</th>
                 <th>Heartbeats</th>
-                <th 
+                <th
                   className="sortable-header"
                   onClick={() => handleSort("last_seen")}
                   title="Click to sort"
@@ -726,31 +604,11 @@ export default function Dashboard() {
             Showing {Math.min((page - 1) * perPage + 1, totalSessions)}–{Math.min(page * perPage, totalSessions)} of {totalSessions} sessions
           </div>
           <div className="pagination-controls">
-            <button
-              className="pagination-btn"
-              disabled={page <= 1}
-              onClick={() => setPage(1)}
-              title="First page"
-            >«</button>
-            <button
-              className="pagination-btn"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-              title="Previous page"
-            >‹</button>
+            <button className="pagination-btn" disabled={page <= 1} onClick={() => setPage(1)} title="First page">«</button>
+            <button className="pagination-btn" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} title="Previous page">‹</button>
             <span className="pagination-current">Page {page} / {totalPages}</span>
-            <button
-              className="pagination-btn"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-              title="Next page"
-            >›</button>
-            <button
-              className="pagination-btn"
-              disabled={page >= totalPages}
-              onClick={() => setPage(totalPages)}
-              title="Last page"
-            >»</button>
+            <button className="pagination-btn" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} title="Next page">›</button>
+            <button className="pagination-btn" disabled={page >= totalPages} onClick={() => setPage(totalPages)} title="Last page">»</button>
           </div>
           <select
             className="pagination-size-select"

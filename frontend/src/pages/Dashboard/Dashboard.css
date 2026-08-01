@@ -605,29 +605,33 @@ body {
   align-items: center;
   gap: 16px;
   padding: 8px 0;
+  height: 100%;
 }
 
 .pie-circle {
-  width: 120px;
-  height: 120px;
+  height: min(100%, 200px);
+  aspect-ratio: 1 / 1;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
 .pie-legend {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 4px;
   font-size: 11px;
   text-align: left;
   overflow-y: auto;
-  max-height: 140px;
+  max-height: 100%;
 }
 
 .pie-legend-item {
   display: flex;
   align-items: center;
   gap: 6px;
+  width: 100%;
+  min-width: 0;
 }
 
 .pie-swatch {
@@ -642,12 +646,54 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 140px;
+  min-width: 0;
 }
 
 .pie-legend-count {
   color: var(--muted);
   font-weight: 600;
+}
+
+/* ── Map widget ─────────────────────────────────────────────────────── */
+
+.map-widget {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: block;
+}
+
+.map-widget svg {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.map-tooltip {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 5px 10px;
+  font-size: 12px;
+  pointer-events: none;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+.map-tooltip-name {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.map-tooltip-count {
+  color: var(--accent);
 }
 
 /* ── Histogram ─────────────────────────────────────────────────────── */
@@ -754,6 +800,57 @@ body {
   font-size: 12px;
   text-align: center;
   padding: 20px;
+}
+
+/* ── Vertical Histogram (Bar Chart) ───────────────────────────────── */
+
+.vhisto {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 100%;
+  padding: 0 2px 4px;
+  overflow-x: auto;
+}
+
+.vhisto-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: 16px;
+  height: 100%;
+  cursor: default;
+}
+
+.vhisto-bar-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+}
+
+.vhisto-bar {
+  width: 100%;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+  transition: height 0.3s ease, background 0.15s;
+}
+
+.vhisto-col:hover .vhisto-bar {
+  background: rgba(120, 190, 255, 0.85);
+}
+
+.vhisto-label {
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: center;
+  margin-top: 3px;
+  padding: 0 1px;
 }
 
 /* ── Pagination ── */

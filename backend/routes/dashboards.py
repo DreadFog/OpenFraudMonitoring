@@ -96,6 +96,10 @@ def widget_data():
     filters = body.get("filters", [])
     limit = min(int(body.get("limit", 10)), 200)
 
+    # Map widgets always group by ip_country
+    if widget_type == "map":
+        field = "ip_country"
+
     # Build filtered session query
     query = build_session_query(filters)
 
