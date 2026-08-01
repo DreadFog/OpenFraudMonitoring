@@ -15,6 +15,8 @@ const OP_LABELS = {
   lte: "≤",
 };
 
+const CATEGORY_ORDER = ["Session Metadata", "Session IP", "Behavior", "Other"];
+
 /* ── Searchable field selector ── */
 function FieldCombobox({ schema, value, onChange }) {
   const [open, setOpen] = useState(false);
@@ -25,6 +27,17 @@ function FieldCombobox({ schema, value, onChange }) {
   const filtered = schema.filter((f) =>
     f.label.toLowerCase().includes(search.toLowerCase())
   );
+
+  // Group filtered fields by category, preserving CATEGORY_ORDER
+  const groups = CATEGORY_ORDER
+    .map((cat) => ({ cat, fields: filtered.filter((f) => f.category === cat) }))
+    .filter((g) => g.fields.length > 0);
+  // Append any categories not in CATEGORY_ORDER (future-proofing)
+  const knownCats = new Set(CATEGORY_ORDER);
+  const extraCats = [...new Set(filtered.map((f) => f.category).filter((c) => !knownCats.has(c)))];
+  for (const cat of extraCats) {
+    groups.push({ cat, fields: filtered.filter((f) => f.category === cat) });
+  }
 
   const selectedLabel = schema.find((f) => f.name === value)?.label || "";
 
@@ -70,16 +83,21 @@ function FieldCombobox({ schema, value, onChange }) {
             placeholder="Search fields…"
           />
           <div className="field-combobox-list">
-            {filtered.length === 0 && (
+            {groups.length === 0 && (
               <div className="field-combobox-empty">No matches</div>
             )}
-            {filtered.map((f) => (
-              <div
-                key={f.name}
-                className={`field-combobox-item ${f.name === value ? "field-combobox-item-selected" : ""}`}
-                onMouseDown={() => handleSelect(f.name)}
-              >
-                {f.label}
+            {groups.map(({ cat, fields }) => (
+              <div key={cat}>
+                <div className="field-combobox-group-header">{cat}</div>
+                {fields.map((f) => (
+                  <div
+                    key={f.name}
+                    className={`field-combobox-item ${f.name === value ? "field-combobox-item-selected" : ""}`}
+                    onMouseDown={() => handleSelect(f.name)}
+                  >
+                    {f.label}
+                  </div>
+                ))}
               </div>
             ))}
           </div>

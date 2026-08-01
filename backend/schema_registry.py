@@ -47,11 +47,11 @@ OPERATORS = {
 
 SCHEMA_FIELDS = [
     # Session-level fields (always present)
-    {"name": "client_ip", "label": "Client IP", "type": "string", "model": "Session", "column": "client_ip"},
-    {"name": "risk_score", "label": "Risk Score", "type": "number", "model": "Session", "column": "risk_score"},
-    {"name": "fsid", "label": "Fingerprint ID (fsid)", "type": "string", "model": "Session", "column": "fsid"},
-    {"name": "first_seen", "label": "First Seen", "type": "date", "model": "Session", "column": "first_seen"},
-    {"name": "last_seen", "label": "Last Seen", "type": "date", "model": "Session", "column": "last_seen"},
+    {"name": "client_ip", "label": "Client IP", "type": "string", "model": "Session", "column": "client_ip", "category": "Session Metadata"},
+    {"name": "risk_score", "label": "Risk Score", "type": "number", "model": "Session", "column": "risk_score", "category": "Session Metadata"},
+    {"name": "fsid", "label": "Fingerprint ID (fsid)", "type": "string", "model": "Session", "column": "fsid", "category": "Session Metadata"},
+    {"name": "first_seen", "label": "First Seen", "type": "date", "model": "Session", "column": "first_seen", "category": "Session Metadata"},
+    {"name": "last_seen", "label": "Last Seen", "type": "date", "model": "Session", "column": "last_seen", "category": "Session Metadata"},
 ]
 
 # Top-level fingerprint fields
@@ -62,6 +62,7 @@ for f in TOP_LEVEL_FIELDS:
         "type": f["type"],
         "model": "Fingerprint",
         "column": f["column"],
+        "category": "Other",
     })
 
 # Signal fields (denormalized from signals.*)
@@ -72,6 +73,7 @@ for f in SIGNAL_FIELDS:
         "type": f["type"],
         "model": "Fingerprint",
         "column": f["column"],
+        "category": "Other",
     })
 
 # Detection fields (denormalized from fastBotDetectionDetails.*)
@@ -82,6 +84,7 @@ for f in DETECTION_FIELDS:
         "type": f["type"],
         "model": "Fingerprint",
         "column": f["column"],
+        "category": "Other",
     })
 
 # Custom filters (from filters/ package — manually maintained)
@@ -93,6 +96,7 @@ for f in get_custom_fields():
         "type": f["type"],
         "model": "__custom__",
         "column": None,
+        "category": f.get("category", "Other"),
     })
 
 # ── Dedup (fsid appears in both session and top-level) ──
@@ -112,6 +116,7 @@ def get_schema():
             "name": f["name"],
             "label": f["label"],
             "type": f["type"],
+            "category": f.get("category", "Other"),
             "operators": OPERATORS[f["type"]],
         }
         for f in SCHEMA_FIELDS

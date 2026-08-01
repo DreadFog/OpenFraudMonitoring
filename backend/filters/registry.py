@@ -1,16 +1,17 @@
 """Registry for custom session filters."""
 
-# Each entry: {"name", "label", "type", "handler", "suggest", "aggregate"}
+# Each entry: {"name", "label", "type", "category", "handler", "suggest", "aggregate"}
 _CUSTOM_FILTERS: dict[str, dict] = {}
 
 
 def register_custom_filter(name: str, label: str, field_type: str, handler,
-                           suggest=None, aggregate=None):
+                           suggest=None, aggregate=None, category: str = "Other"):
     """Register or replace a custom filter definition."""
     _CUSTOM_FILTERS[name] = {
         "name": name,
         "label": label,
         "type": field_type,
+        "category": category,
         "handler": handler,
         "suggest": suggest,
         "aggregate": aggregate,
@@ -26,7 +27,7 @@ def get_custom_handler(field_name: str):
 def get_custom_fields() -> list[dict]:
     """Return schema metadata for all registered custom filters."""
     return [
-        {"name": f["name"], "label": f["label"], "type": f["type"]}
+        {"name": f["name"], "label": f["label"], "type": f["type"], "category": f["category"]}
         for f in _CUSTOM_FILTERS.values()
     ]
 

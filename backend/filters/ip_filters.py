@@ -260,16 +260,19 @@ def register_filters():
         "private_ip", "Private IP", "boolean",
         _handle_private_ip,
         aggregate=_aggregate_private_ip,
+        category="Session IP",
     )
     register_custom_filter(
         "ip_as", "IP Autonomous System (AS)", "string",
         _handle_ip_as,
         suggest=suggest_as,
         aggregate=_aggregate_ip_as,
+        category="Session IP",
     )
     register_custom_filter(
         "ip_country", "IP Country Code", "string",
         _handle_ip_country,
         suggest=suggest_country,
         aggregate=_aggregate_ip_country,
+        category="Session IP",
     )

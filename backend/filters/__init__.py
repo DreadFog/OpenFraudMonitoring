@@ -11,12 +11,13 @@ from .registry import (
     get_custom_suggestions,
     get_custom_aggregate,
 )
-from . import ip_filters, behavior_filters
+from . import ip_filters, behavior_filters, flag_filters
 
 
 # Register built-ins at import time.
 ip_filters.register_filters()
 behavior_filters.register_filters()
+flag_filters.register_filters()
 
 
 __all__ = [

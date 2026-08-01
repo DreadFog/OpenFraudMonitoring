@@ -238,63 +238,76 @@ def register_filters():
     register_custom_filter(
         "behavior_button_click_count", "Behavior: Button Click Count", "number",
         _handle_behavior_button_click_count,
+        category="Behavior",
     )
     register_custom_filter(
         "behavior_form_submit_count", "Behavior: Form Submit Count", "number",
         _handle_behavior_form_submit_count,
+        category="Behavior",
     )
     register_custom_filter(
         "behavior_copy_count", "Behavior: Copy Count", "number",
         _handle_behavior_copy_count,
+        category="Behavior",
     )
     register_custom_filter(
         "behavior_paste_count", "Behavior: Paste Count", "number",
         _handle_behavior_paste_count,
+        category="Behavior",
     )
     # Form fields
     register_custom_filter(
         "behavior_button_text", "Behavior: Button Text", "string",
         _handle_behavior_button_text,
         suggest=suggest_behavior_button_text,
+        category="Behavior",
     )
     register_custom_filter(
         "behavior_form_action", "Behavior: Form Action", "string",
         _handle_behavior_form_action,
         suggest=suggest_behavior_form_action,
+        category="Behavior",
     )
     register_custom_filter(
         "behavior_form_method", "Behavior: Form Method", "string",
         _handle_behavior_form_method,
         suggest=suggest_behavior_form_method,
+        category="Behavior",
     )
     register_custom_filter(
         "behavior_event_url", "Behavior: Event URL", "string",
         _handle_behavior_event_url,
         suggest=suggest_behavior_event_url,
+        category="Behavior",
     )
     register_custom_filter(
         "behavior_form_field_name", "Behavior: Form Field Name", "string",
         _handle_behavior_form_field_name,
         suggest=suggest_behavior_form_field_name,
+        category="Behavior",
     )
     # Paste target context
     register_custom_filter(
         "behavior_paste_target_name", "Behavior: Paste Target Name", "string",
         _handle_behavior_paste_target_name,
         suggest=suggest_behavior_paste_target_name,
+        category="Behavior",
     )
     register_custom_filter(
         "behavior_paste_target_id", "Behavior: Paste Target ID", "string",
         _handle_behavior_paste_target_id,
+        category="Behavior",
     )
     # Copy source context
     register_custom_filter(
         "behavior_copy_source_name", "Behavior: Copy Source Name", "string",
         _handle_behavior_copy_source_name,
         suggest=suggest_behavior_copy_source_name,
+        category="Behavior",
     )
     register_custom_filter(
         "behavior_copy_source_id", "Behavior: Copy Source ID", "string",
         _handle_behavior_copy_source_id,
+        category="Behavior",
     )
 
