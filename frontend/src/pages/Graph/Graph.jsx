@@ -10,6 +10,7 @@ const FALLBACK = {
   session: "#3b82f6",
   property: "#a78bfa",
   flag: "#f59e0b",
+  device: "#22d3ee",
   stix: {
     "ipv4-addr": "#10b981",
     "ipv6-addr": "#14b8a6",
@@ -48,6 +49,7 @@ function graphColors(settings) {
     session: colors.session || FALLBACK.session,
     property: colors.property || FALLBACK.property,
     flag: colors.flag || FALLBACK.flag,
+    device: colors.device || FALLBACK.device,
     stix: { ...FALLBACK.stix, ...(colors.stix || {}) },
     ring: g.riskRing?.color || FALLBACK.ring,
     ringEnabled: g.riskRing?.enabled !== false,
@@ -59,6 +61,7 @@ function nodeColor(ele, colors) {
   if (kind === "session") return colors.session;
   if (kind === "property") return colors.property;
   if (kind === "flag") return colors.flag;
+  if (kind === "device") return colors.device;
   if (kind === "stix") return colors.stix[ele.data("stixType")] || "#94a3b8";
   return "#94a3b8";
 }
@@ -110,6 +113,7 @@ function buildStylesheet(colors) {
     },
     { selector: 'node[kind = "session"]', style: sessionStyle },
     { selector: 'node[kind = "property"]', style: { shape: "round-rectangle", width: 30, height: 22 } },
+    { selector: 'node[kind = "device"]', style: { shape: "hexagon", "background-color": colors.device, width: 32, height: 32 } },
     { selector: 'node[kind = "stix"]', style: { shape: "diamond", width: 28, height: 28 } },
     {
       selector: 'node[kind = "flag"]',
@@ -145,7 +149,7 @@ function mapNode(n) {
     group: "nodes",
     data: {
       id: n.id,
-      label: n.kind === "flag" ? `⚠ ${n.label}` : n.label,
+      label: n.kind === "flag" ? `⚠ ${n.label}` : n.kind === "device" ? `🖥 ${n.label}` : n.label,
       kind: n.kind,
       stixType: n.stix_type || null,
       risk: n.kind === "session" ? (n.data?.risk_score || 0) : null,
@@ -178,7 +182,7 @@ export default function Graph() {
   const [showSettings, setShowSettings] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [emptyNote, setEmptyNote] = useState("");
-  const [nodeKinds, setNodeKinds] = useState({ session: false, property: false, flag: false, stix: [] });
+  const [nodeKinds, setNodeKinds] = useState({ session: false, property: false, flag: false, device: false, stix: [] });
   const [selInfo, setSelInfo] = useState({ count: 0, canBulk: false, kind: null });
   const [bulk, setBulk] = useState(null); // { loading, options, nodes }
 
@@ -190,15 +194,16 @@ export default function Graph() {
     const cy = cyRef.current;
     if (!cy) return;
     const stixSet = new Set();
-    let session = false, property = false, flag = false;
+    let session = false, property = false, flag = false, device = false;
     cy.nodes().forEach((n) => {
       const k = n.data("kind");
       if (k === "session") session = true;
       else if (k === "property") property = true;
       else if (k === "flag") flag = true;
+      else if (k === "device") device = true;
       else if (k === "stix") stixSet.add(n.data("stixType"));
     });
-    setNodeKinds({ session, property, flag, stix: Array.from(stixSet) });
+    setNodeKinds({ session, property, flag, device, stix: Array.from(stixSet) });
   }, []);
 
   const updateSelInfo = useCallback(() => {
@@ -379,6 +384,8 @@ export default function Graph() {
   const browseNode = useCallback((ref, meta, kind) => {
     if (kind === "session") {
       window.open(`/session/${meta.fsid}`, "_blank", "noopener");
+    } else if (kind === "device") {
+      window.open(`/device/${meta.id}`, "_blank", "noopener");
     } else if (kind === "stix") {
       window.open(
         `/intelligence?type=${encodeURIComponent(meta.stix_type)}&value=${encodeURIComponent(meta.value)}`,
@@ -487,6 +494,7 @@ export default function Graph() {
     if (val === "session") sel = cy.nodes('[kind = "session"]');
     else if (val === "property") sel = cy.nodes('[kind = "property"]');
     else if (val === "flag") sel = cy.nodes('[kind = "flag"]');
+    else if (val === "device") sel = cy.nodes('[kind = "device"]');
     else if (val.startsWith("stix:")) sel = cy.nodes(`[kind = "stix"][stixType = "${val.slice(5)}"]`);
     if (sel) sel.select();
   };
@@ -558,6 +566,7 @@ export default function Graph() {
               {nodeKinds.session && <option value="session">Sessions</option>}
               {nodeKinds.property && <option value="property">Metadata</option>}
               {nodeKinds.flag && <option value="flag">Flags</option>}
+              {nodeKinds.device && <option value="device">Devices</option>}
               {nodeKinds.stix.map((t) => (
                 <option key={t} value={`stix:${t}`}>{STIX_LABELS[t] || t}</option>
               ))}
@@ -631,13 +640,13 @@ function SearchableExpand({ title, options, threshold, onExpand }) {
 }
 
 function ExpansionList({ options, threshold, onExpand }) {
-  const groups = { linked: [], relationships: [], sessions: [], property: [], flag: [] };
+  const groups = { linked: [], relationships: [], sessions: [], devices: [], property: [], flag: [] };
   for (const o of options) {
     (groups[o.group] || (groups[o.group] = [])).push(o);
   }
   return (
     <>
-      {["linked", "relationships", "sessions"].flatMap((g) =>
+      {["linked", "relationships", "sessions", "devices"].flatMap((g) =>
         (groups[g] || []).map((opt) => (
           <ExpButton key={opt.key} opt={opt} threshold={threshold} onExpand={onExpand} labelText={opt.label} />
         ))
@@ -686,7 +695,7 @@ function GraphContextMenu({ menu, expansions, threshold, onExpand, onBrowse, onC
   }, [menu, expansions]);
 
   const metaEntries = Object.entries(menu.meta || {}).filter(([, v]) => v !== null && v !== undefined && v !== "");
-  const canBrowse = menu.kind === "session" || menu.kind === "stix";
+  const canBrowse = menu.kind === "session" || menu.kind === "stix" || menu.kind === "device";
   return (
     <div
       className="graph-menu"
@@ -715,7 +724,7 @@ function GraphContextMenu({ menu, expansions, threshold, onExpand, onBrowse, onC
         <div className="graph-menu-label">Expand</div>
         {canBrowse && (
           <button className="graph-browse" onClick={() => onBrowse(menu.ref, menu.meta, menu.kind)}>
-            🔎 Browse {menu.kind === "session" ? "session" : "intelligence"} view
+            🔎 Browse {menu.kind === "session" ? "session" : menu.kind === "device" ? "device" : "intelligence"} view
           </button>
         )}
         {expansions.loading && <div className="graph-menu-empty">Computing…</div>}
@@ -834,6 +843,8 @@ function AddEntityDrawer({ onAdd, onClose }) {
     setLogic("AND");
     if (searchKind === "session") {
       api.getSchema().then((s) => setSchema(normalizeSchema(s))).catch(() => setSchema([]));
+    } else if (searchKind === "device") {
+      setSchema([]);
     } else {
       api.getIntelFilterSchema(searchKind).then((r) => setSchema(normalizeSchema(r.fields || []))).catch(() => setSchema([]));
     }
@@ -845,6 +856,8 @@ function AddEntityDrawer({ onAdd, onClose }) {
     setResults([]);
     const run = searchKind === "session"
       ? api.getSessions(applied, "last_seen", "desc", 1, 25).then((r) => r.sessions || [])
+      : searchKind === "device"
+      ? api.getDevices(1, 25).then((r) => r.devices || [])
       : api.listEntities(searchKind, 25, applied, logic).then((r) => r.entities || []);
     run.then(setResults).catch(() => setResults([])).finally(() => setLoading(false));
   }, [searchKind, applied, logic]);
@@ -882,6 +895,10 @@ function AddEntityDrawer({ onAdd, onClose }) {
     onAdd({ kind: "session", fsid: s.full_fsid });
     markAdded(`session:${s.full_fsid}`);
   };
+  const addDevice = (d) => {
+    onAdd({ kind: "device", id: d.id });
+    markAdded(`device:${d.id}`);
+  };
   const addEntity = (ent) => {
     onAdd({ kind: "stix", type: searchKind, value: ent.value });
     markAdded(`stix:${searchKind}:${ent.value}`);
@@ -918,12 +935,15 @@ function AddEntityDrawer({ onAdd, onClose }) {
         <div className="graph-drawer-title">Search for</div>
         <select className="graph-select graph-drawer-select" value={searchKind} onChange={(e) => setSearchKind(e.target.value)}>
           <option value="session">Session</option>
+          <option value="device">Device</option>
           {(types.length ? types : STIX_TYPES).map((t) => (
             <option key={t} value={t}>{STIX_LABELS[t] || t}</option>
           ))}
         </select>
 
         {/* Optional filters */}
+        {searchKind !== "device" && (
+        <>
         <div className="graph-drawer-title" style={{ marginTop: 10 }}>Filters (optional)</div>
         {searchKind !== "session" && (
           <select className="graph-select graph-drawer-select" value={logic} onChange={(e) => setLogic(e.target.value)}>
@@ -963,6 +983,8 @@ function AddEntityDrawer({ onAdd, onClose }) {
           <button className="graph-btn" onClick={applyFilters}>Apply</button>
           <button className="graph-btn" onClick={clearFilters}>Clear</button>
         </div>
+        </>
+        )}
       </div>
 
       {/* Results */}
@@ -996,7 +1018,22 @@ function AddEntityDrawer({ onAdd, onClose }) {
           );
         })}
 
-        {!loading && searchKind !== "session" && results.map((ent) => {
+        {!loading && searchKind === "device" && results.map((d) => {
+          const id = `device:${d.id}`;
+          return (
+            <div className="graph-drawer-row" key={d.id}>
+              <div className="graph-drawer-main">
+                <span className="graph-drawer-label">Device #{d.id} · {d.platform || "unknown"}</span>
+                <span className="graph-drawer-sub">{d.webgl_renderer || "unknown GPU"} · {Math.round((d.confidence || 0) * 100)}% confidence</span>
+              </div>
+              <button className="graph-drawer-add" disabled={added.has(id)} onClick={() => addDevice(d)}>
+                {added.has(id) ? "✓" : "+"}
+              </button>
+            </div>
+          );
+        })}
+
+        {!loading && searchKind !== "session" && searchKind !== "device" && results.map((ent) => {
           const id = `stix:${searchKind}:${ent.value}`;
           return (
             <div className="graph-drawer-row" key={ent.stix_id || ent.value}>

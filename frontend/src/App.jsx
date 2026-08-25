@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { AuthProvider, useAuth } from "./AuthContext";
 import Dashboard from "./pages/Dashboard/Dashboard";
 import SessionDetail from "./pages/SessionDetail/SessionDetail";
+import Devices from "./pages/Devices/Devices";
+import DeviceDetail from "./pages/DeviceDetail/DeviceDetail";
 import Landing from "./pages/Landing/Landing";
 import Intelligence from "./pages/Intelligence/Intelligence";
 import Graph from "./pages/Graph/Graph";
@@ -55,6 +57,8 @@ function App() {
             <Route path="/admin" element={<ProtectedRoute><Administration /></ProtectedRoute>} />
             <Route path="/rules" element={<AdminRoute><RulesPage /></AdminRoute>} />
             <Route path="/session/:fsid" element={<ProtectedRoute><SessionDetail /></ProtectedRoute>} />
+            <Route path="/devices" element={<ProtectedRoute><Devices /></ProtectedRoute>} />
+            <Route path="/device/:id" element={<ProtectedRoute><DeviceDetail /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           </Routes>
         </Chrome>

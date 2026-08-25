@@ -185,6 +185,23 @@ export const api = {
     return res.json();
   },
 
+  // ── Devices ──
+
+  getDevices: async (page = 1, perPage = 10) => {
+    const params = new URLSearchParams();
+    params.append("page", String(page));
+    params.append("per_page", String(perPage));
+    const res = await authFetch(`/api/devices?${params.toString()}`);
+    if (!res.ok) throw new Error("Failed to fetch devices");
+    return res.json();
+  },
+
+  getDeviceDetail: async (id) => {
+    const res = await authFetch(`/api/devices/${id}`);
+    if (!res.ok) throw new Error("Failed to fetch device detail");
+    return res.json();
+  },
+
   getStats: async () => {
     const res = await authFetch("/api/stats");
     if (!res.ok) throw new Error("Failed to fetch stats");

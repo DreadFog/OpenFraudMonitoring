@@ -46,6 +46,10 @@ class Config:
     # Must match the key used at fpscanner build time (npx fpscanner build --key=...)
     FPSCANNER_KEY = os.environ.get("FPSCANNER_KEY", "dev-key")
 
+    # ── Device matching (see services/device_matching.py) ──
+    # Minimum weighted score (0-1) to link a fingerprint to an existing Device.
+    DEVICE_MATCH_THRESHOLD = float(os.environ.get("DEVICE_MATCH_THRESHOLD", "0.75"))
+
     # ── Client (injected at build time via Vite) ──
     # OFM_SERVER_URL is the URL the ofm.js client sends data to.
     # Set to "" for same-origin (default), or "https://ofm.example.com" for remote.

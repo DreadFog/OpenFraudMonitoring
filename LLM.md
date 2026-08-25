@@ -5,7 +5,7 @@ Dense technical reference for LLMs. Self-hosted browser fingerprinting, behavior
 ## Stack
 
 - **Backend**: Python 3.11, Flask 2.3, Flask-SQLAlchemy 3.1 / SQLAlchemy 2.0, Flask-Bcrypt, PyJWT, pika (RabbitMQ), redis-py, stix2 3.0.
-- **DB**: PostgreSQL 16 (JSONB + denormalized columns). Schema created via `create_all()` — **no migration tool**; column additions require manual `ALTER TABLE` / DB recreate.
+- **DB**: PostgreSQL 16 (JSONB + denormalized columns). Schema created via `create_all()` — **no migration tool**; column additions require manual `ALTER TABLE` (see `_COLUMN_UPGRADES`) / DB recreate.
 - **Queues**: Redis 7 (event queue backend→worker, logs, connector metadata), RabbitMQ 3.13 (connector intel request/response).
 - **Frontend**: React 18, react-router-dom 6, react-grid-layout 2, Vite 5, served by nginx.
 - **Client** (`client/`): Vite bundle wrapping `fpscanner`, emits `ofm.js`. Version 3.x.
@@ -28,7 +28,7 @@ Dense technical reference for LLMs. Self-hosted browser fingerprinting, behavior
 ## Data flow
 
 1. Browser loads `ofm.js` → fpscanner runs, generates deterministic `fsid` → encrypted payload → `POST /api/initial`.
-2. Backend decrypts (XOR+Base64, key=`FPSCANNER_KEY`), upserts `Session` by `fsid`, stores raw fingerprint (JSONB) + denormalized `fingerprints` columns, creates/links STIX IP + user-agent observables, pushes `{"session_id":N,"type":"fingerprint"}` to Redis `ofm:events`, auto-triggers `auto`/`both` connectors.
+2. Backend decrypts (XOR+Base64, key=`FPSCANNER_KEY`), upserts `Session` by `fsid`, resolves the fuzzy-matched `Device` (`services/device_matching.py` — decouples long-term tracking from volatile `fsid`, see `docs/devices.md`) and sets `session.device_id`, stores raw fingerprint (JSONB) + denormalized `fingerprints` columns, creates/links STIX IP + user-agent observables, pushes `{"session_id":N,"type":"fingerprint"}` to Redis `ofm:events`, auto-triggers `auto`/`both` connectors.
 3. Every 30s: behavioral heartbeat → `POST /api/heartbeat`. High-signal events (button click, form submit, copy/paste) → `POST /api/behavioral_event` (stored in typed tables, see DB schema).
 4. Worker: realtime loop `BRPOP ofm:events` evaluates enabled `realtime` rules on the triggering session; periodic loop (every `PERIODIC_INTERVAL_SECONDS`) evaluates `periodic` rules over all sessions. Matches create `RuleMatch`, append rule name to `session.flags`, add `score_modifier` (capped 100).
 5. Connectors consume `intel.requests.<name>` (exchange `ofm.intel`), call external API, publish STIX bundle to `intel.responses`; worker `ingest_bundle()` persists per-type STIX tables.
@@ -39,8 +39,8 @@ Dense technical reference for LLMs. Self-hosted browser fingerprinting, behavior
 - `app.py` — Flask app, dynamic CORS via `after_request` (origins from DB), registers routes, seeds rules + admin.
 - `worker.py` — 3 threads: realtime (main), periodic, intel-response consumer.
 - `init/config.py` — `Config` from env. `init/generate_schema.py` + `_generated_schema.py` — schema autogen from fpscanner `types.ts`. `init/seed_users.py`, `init/seed_rules.py`.
-- `models/`: `session.py` (Session + STIX observable FKs), `fingerprint.py` (`extract_fields()` denormalizes JSONB), `heartbeat.py`, `behavioral_event.py`, `rule.py` (Rule + RuleMatch), `associations.py` (SessionURL, BrowserSession), `dashboard.py`, `user.py` (User + ApiToken; `settings` JSONB for per-user prefs), `app_setting.py` (AppSetting = global key/value), `cors.py` (AllowedOrigin), `taxii_feed.py` (TaxiiFeed), `stix.py` (9 entity models + Relationship).
-- `services/`: `database.py` (+`_apply_column_upgrades` adds `users.settings` — no migration tool), `auth.py` (hash/JWT/API-token/decorators), `event_queue.py` (Redis), `mq.py` (RabbitMQ publish/consume), `schema.py` (`SCHEMA_FIELDS` registry), `intel_ingest.py` (`ingest_bundle`), `stix_store.py` (get_or_create), `stix_filters.py`, `cors_origins.py` (`dynamic_origin`), `log_shipper.py` (ships WARNING+ to Redis `ofm:logs`), `settings.py` (user/global settings defaults+merge), `graph.py` (graph node/edge builders, expansions, `compute_links`).
+- `models/`: `session.py` (Session + STIX observable FKs + `device_id` FK), `fingerprint.py` (`extract_fields()` denormalizes JSONB), `device.py` (Device — fuzzy-matched device cluster, canonical Tier A/B fields, `recent_ips`, `confidence`; see `docs/devices.md`), `heartbeat.py`, `behavioral_event.py`, `rule.py` (Rule + RuleMatch), `associations.py` (SessionURL, BrowserSession), `dashboard.py`, `user.py` (User + ApiToken; `settings` JSONB for per-user prefs), `app_setting.py` (AppSetting = global key/value), `cors.py` (AllowedOrigin), `taxii_feed.py` (TaxiiFeed), `stix.py` (9 entity models + Relationship).
+- `services/`: `database.py` (+`_apply_column_upgrades` adds `users.settings`, `sessions.device_id` — no migration tool), `auth.py` (hash/JWT/API-token/decorators), `device_matching.py` (`resolve_device` — weighted Tier A/B field scoring + IP-proximity boost, threshold `DEVICE_MATCH_THRESHOLD`), `event_queue.py` (Redis), `mq.py` (RabbitMQ publish/consume), `schema.py` (`SCHEMA_FIELDS` registry), `intel_ingest.py` (`ingest_bundle`), `stix_store.py` (get_or_create), `stix_filters.py`, `cors_origins.py` (`dynamic_origin`), `log_shipper.py` (ships WARNING+ to Redis `ofm:logs`), `settings.py` (user/global settings defaults+merge), `graph.py` (graph node/edge builders, expansions, `compute_links`).
 - `rules/engine.py` — `build_condition`, `build_session_query` (fingerprint conditions wrapped in `EXISTS`); `evaluate_rule`. `rules/defaults/*.json` auto-seeded.
 - `analysis/risk.py` — base risk score from fpscanner `fastBotDetectionDetails` severity: high=+15, medium=+8, low=+3.
 - `filters/` — behavior filter registry + IP filters + autocomplete suggestions.
@@ -60,6 +60,8 @@ Dense technical reference for LLMs. Self-hosted browser fingerprinting, behavior
 **Collection** `/api`: `POST /initial`, `POST /heartbeat`, `POST /behavioral_event`.
 
 **Sessions** `/api`: `GET /sessions?filters=[...]`, `GET /sessions/<fsid>`, `DELETE /sessions/<fsid>`. `GET /stats`.
+
+**Devices** `/api`: `GET /devices?page=&per_page=` (paginated list), `GET /devices/<id>` (canonical fields + linked sessions). See `docs/devices.md`.
 
 **Filters** `/api`: `GET /schema`, `GET /suggest?field=&q=`.
 
@@ -85,7 +87,8 @@ Dense technical reference for LLMs. Self-hosted browser fingerprinting, behavior
 
 ## Database schema (key)
 
-- `sessions`: id, fsid, risk_score, flags(JSONB), client_ip, ip_observable_type/id, user_agent_observable_id, first/last_seen. Children: `fingerprints` (raw JSONB + `automation_*`, `device_*`, `browser_*`, `graphics_*`, `codecs_*`, `locale_*`, `det_*` [21 detection bools], `fast_bot_detection`, `url`), `heartbeats` (counts + `raw_behavior` JSONB), **typed behavioral event tables** (see below), `session_urls`, `browser_sessions`.
+- `sessions`: id, fsid, risk_score, flags(JSONB), client_ip, ip_observable_type/id, user_agent_observable_id, `device_id` (FK → `devices.id`, fuzzy-matched — see `docs/devices.md`), first/last_seen. Children: `fingerprints` (raw JSONB + `automation_*`, `device_*`, `browser_*`, `graphics_*`, `codecs_*`, `locale_*`, `det_*` [21 detection bools], `fast_bot_detection`, `url`), `heartbeats` (counts + `raw_behavior` JSONB), **typed behavioral event tables** (see below), `session_urls`, `browser_sessions`.
+- `devices`: id, `cookie_id` (client-side UUID from the `device_id` client extension), `device_bucket` (coarse prefilter), canonical Tier A/B fields (platform, screen dims, GPU vendor/renderer, UA-CH arch/bitness/model, timezone, language, codec hashes), `recent_ips` (JSONB, capped 20), `confidence`, first/last_seen.
 - **Typed behavioral event tables** (replaced legacy `behavioral_events` JSONB table): `beh_copy` (`CopyEvent`: length, text?, source_tag/id/name/type, form_action), `beh_paste` (`PasteEvent`: length, text?, target_tag/id/name/type, form_action), `beh_form_submit` (`FormSubmitEvent`: action, method, field_names JSONB array + GIN index), `beh_button_click` (`ButtonClickEvent`: x, y, tag, text). Legacy `behavioral_events` table kept in DB (no new writes) for backward compat.
 - `rules` (conditions JSONB, rule_type realtime|periodic, logic AND|OR, score_modifier, period_seconds) → `rule_matches`.
 - `dashboards` (widgets JSONB). `users` (+`settings` JSONB per-user prefs), `api_tokens`, `allowed_origins`, `taxii_feeds`, `app_settings` (key PK, value JSONB — global settings e.g. `graph.expand_warn_threshold`).
@@ -115,7 +118,7 @@ Dense technical reference for LLMs. Self-hosted browser fingerprinting, behavior
 ## Frontend (`frontend/src/`)
 
 - `App.jsx` — BrowserRouter (no basename), `ProtectedRoute`/`AdminRoute`, `AuthContext`. `api.js` central client. `hooks/usePersistentState.js` — per-user localStorage state.
-- Pages: `Dashboard/` (session table + drag-drop widgets + `FilterBuilder`, `WidgetWizard`; saved dashboards; middle-click row → new-tab `/session/:fsid`; checkbox multi-select → `Explore in graph`), `SessionDetail/`, `Intelligence/` (STIX browser; deep-link `/intelligence?type=&value=`; middle-click → new tab; `Explore in graph`), `Graph/` (Cytoscape.js graph explorer, see below), `Logging/` (connector health + logs + admin Graph threshold), `Login/`, `Landing/`, `Profile/` (password + API tokens), `Users/` (admin), `Rules/` (admin), `Exports/`.
+- Pages: `Dashboard/` (session table + drag-drop widgets + `FilterBuilder`, `WidgetWizard`; saved dashboards; middle-click row → new-tab `/session/:fsid`; checkbox multi-select → `Explore in graph`), `SessionDetail/` (links to `/device/:id` when `device_id` is set), `Devices/` (paginated device list, `/devices`), `DeviceDetail/` (canonical fields + linked sessions, `/device/:id`), `Intelligence/` (STIX browser; deep-link `/intelligence?type=&value=`; middle-click → new tab; `Explore in graph`), `Graph/` (Cytoscape.js graph explorer, see below), `Logging/` (connector health + logs + admin Graph threshold), `Login/`, `Landing/`, `Profile/` (password + API tokens), `Users/` (admin), `Rules/` (admin), `Exports/`.
 - Components: `FilterBuilder`, `WidgetWizard`, `NavHeader`, `IpIntelPopover`.
 - Widget types: stat, pie chart, histogram, weighted list — each with own filter conditions.
 

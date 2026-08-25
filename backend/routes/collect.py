@@ -19,6 +19,7 @@ from models import Session, Fingerprint, SessionURL, BrowserSession
 from services.event_queue import enqueue_event, get_redis
 from services.stix_store import get_or_create_ip, get_or_create_user_agent
 from services.mq import publish_intel_request
+from services.device_matching import resolve_device
 from utils.crypto import decrypt_fingerprint
 
 logger = logging.getLogger(__name__)
@@ -94,6 +95,14 @@ def collect():
     session_obj.last_seen = timestamp
     session_obj.client_ip = client_ip
 
+    # ── Resolve device identity (fuzzy match, decoupled from volatile fsid) ──
+    denorm = Fingerprint.extract_fields(fp)
+    device_uuid = (extensions.get("device_id", {}) or {}).get("uuid")
+    device, _confidence = resolve_device(denorm, client_ip=client_ip, cookie_id=device_uuid, timestamp=timestamp)
+    db.session.add(device)
+    db.session.flush()
+    session_obj.device_id = device.id
+
     # ── Create / link STIX observables (Phase 1) ──
     # IP observable
     ip_obs = get_or_create_ip(client_ip) if client_ip else None
@@ -128,8 +137,7 @@ def collect():
     logger.debug("fastBotDetection=%s detections_count=%s", fp.get('fastBotDetection'), len(fp.get('fastBotDetectionDetails', {})))
     logger.debug("extensions keys: %s", list(extensions.keys()))
 
-    # Store fingerprint with denormalized fields
-    denorm = Fingerprint.extract_fields(fp)
+    # Store fingerprint with denormalized fields (computed above for device matching)
     fingerprint = Fingerprint(
         session_id=session_obj.id,
         timestamp=timestamp,

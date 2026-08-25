@@ -13,9 +13,11 @@
  */
 
 import behavior from "./behavior.js";
+import deviceId from "./device_id.js";
 
 const extensions = [
   behavior,
+  deviceId,
 ];
 
 export default extensions;

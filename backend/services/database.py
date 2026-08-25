@@ -39,6 +39,9 @@ def _create_all_safely():
 # here.  Each statement is safe to run repeatedly.
 _COLUMN_UPGRADES = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS settings JSONB NOT NULL DEFAULT '{}'::jsonb",
+    "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS device_id INTEGER REFERENCES devices(id)",
+    "ALTER TABLE devices ADD COLUMN IF NOT EXISTS is_mobile BOOLEAN NOT NULL DEFAULT false",
+    "ALTER TABLE devices ADD COLUMN IF NOT EXISTS device_type VARCHAR(16) NOT NULL DEFAULT 'unknown'",
 ]
 
 

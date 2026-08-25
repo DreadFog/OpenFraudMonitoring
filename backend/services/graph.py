@@ -25,7 +25,7 @@ from sqlalchemy import func, or_
 
 from services.database import db
 from services.stix_filters import TYPE_TO_MODEL
-from models import Session, Fingerprint, StixRelationship
+from models import Session, Fingerprint, StixRelationship, Device
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -109,12 +109,38 @@ STIX_TYPE_LABELS = {
 }
 
 
+# Curated whitelist of Device canonical fields exposed as expandable metadata
+# (Tier A/B, see docs/devices.md). Fields reuse the same key as PROPERTY_FIELDS
+# where the underlying signal is equivalent (e.g. "platform"), so a metadata
+# node like "Platform: Win32" naturally links both sessions AND devices that
+# share that value.
+DEVICE_PROPERTY_FIELDS = {
+    "platform": {"label": "Platform", "attr": "platform"},
+    "screen_resolution": {"label": "Screen Resolution", "attr": ("screen_width", "screen_height"), "join": "x"},
+    "webgl_vendor": {"label": "WebGL Vendor", "attr": "webgl_vendor"},
+    "webgl_renderer": {"label": "WebGL Renderer", "attr": "webgl_renderer"},
+    "hev_platform": {"label": "UA-CH Platform", "attr": "hev_platform"},
+    "hev_architecture": {"label": "UA-CH Architecture", "attr": "hev_architecture"},
+    "hev_bitness": {"label": "UA-CH Bitness", "attr": "hev_bitness"},
+    "hev_model": {"label": "UA-CH Model", "attr": "hev_model"},
+    "hev_platform_version": {"label": "UA-CH Platform Version", "attr": "hev_platform_version"},
+    "timezone": {"label": "Timezone", "attr": "timezone"},
+    "language": {"label": "Language", "attr": "language"},
+    "pixel_depth": {"label": "Pixel Depth", "attr": "pixel_depth", "type": "number"},
+    "color_depth": {"label": "Color Depth", "attr": "color_depth", "type": "number"},
+}
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Node / edge id helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
 def session_node_id(fsid: str) -> str:
     return f"session:{fsid}"
+
+
+def device_node_id(device_id: int) -> str:
+    return f"device:{device_id}"
 
 
 def stix_node_id(stix_id: str) -> str:
@@ -161,6 +187,29 @@ def build_session_node(sess: Session) -> dict:
     }
 
 
+def build_device_node(device: Device) -> dict:
+    label = f"Device #{device.id}"
+    if device.platform:
+        label += f" · {device.platform}"
+    return {
+        "id": device_node_id(device.id),
+        "kind": "device",
+        "label": label,
+        "ref": {"kind": "device", "id": device.id},
+        "data": {
+            "id": device.id,
+            "platform": device.platform,
+            "device_type": device.device_type,
+            "is_mobile": device.is_mobile,
+            "confidence": device.confidence,
+            "has_cookie": bool(device.cookie_id),
+            "sessions_count": device.sessions.count(),
+            "first_seen": device.first_seen,
+            "last_seen": device.last_seen,
+        },
+    }
+
+
 def build_stix_node(obj, stix_type: str) -> dict:
     name = (obj.raw or {}).get("name") if isinstance(obj.raw, dict) else None
     return {
@@ -203,7 +252,7 @@ def build_flag_node(flag: str) -> dict:
 
 
 def build_property_node(field: str, value: str) -> dict:
-    meta = PROPERTY_FIELDS.get(field, {})
+    meta = PROPERTY_FIELDS.get(field) or DEVICE_PROPERTY_FIELDS.get(field) or {}
     return {
         "id": property_node_id(field, value),
         "kind": "property",
@@ -304,6 +353,56 @@ def _sessions_with_property(field: str, value: str):
     return Session.query.filter(Session.id.in_(session_ids)).all()
 
 
+def _device_property_value(device: Device, field: str):
+    """Return the string value of a whitelisted Tier A/B property for a device."""
+    meta = DEVICE_PROPERTY_FIELDS.get(field)
+    if meta is None:
+        return None
+    attrs = meta["attr"] if isinstance(meta["attr"], tuple) else (meta["attr"],)
+    parts = []
+    for attr in attrs:
+        val = getattr(device, attr, None)
+        if val is None or val == "" or val == 0:
+            return None
+        if isinstance(val, float) and val.is_integer():
+            val = int(val)
+        parts.append(str(val))
+    return meta.get("join", "").join(parts) if len(parts) > 1 else parts[0]
+
+
+def _device_property_filter(field: str, value: str):
+    """Build a SQLAlchemy filter matching Devices with this property value."""
+    meta = DEVICE_PROPERTY_FIELDS.get(field)
+    if meta is None:
+        return None
+    attrs = meta["attr"] if isinstance(meta["attr"], tuple) else (meta["attr"],)
+    is_number = meta.get("type") == "number"
+    if len(attrs) == 1:
+        typed_value = float(value) if is_number else value
+        return getattr(Device, attrs[0]) == typed_value
+    sep = meta.get("join", "x")
+    parts = str(value).split(sep)
+    if len(parts) != len(attrs):
+        return None
+    from sqlalchemy import and_
+    return and_(*(getattr(Device, a) == p for a, p in zip(attrs, parts)))
+
+
+def _count_devices_with_property(field: str, value: str) -> int:
+    flt = _device_property_filter(field, value)
+    if flt is None:
+        return 0
+    return Device.query.filter(flt).count()
+
+
+def _devices_with_property(field: str, value: str):
+    flt = _device_property_filter(field, value)
+    if flt is None:
+        return []
+    return Device.query.filter(flt).all()
+    return Session.query.filter(Session.id.in_(session_ids)).all()
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Flag (triggered rule) helpers
 # ─────────────────────────────────────────────────────────────────────────────
@@ -373,7 +472,8 @@ def resolve_seeds(seeds: Iterable[dict]) -> dict:
     """Build the initial graph for a list of seed refs.
 
     Session seeds also include their directly-linked IP/user-agent observables
-    (intrinsic attributes), so the graph is not empty on open.
+    and resolved Device (intrinsic attributes), so the graph is not empty on
+    open.
     """
     nodes: dict[str, dict] = {}
     edges: dict[str, dict] = {}
@@ -397,6 +497,16 @@ def resolve_seeds(seeds: Iterable[dict]) -> dict:
                 stn = build_stix_node(obj, stix_type)
                 add_node(stn)
                 add_edge(_meta_edge(sn["id"], stn["id"], label))
+            if sess.device_id:
+                device = Device.query.get(sess.device_id)
+                if device is not None:
+                    dn = build_device_node(device)
+                    add_node(dn)
+                    add_edge(_meta_edge(sn["id"], dn["id"], "device"))
+        elif kind == "device":
+            device = Device.query.get(seed.get("id")) if seed.get("id") is not None else None
+            if device is not None:
+                add_node(build_device_node(device))
         elif kind == "stix":
             obj = None
             stix_type = None
@@ -449,6 +559,17 @@ def get_expansions(ref: dict, known_ids: Iterable[str]) -> list[dict]:
                 "count": _new_count([nid], known),
             })
 
+        # Resolved device (fuzzy-matched cluster, see docs/devices.md)
+        if sess.device_id:
+            nid = device_node_id(sess.device_id)
+            options.append({
+                "key": "device",
+                "label": f"Device #{sess.device_id}",
+                "category": "Device",
+                "group": "linked",
+                "count": _new_count([nid], known),
+            })
+
         # Property values
         for field, meta in PROPERTY_FIELDS.items():
             value = _session_property_value(sess, field)
@@ -471,6 +592,37 @@ def get_expansions(ref: dict, known_ids: Iterable[str]) -> list[dict]:
                 "label": f"Flag: {flag}",
                 "category": flag,
                 "group": "flag",
+                "count": _new_count([nid], known),
+            })
+        return options
+
+    if kind == "device":
+        device = Device.query.get(ref.get("id"))
+        if device is None:
+            return []
+        options = []
+
+        sessions = device.sessions.all()
+        if sessions:
+            ids = [session_node_id(s.fsid) for s in sessions]
+            options.append({
+                "key": "sessions",
+                "label": "Sessions",
+                "category": "Sessions",
+                "group": "sessions",
+                "count": _new_count(ids, known),
+            })
+
+        for field, meta in DEVICE_PROPERTY_FIELDS.items():
+            value = _device_property_value(device, field)
+            if value is None:
+                continue
+            nid = property_node_id(field, value)
+            options.append({
+                "key": f"property:{field}",
+                "label": f"{meta['label']}: {value}",
+                "category": meta["label"],
+                "group": "property",
                 "count": _new_count([nid], known),
             })
         return options
@@ -516,18 +668,29 @@ def get_expansions(ref: dict, known_ids: Iterable[str]) -> list[dict]:
     if kind == "property":
         field = ref.get("field")
         value = ref.get("value")
-        count = _count_sessions_with_property(field, value)
-        if not count:
-            return []
-        sess_rows = _sessions_with_property(field, value)
-        ids = [session_node_id(s.fsid) for s in sess_rows]
-        return [{
-            "key": "sessions",
-            "label": "Sessions with this value",
-            "category": "Sessions",
-            "group": "sessions",
-            "count": _new_count(ids, known),
-        }]
+        options = []
+
+        if _count_sessions_with_property(field, value):
+            ids = [session_node_id(s.fsid) for s in _sessions_with_property(field, value)]
+            options.append({
+                "key": "sessions",
+                "label": "Sessions with this value",
+                "category": "Sessions",
+                "group": "sessions",
+                "count": _new_count(ids, known),
+            })
+
+        if field in DEVICE_PROPERTY_FIELDS and _count_devices_with_property(field, value):
+            ids = [device_node_id(d.id) for d in _devices_with_property(field, value)]
+            options.append({
+                "key": "devices",
+                "label": "Devices with this value",
+                "category": "Devices",
+                "group": "devices",
+                "count": _new_count(ids, known),
+            })
+
+        return options
 
     if kind == "flag":
         flag = ref.get("value")
@@ -601,6 +764,32 @@ def expand(ref: dict, key: str) -> dict:
                 fn = build_flag_node(flag)
                 add_node(fn)
                 add_edge(_meta_edge(sn_id, fn["id"], "flag"))
+        elif key == "device":
+            if sess.device_id:
+                device = Device.query.get(sess.device_id)
+                if device is not None:
+                    dn = build_device_node(device)
+                    add_node(dn)
+                    add_edge(_meta_edge(sn_id, dn["id"], "device"))
+
+    elif kind == "device":
+        device = Device.query.get(ref.get("id"))
+        if device is None:
+            return {"nodes": [], "edges": []}
+        dn_id = device_node_id(device.id)
+
+        if key == "sessions":
+            for sess in device.sessions.all():
+                sn = build_session_node(sess)
+                add_node(sn)
+                add_edge(_meta_edge(sn["id"], dn_id, "device"))
+        elif key.startswith("property:"):
+            field = key.split(":", 1)[1]
+            value = _device_property_value(device, field)
+            if value is not None:
+                pn = build_property_node(field, value)
+                add_node(pn)
+                add_edge(_meta_edge(dn_id, pn["id"], DEVICE_PROPERTY_FIELDS[field]["label"]))
 
     elif kind == "stix":
         obj, stix_type = _resolve_ref_stix(ref)
@@ -631,11 +820,18 @@ def expand(ref: dict, key: str) -> dict:
         field = ref.get("field")
         value = ref.get("value")
         pn_id = property_node_id(field, value)
-        label = PROPERTY_FIELDS.get(field, {}).get("label", field)
-        for sess in _sessions_with_property(field, value):
-            sn = build_session_node(sess)
-            add_node(sn)
-            add_edge(_meta_edge(sn["id"], pn_id, label))
+        if key == "devices":
+            label = DEVICE_PROPERTY_FIELDS.get(field, {}).get("label", field)
+            for device in _devices_with_property(field, value):
+                dn = build_device_node(device)
+                add_node(dn)
+                add_edge(_meta_edge(dn["id"], pn_id, label))
+        else:
+            label = PROPERTY_FIELDS.get(field, {}).get("label", field)
+            for sess in _sessions_with_property(field, value):
+                sn = build_session_node(sess)
+                add_node(sn)
+                add_edge(_meta_edge(sn["id"], pn_id, label))
 
     elif kind == "flag":
         flag = ref.get("value")
@@ -686,6 +882,27 @@ def compute_links(ref: dict, known_ids: Iterable[str]) -> dict:
             other = flag_node_id(flag)
             if other in known:
                 add_edge(_meta_edge(sn_id, other, "flag"))
+        if sess.device_id:
+            other = device_node_id(sess.device_id)
+            if other in known:
+                add_edge(_meta_edge(sn_id, other, "device"))
+
+    elif kind == "device":
+        device = Device.query.get(ref.get("id"))
+        if device is None:
+            return {"edges": []}
+        dn_id = device_node_id(device.id)
+        for sess in device.sessions.all():
+            other = session_node_id(sess.fsid)
+            if other in known:
+                add_edge(_meta_edge(other, dn_id, "device"))
+        for field, meta in DEVICE_PROPERTY_FIELDS.items():
+            value = _device_property_value(device, field)
+            if value is None:
+                continue
+            other = property_node_id(field, value)
+            if other in known:
+                add_edge(_meta_edge(dn_id, other, meta["label"]))
 
     elif kind == "stix":
         obj, stix_type = _resolve_ref_stix(ref)
@@ -711,6 +928,12 @@ def compute_links(ref: dict, known_ids: Iterable[str]) -> dict:
             other = session_node_id(sess.fsid)
             if other in known:
                 add_edge(_meta_edge(other, pn_id, label))
+        if field in DEVICE_PROPERTY_FIELDS:
+            dlabel = DEVICE_PROPERTY_FIELDS[field]["label"]
+            for device in _devices_with_property(field, value):
+                other = device_node_id(device.id)
+                if other in known:
+                    add_edge(_meta_edge(other, pn_id, dlabel))
 
     elif kind == "flag":
         flag = ref.get("value")

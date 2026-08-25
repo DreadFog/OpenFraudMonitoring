@@ -968,6 +968,21 @@ body {
   color: #8b949e;
 }
 
+.device-link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  font-family: monospace;
+  font-size: 11px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.device-link-btn:hover {
+  color: var(--text);
+}
+
 .child-indent {
   color: #6e7681;
 }

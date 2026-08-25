@@ -48,10 +48,6 @@ function riskClassOf(score) {
   return score >= 60 ? "risk-high" : score >= 30 ? "risk-med" : "risk-low";
 }
 
-function deviceTypeLabel(s) {
-  return s.is_mobile ? "📱 Mobile" : s.is_workstation ? "💻 Workstation" : "❓ Unknown";
-}
-
 function timeAgo(lastSeen) {
   const secs = Math.round((Date.now() - lastSeen) / 1000);
   if (secs < 60) return `${secs}s ago`;
@@ -61,47 +57,24 @@ function timeAgo(lastSeen) {
 }
 
 /**
- * Group SUCCESSIVE sessions from the same IP: within an IP, a session joins the
- * current group when it starts less than an hour after the group's latest end.
- * Returns an array of groups ordered by most recent activity first.
+ * Group sessions that share the same resolved `device_id`. Sessions without
+ * a device_id (not yet resolved, or from a private/ignored IP) are left
+ * ungrouped. Returns an array of groups ordered by most recent activity first.
  */
-const ONE_HOUR_MS = 3600 * 1000;
-function groupSuccessiveByIp(sessions) {
-  const byIp = new Map();
+function groupByDeviceId(sessions) {
+  const byKey = new Map();
+  let anonIndex = 0;
   for (const s of sessions) {
-    const ip = s.client_ip || "unknown";
-    if (!byIp.has(ip)) byIp.set(ip, []);
-    byIp.get(ip).push(s);
+    const key = s.device_id != null ? `device:${s.device_id}` : `anon:${anonIndex++}`;
+    if (!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key).push(s);
   }
   const groups = [];
-  for (const [ip, list] of byIp) {
-    const sorted = [...list].sort(
-      (a, b) => (a.first_seen || a.last_seen) - (b.first_seen || b.last_seen)
-    );
-    let cur = null;
-    for (const s of sorted) {
-      const start = s.first_seen || s.last_seen;
-      const end = s.last_seen || s.first_seen;
-      if (cur && start - cur.end < ONE_HOUR_MS) {
-        cur.sessions.push(s);
-        cur.end = Math.max(cur.end, end);
-        cur.maxScore = Math.max(cur.maxScore, s.risk_score || 0);
-        cur.lastSeen = Math.max(cur.lastSeen, s.last_seen || 0);
-        if ((s.last_seen || 0) >= cur.rep.last_seen) cur.rep = s;
-      } else {
-        cur = {
-          ip,
-          key: `${ip}:${start}`,
-          sessions: [s],
-          start,
-          end,
-          maxScore: s.risk_score || 0,
-          lastSeen: s.last_seen || 0,
-          rep: s,
-        };
-        groups.push(cur);
-      }
-    }
+  for (const [key, list] of byKey) {
+    const lastSeen = Math.max(...list.map((s) => s.last_seen || 0));
+    const maxScore = Math.max(...list.map((s) => s.risk_score || 0));
+    const rep = list.reduce((best, s) => ((s.last_seen || 0) >= (best.last_seen || 0) ? s : best), list[0]);
+    groups.push({ key, sessions: list, lastSeen, maxScore, rep, deviceId: list[0].device_id });
   }
   groups.sort((a, b) => b.lastSeen - a.lastSeen);
   return groups;
@@ -120,7 +93,7 @@ export default function Dashboard() {
   const [totalSessions, setTotalSessions] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedFsids, setSelectedFsids] = useState(() => new Set());
-  const [groupByIp, setGroupByIp] = usePersistentState("dashboard.groupByIp", false);
+  const [groupByDevice, setGroupByDevice] = usePersistentState("dashboard.groupByDevice", false);
   const [expandedGroups, setExpandedGroups] = useState(() => new Set());
   const navigate = useNavigate();
   const { containerRef, width: containerWidth } = useContainerWidth({ initialWidth: 1200 });
@@ -401,15 +374,15 @@ export default function Dashboard() {
         ))}
         {session.flags.length > 2 && <span className="flag">+{session.flags.length - 2}</span>}
       </td>
-      <td>{deviceTypeLabel(session)}</td>
       <td>{session.language}</td>
       <td>{session.urls_count}</td>
       <td>{session.heartbeats}</td>
+      <td>{session.behavioral_events}</td>
       <td className="time-ago">{timeAgo(session.last_seen)}</td>
     </tr>
   );
 
-  // Render an aggregated group row (multiple successive sessions from one IP).
+  // Render an aggregated group row (multiple sessions sharing the same device_id).
   const renderGroupRow = (group) => {
     const expanded = expandedGroups.has(group.key);
     const fsids = group.sessions.map((s) => s.full_fsid);
@@ -417,6 +390,7 @@ export default function Dashboard() {
     const flags = [...new Set(group.sessions.flatMap((s) => s.flags || []))];
     const urls = group.sessions.reduce((n, s) => n + (s.urls_count || 0), 0);
     const heartbeats = group.sessions.reduce((n, s) => n + (s.heartbeats || 0), 0);
+    const behavioralEvents = group.sessions.reduce((n, s) => n + (s.behavioral_events || 0), 0);
     return (
       <tr key={group.key} className="session-group-row" onClick={() => toggleGroupExpanded(group.key)}>
         <td className="select-col" onClick={(e) => e.stopPropagation()}>
@@ -424,9 +398,19 @@ export default function Dashboard() {
         </td>
         <td className="device-id">
           <span className="group-caret">{expanded ? "▾" : "▸"}</span>
-          {group.sessions.length} sessions
+          {group.deviceId != null ? (
+            <button
+              className="device-link-btn"
+              onClick={(e) => { e.stopPropagation(); navigate(`/device/${group.deviceId}`); }}
+              title="View device"
+            >
+              Device #{group.deviceId}
+            </button>
+          ) : (
+            `${group.sessions.length} sessions`
+          )}
         </td>
-        <td>{group.ip} <IpIntelPopover ip={group.ip} /></td>
+        <td>{group.rep.client_ip} <IpIntelPopover ip={group.rep.client_ip} /></td>
         <td><span className={`risk-badge ${riskClassOf(group.maxScore)}`}>{group.maxScore}</span></td>
         <td>
           {flags.slice(0, 2).map((flag, i) => (
@@ -434,10 +418,10 @@ export default function Dashboard() {
           ))}
           {flags.length > 2 && <span className="flag">+{flags.length - 2}</span>}
         </td>
-        <td>{deviceTypeLabel(group.rep)}</td>
         <td>{group.rep.language}</td>
         <td>{urls}</td>
         <td>{heartbeats}</td>
+        <td>{behavioralEvents}</td>
         <td className="time-ago">{timeAgo(group.lastSeen)}</td>
       </tr>
     );
@@ -525,10 +509,10 @@ export default function Dashboard() {
           <label className="group-toggle">
             <input
               type="checkbox"
-              checked={groupByIp}
-              onChange={(e) => setGroupByIp(e.target.checked)}
+              checked={groupByDevice}
+              onChange={(e) => setGroupByDevice(e.target.checked)}
             />
-            Group successive sessions by IP
+            Group by device
           </label>
         </div>
         {selectedFsids.size > 0 && (
@@ -558,20 +542,14 @@ export default function Dashboard() {
                     title="Select all on this page"
                   />
                 </th>
-                <th>Device ID</th>
+                <th>Fingerprint ID</th>
                 <th>IP Address</th>
                 <th>Risk Score</th>
                 <th>Flags</th>
-                <th
-                  className="sortable-header"
-                  onClick={() => handleSort("device_type")}
-                  title="Click to sort"
-                >
-                  Device Type{renderSortIndicator("device_type")}
-                </th>
                 <th>Language</th>
                 <th>URLs Visited</th>
                 <th>Heartbeats</th>
+                <th>Behavioral Events</th>
                 <th
                   className="sortable-header"
                   onClick={() => handleSort("last_seen")}
@@ -582,8 +560,8 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {groupByIp
-                ? groupSuccessiveByIp(sessions).flatMap((group) => {
+              {groupByDevice
+                ? groupByDeviceId(sessions).flatMap((group) => {
                     if (group.sessions.length === 1) return [renderSessionRow(group.sessions[0])];
                     const rows = [renderGroupRow(group)];
                     if (expandedGroups.has(group.key)) {

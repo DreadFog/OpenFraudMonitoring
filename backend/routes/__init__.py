@@ -18,6 +18,7 @@ from routes.connectors import connectors_bp
 from routes.cors import cors_bp
 from routes.settings import settings_bp
 from routes.graph import graph_bp
+from routes.devices import devices_bp
 
 
 def register_routes(app):
@@ -38,3 +39,4 @@ def register_routes(app):
     app.register_blueprint(cors_bp)
     app.register_blueprint(settings_bp)
     app.register_blueprint(graph_bp)
+    app.register_blueprint(devices_bp)

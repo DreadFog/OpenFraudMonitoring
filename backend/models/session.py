@@ -17,11 +17,14 @@ class Session(db.Model):
     ip_observable_type = db.Column(db.String(16), nullable=True)  # 'ipv4-addr' | 'ipv6-addr'
     ip_observable_id = db.Column(db.Integer, nullable=True)
     user_agent_observable_id = db.Column(db.Integer, nullable=True)
+    # Fuzzy-matched device this session was linked to (see services/device_matching.py)
+    device_id = db.Column(db.Integer, db.ForeignKey("devices.id"), nullable=True, index=True)
     first_seen = db.Column(db.Float, default=0)
     last_seen = db.Column(db.Float, default=0)
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, server_default=func.now(), onupdate=func.now())
 
+    device = db.relationship("Device", back_populates="sessions")
     fingerprints = db.relationship("Fingerprint", back_populates="session", lazy="dynamic", cascade="all, delete-orphan")
     heartbeats = db.relationship("Heartbeat", back_populates="session", lazy="dynamic", cascade="all, delete-orphan")
     behavioral_events = db.relationship("BehavioralEvent", back_populates="session", lazy="dynamic", cascade="all, delete-orphan")
@@ -37,4 +40,5 @@ class Session(db.Model):
             "client_ip": self.client_ip,
             "first_seen": self.first_seen,
             "last_seen": self.last_seen,
+            "device_id": self.device_id,
         }

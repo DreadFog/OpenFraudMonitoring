@@ -361,6 +361,11 @@ export default function SessionDetail() {
         <button className="graph-explore-btn" onClick={() => navigate(buildGraphUrl([sessionSeed(data.fsid)]))}>
           🕸 Explore in graph
         </button>
+        {data.device_id && (
+          <button className="graph-explore-btn" onClick={() => navigate(`/device/${data.device_id}`)}>
+            🖥 View device
+          </button>
+        )}
         <button className="delete-btn" onClick={handleDelete} disabled={deleting}>
           {deleting ? "Deleting…" : "🗑 Delete"}
         </button>

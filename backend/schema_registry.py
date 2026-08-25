@@ -50,6 +50,7 @@ SCHEMA_FIELDS = [
     {"name": "client_ip", "label": "Client IP", "type": "string", "model": "Session", "column": "client_ip", "category": "Session Metadata"},
     {"name": "risk_score", "label": "Risk Score", "type": "number", "model": "Session", "column": "risk_score", "category": "Session Metadata"},
     {"name": "fsid", "label": "Fingerprint ID (fsid)", "type": "string", "model": "Session", "column": "fsid", "category": "Session Metadata"},
+    {"name": "device_id", "label": "Device ID", "type": "number", "model": "Session", "column": "device_id", "category": "Session Metadata"},
     {"name": "first_seen", "label": "First Seen", "type": "date", "model": "Session", "column": "first_seen", "category": "Session Metadata"},
     {"name": "last_seen", "label": "Last Seen", "type": "date", "model": "Session", "column": "last_seen", "category": "Session Metadata"},
 ]

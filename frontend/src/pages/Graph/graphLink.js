@@ -14,6 +14,10 @@ export function sessionSeed(fsid) {
   return { kind: "session", fsid };
 }
 
+export function deviceSeed(id) {
+  return { kind: "device", id };
+}
+
 export function stixSeed(type, value) {
   return { kind: "stix", type, value };
 }
