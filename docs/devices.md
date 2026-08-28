@@ -42,10 +42,11 @@ looking automated.
 Resolution order, on every `POST /api/initial`:
 
 1. **Client device UUID** (`extensions.device_id.uuid`, generated once and
-   persisted in `localStorage` by the `device_id` client extension) — if a
-   `Device` already has this `cookie_id`, link immediately at confidence
-   `1.0`. This is the strongest signal since it survives fingerprint drift
-   entirely, but it's also the easiest for a user to clear.
+  persisted in `localStorage` by the `device_id` client extension) — if a
+  `DeviceCookie` alias already has this `cookie_id`, link immediately at
+  confidence `1.0`. This is the strongest signal since it survives
+  fingerprint drift entirely, but it's browser/profile-local and easy for
+  a user to clear.
 2. **Bucket prefilter** — candidates are narrowed to `Device` rows sharing
    the same `device_bucket` (`"<platform>|<width>x<height>"`), so scoring
    doesn't have to scan every device in the table. If no candidates share
@@ -55,11 +56,13 @@ Resolution order, on every `POST /api/initial`:
    recently active `Device` rows sharing the same `platform`
    (`FALLBACK_SCAN_LIMIT = 200`) before giving up.
 3. **Weighted field-agreement score** — for each candidate, `score_match()`
-   compares every Tier A/B field the candidate has prior data for against
-   the incoming fingerprint. Fields with no prior recorded value are
-   excluded from scoring (a new/incomplete device isn't unfairly
-   penalized). The score is `matched_weight / total_weight`, a value in
-   `[0, 1]`.
+  compares every Tier A/B field that is recorded on **both** the existing
+  device and the incoming fingerprint. Missing browser-specific signals
+  (e.g. Firefox omitting UA-CH/WebGL details) are excluded from scoring —
+  absence of evidence is not treated as a mismatch. At least
+  `MIN_MATCH_EVIDENCE_WEIGHT = 8` weighted points must be comparable before
+  a score can be accepted. The score is `matched_weight / total_weight`, a
+  value in `[0, 1]`.
 4. **IP/subnet proximity boost** — if the incoming client IP (or its /24,
    for IPv4) appears in the candidate's `recent_ips`, add a small boost
    (`IP_PROXIMITY_BOOST = 0.05`, capped at 1.0). This can nudge a
@@ -96,17 +99,19 @@ Tier A/B fields (platform, timezone, language, ...) agree above
 On every resolution — match or create — the device's canonical fields are
 refreshed most-recent-write-wins (only non-empty incoming values overwrite
 stored ones), the client IP is appended to `recent_ips` (capped at 20,
-deduplicated), and `last_seen`/`confidence` are updated. `is_mobile`/
-`device_type` (`mobile`/`workstation`/`unknown`) are also recomputed from
-the incoming signals each time via `derive_device_type()`, but only applied
-when the reading yields a confident classification — an ambiguous reading
-never downgrades a device's classification back to `unknown`.
+deduplicated), the seen browser/profile UUID is stored as a `DeviceCookie`
+alias, and `last_seen`/`confidence` are updated. `is_mobile`/`device_type`
+(`mobile`/`workstation`/`unknown`) are also recomputed from the incoming
+signals each time via `derive_device_type()`, but only applied when the
+reading yields a confident classification — an ambiguous reading never
+downgrades a device's classification back to `unknown`.
 
 ## Data model
 
-- `models/device.py` — `Device`: canonical Tier A/B fields, `cookie_id`,
-  `device_bucket`, `recent_ips` (JSONB), `confidence`, `is_mobile`,
-  `device_type`, `first_seen`/`last_seen`.
+- `models/device.py` — `Device`: canonical Tier A/B fields, primary
+  `cookie_id`, `device_bucket`, `recent_ips` (JSONB), `confidence`,
+  `is_mobile`, `device_type`, `first_seen`/`last_seen`. `DeviceCookie`
+  stores all browser/profile UUID aliases linked to that device.
 - `sessions.device_id` — nullable FK to `devices.id`, added via the
   `_COLUMN_UPGRADES` additive-migration pattern in `services/database.py`
   (this repo has no migration framework).

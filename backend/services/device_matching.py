@@ -20,7 +20,8 @@ import ipaddress
 
 from flask import current_app
 
-from models.device import Device, MAX_RECENT_IPS
+from services.database import db
+from models.device import Device, DeviceCookie, MAX_RECENT_IPS
 
 # ── Field tiers ──
 # (device attribute, denormalized Fingerprint column, weight)
@@ -76,6 +77,9 @@ IP_PROXIMITY_BOOST = 0.05
 # different browser, landing in a different bucket scheme), fall back to a
 # bounded platform-only scan instead of giving up and creating a duplicate.
 FALLBACK_SCAN_LIMIT = 200
+
+# Avoid high-confidence matches from very sparse readings (e.g. platform only).
+MIN_MATCH_EVIDENCE_WEIGHT = 8
 
 
 def _is_firefox(denorm):
@@ -165,9 +169,9 @@ def _is_recorded(value):
 def score_match(device, denorm, client_ip=None):
     """Weighted field-agreement score in [0, 1].
 
-    Fields with no prior recorded value on `device` are excluded from both
-    numerator and denominator — we only score fields we have evidence for,
-    so a freshly-created device isn't unfairly penalized.
+    Only fields recorded on both sides are scored. Missing browser-specific
+    signals (e.g. Firefox omitting UA-CH/WebGL details) are absence of evidence,
+    not mismatches.
     """
     skip_fields = _volatile_fields_for(denorm)
     matched_weight = 0.0
@@ -176,13 +180,14 @@ def score_match(device, denorm, client_ip=None):
         if attr in skip_fields:
             continue
         raw_value = getattr(device, attr, None)
-        if not _is_recorded(raw_value):
+        incoming_value = denorm.get(key)
+        if not _is_recorded(raw_value) or not _is_recorded(incoming_value):
             continue
         total_weight += weight
-        if _norm(raw_value) == _norm(denorm.get(key)):
+        if _norm(raw_value) == _norm(incoming_value):
             matched_weight += weight
 
-    if total_weight == 0:
+    if total_weight < MIN_MATCH_EVIDENCE_WEIGHT:
         return 0.0
 
     score = matched_weight / total_weight
@@ -212,6 +217,17 @@ def _record_ip(device, client_ip):
     device.recent_ips = ips[-MAX_RECENT_IPS:]
 
 
+def _record_cookie(device, cookie_id, timestamp):
+    if not cookie_id:
+        return
+    link = DeviceCookie.query.filter_by(cookie_id=cookie_id).first()
+    if link is None:
+        link = DeviceCookie(device_id=device.id, cookie_id=cookie_id, first_seen=timestamp)
+        db.session.add(link)
+    link.device_id = device.id
+    link.last_seen = timestamp
+
+
 def _best_of(candidates, denorm, client_ip):
     best, best_score = None, 0.0
     for candidate in candidates:
@@ -230,7 +246,11 @@ def resolve_device(denorm, client_ip=None, cookie_id=None, timestamp=0):
     confidence = 1.0
 
     if cookie_id:
-        device = Device.query.filter_by(cookie_id=cookie_id).first()
+        cookie_link = DeviceCookie.query.filter_by(cookie_id=cookie_id).first()
+        if cookie_link is not None:
+            device = cookie_link.device
+        else:
+            device = Device.query.filter_by(cookie_id=cookie_id).first()
 
     if device is None:
         bucket = make_bucket(denorm)
@@ -265,6 +285,7 @@ def resolve_device(denorm, client_ip=None, cookie_id=None, timestamp=0):
 
     _apply_canonical_fields(device, denorm)
     _record_ip(device, client_ip)
+    _record_cookie(device, cookie_id, timestamp)
     device.last_seen = timestamp
     device.confidence = confidence
 

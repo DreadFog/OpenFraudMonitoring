@@ -58,3 +58,18 @@ class Device(db.Model):
     updated_at = db.Column(db.DateTime, server_default=func.now(), onupdate=func.now())
 
     sessions = db.relationship("Session", back_populates="device", lazy="dynamic")
+    cookies = db.relationship("DeviceCookie", back_populates="device", lazy="dynamic", cascade="all, delete-orphan")
+
+
+class DeviceCookie(db.Model):
+    __tablename__ = "device_cookies"
+
+    id = db.Column(db.Integer, primary_key=True)
+    device_id = db.Column(db.Integer, db.ForeignKey("devices.id"), nullable=False, index=True)
+    cookie_id = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    first_seen = db.Column(db.Float, default=0)
+    last_seen = db.Column(db.Float, default=0)
+    created_at = db.Column(db.DateTime, server_default=func.now())
+    updated_at = db.Column(db.DateTime, server_default=func.now(), onupdate=func.now())
+
+    device = db.relationship("Device", back_populates="cookies")

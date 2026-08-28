@@ -4,7 +4,7 @@ Models package — re-exports all models for convenient imports.
 
 from models.session import Session
 from models.fingerprint import Fingerprint
-from models.device import Device
+from models.device import Device, DeviceCookie
 from models.heartbeat import Heartbeat
 from models.behavioral_event import (
     BehavioralEvent,  # legacy — kept for backward compat
@@ -38,6 +38,7 @@ __all__ = [
     "Session",
     "Fingerprint",
     "Device",
+    "DeviceCookie",
     "Heartbeat",
     "BehavioralEvent",
     "CopyEvent",
