@@ -7,6 +7,8 @@ import os
 
 
 class Config:
+    ENVIRONMENT = os.environ.get("OFM_ENV", "production").strip().lower()
+
     # ── Database ──
     DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://ofm:ofm@db:5432/ofm")
     SQLALCHEMY_DATABASE_URI = DATABASE_URL
@@ -37,6 +39,7 @@ class Config:
     HOST = os.environ.get("HOST", "0.0.0.0")
     PORT = int(os.environ.get("PORT", "5000"))
     DEBUG = os.environ.get("FLASK_DEBUG", "0") == "1"
+    MAX_CONTENT_LENGTH = int(os.environ.get("MAX_CONTENT_LENGTH", str(1024 * 1024)))
     OFM_SAVE_PRIVATE_IP = os.environ.get("OFM_SAVE_PRIVATE_IP", "false").lower() in ("1", "true", "yes")
 
     # ── Worker ──
@@ -54,3 +57,27 @@ class Config:
     # OFM_SERVER_URL is the URL the ofm.js client sends data to.
     # Set to "" for same-origin (default), or "https://ofm.example.com" for remote.
     OFM_SERVER_URL = os.environ.get("OFM_SERVER_URL", "")
+
+    @classmethod
+    def validate(cls):
+        """Reject unsafe authentication configuration outside explicit development mode."""
+        if cls.ENVIRONMENT == "development":
+            return
+        if cls.ENVIRONMENT != "production":
+            raise RuntimeError("OFM_ENV must be 'production' or 'development'")
+
+        unsafe = []
+        if cls.JWT_SECRET == "change-me-in-production" or len(cls.JWT_SECRET) < 32:
+            unsafe.append("JWT_SECRET (minimum 32 characters)")
+        if cls.OFM_ADMIN_USERNAME == "admin" and cls.OFM_ADMIN_PASSWORD == "admin":
+            unsafe.append("OFM_ADMIN_USERNAME/OFM_ADMIN_PASSWORD")
+        if len(cls.OFM_ADMIN_PASSWORD) < 12:
+            unsafe.append("OFM_ADMIN_PASSWORD (minimum 12 characters)")
+        if cls.OFM_ADMIN_TOKEN == "dev-admin-token" or len(cls.OFM_ADMIN_TOKEN) < 32:
+            unsafe.append("OFM_ADMIN_TOKEN (minimum 32 characters)")
+
+        if unsafe:
+            raise RuntimeError(
+                "Unsafe production configuration: " + ", ".join(unsafe)
+                + ". Set secure values or use OFM_ENV=development for local development."
+            )

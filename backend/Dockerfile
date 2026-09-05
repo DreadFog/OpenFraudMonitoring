@@ -31,4 +31,4 @@ COPY --from=client-build /client/dist/ofm.js /ofm.js
 
 EXPOSE 5000
 
-CMD ["python", "app.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--threads", "4", "--timeout", "30", "app:app"]

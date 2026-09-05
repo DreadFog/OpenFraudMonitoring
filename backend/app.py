@@ -27,6 +27,8 @@ from init.seed_users import seed_default_admin
 
 install_log_shipper("backend")
 
+Config.validate()
+
 app = Flask(__name__)
 app.config.from_object(Config)
 
