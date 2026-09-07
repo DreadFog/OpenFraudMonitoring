@@ -40,6 +40,8 @@ def _create_all_safely():
 _COLUMN_UPGRADES = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS settings JSONB NOT NULL DEFAULT '{}'::jsonb",
     "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS device_id INTEGER REFERENCES devices(id)",
+    "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS authenticated BOOLEAN NOT NULL DEFAULT false",
+    "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS domains JSONB NOT NULL DEFAULT '[]'::jsonb",
     "ALTER TABLE devices ADD COLUMN IF NOT EXISTS is_mobile BOOLEAN NOT NULL DEFAULT false",
     "ALTER TABLE devices ADD COLUMN IF NOT EXISTS device_type VARCHAR(16) NOT NULL DEFAULT 'unknown'",
 ]

@@ -5,6 +5,7 @@ import CorsSettings from "../../components/CorsSettings/CorsSettings";
 import GraphGlobalSettings from "../../components/GraphGlobalSettings/GraphGlobalSettings";
 import PrivacySettings from "../../components/PrivacySettings/PrivacySettings";
 import UserManagement from "../Users/Users";
+import DomainSettings from "../../components/DomainSettings/DomainSettings";
 import "./Logging.css";
 
 const POLL_MS = 5000;
@@ -146,6 +147,8 @@ export default function Administration() {
       </section>
 
       {isAdmin && <CorsSettings />}
+
+      {isAdmin && <DomainSettings />}
 
       {isAdmin && <GraphGlobalSettings />}
 

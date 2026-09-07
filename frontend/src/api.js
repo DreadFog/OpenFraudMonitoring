@@ -161,6 +161,65 @@ export const api = {
     return res.json();
   },
 
+  // ── Monitored domains (admin) ──
+
+  getDomainConfigs: async () => {
+    const res = await authFetch("/api/admin/domains");
+    if (!res.ok) throw new Error("Failed to fetch monitored domains");
+    return res.json();
+  },
+
+  createDomainConfig: async (data) => {
+    const res = await authFetch("/api/admin/domains", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || "Failed to create monitored domain");
+    }
+    return res.json();
+  },
+
+  updateDomainConfig: async (id, data) => {
+    const res = await authFetch(`/api/admin/domains/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || "Failed to update monitored domain");
+    }
+    return res.json();
+  },
+
+  deleteDomainConfig: async (id) => {
+    const res = await authFetch(`/api/admin/domains/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Failed to delete monitored domain");
+    return res.json();
+  },
+
+  exportDomainConfigs: async () => {
+    const res = await authFetch("/api/admin/domains/export");
+    if (!res.ok) throw new Error("Failed to export monitored domains");
+    return res.json();
+  },
+
+  importDomainConfigs: async (data) => {
+    const res = await authFetch("/api/admin/domains/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || "Failed to import monitored domains");
+    }
+    return res.json();
+  },
+
   // ── Sessions ──
 
   getSessions: async (filters = [], sortBy = "last_seen", sortOrder = "desc", page = 1, perPage = 10) => {

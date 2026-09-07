@@ -11,6 +11,7 @@ Tables:
     beh_paste         — paste events
     beh_form_submit   — form submit events
     beh_button_click  — button click events
+    beh_auth_attempt  — form submissions matching a configured login pattern
 
 The legacy BehavioralEvent model is kept for backward-compatible imports but
 is no longer written to by the ingestion route.
@@ -204,6 +205,36 @@ class ButtonClickEvent(db.Model):
         }
 
 
+class AuthAttemptEvent(db.Model):
+    """A form submission matching a monitored domain's auth pattern."""
+    __tablename__ = "beh_auth_attempt"
+
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.Integer, db.ForeignKey("sessions.id"), nullable=False, index=True)
+    domain_config_id = db.Column(db.Integer, db.ForeignKey("domain_configs.id", ondelete="SET NULL"), nullable=True, index=True)
+    timestamp = db.Column(db.Float, default=0, nullable=False)
+    url = db.Column(db.String(2048), default="")
+    created_at = db.Column(db.DateTime, server_default=func.now())
+    action = db.Column(db.String(2048), default="")
+    method = db.Column(db.String(16), default="post")
+    matched_field_names = db.Column(JSONB, default=list)
+
+    session = db.relationship("Session")
+    domain_config = db.relationship("DomainConfig")
+
+    EVENT_TYPE = "auth_attempt"
+
+    def to_dict(self):
+        return {
+            "event_type": self.EVENT_TYPE,
+            "timestamp": self.timestamp,
+            "url": self.url,
+            "action": self.action,
+            "method": self.method,
+            "matched_field_names": self.matched_field_names or [],
+        }
+
+
 # Map event_type string → typed model class, used by the ingestion route and
 # the sequence rule evaluator.
 TYPED_EVENT_MODELS = {
@@ -211,4 +242,5 @@ TYPED_EVENT_MODELS = {
     "paste": PasteEvent,
     "form_submit": FormSubmitEvent,
     "button_click": ButtonClickEvent,
+    "auth_attempt": AuthAttemptEvent,
 }

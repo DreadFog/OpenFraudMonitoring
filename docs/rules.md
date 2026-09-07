@@ -257,6 +257,7 @@ the session's full event timeline.
 | `paste` | `url`, `length`, `target_tag`, `target_id`, `target_name`, `target_type`, `form_action` |
 | `form_submit` | `url`, `action`, `method`, `field_names` (array — supports `eq`/`contains`/`starts_with`/`ends_with`) |
 | `button_click` | `url`, `x`, `y`, `tag`, `text` |
+| `auth_attempt` | `url`, `action`, `method`, `matched_field_names` (array) — generated server-side from a [monitored domain](domains.md) login-form pattern |
 
 **Constraints:**
 - Sequence conditions require `"rule_type": "periodic"` (validated at rule creation).

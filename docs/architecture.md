@@ -115,6 +115,7 @@ The Intelligence page allows browsing all STIX entity types, searching by value,
 ```
 sessions
   ├── id, fsid, risk_score, flags (JSONB), client_ip
+  ├── authenticated (bool), domains (JSONB)   ← monitored-domain auth cookie + URL hosts
   ├── ip_observable_type, ip_observable_id    ← FK to STIX IP table
   ├── user_agent_observable_id                ← FK to STIX user-agent table
   ├── first_seen, last_seen, created_at, updated_at
@@ -137,6 +138,9 @@ sessions
   │
   ├──< behavioral_events
   │     └── id, session_id, timestamp, event_type, url, data (JSONB)
+  ├──< beh_auth_attempt   ← server-generated login-form matches
+  │     └── id, session_id, domain_config_id, timestamp, url,
+  │         action, method, matched_field_names (JSONB)
   ├──< session_urls (session_id, url — unique pair)
   └──< browser_sessions (session_id, browser_session_id — unique)
 
@@ -154,6 +158,8 @@ users
   └──< api_tokens (token_hash [SHA-256], token_prefix, name, expires_at)
 
 allowed_origins   ← dynamic CORS allowlist (origin, enabled)
+domain_configs    ← monitored domains (domain, auth_cookie_name,
+                    form_action, form_method, form_field_names, active)
 taxii_feeds       ← published TAXII 2.1 collections (uuid, name, filters)
 ```
 
@@ -219,6 +225,7 @@ backend/
     stix_store.py        # get_or_create helpers for STIX entities
     stix_filters.py      # STIX filtering for TAXII feeds
     cors_origins.py      # Dynamic CORS origin validation
+    domains.py           # Monitored-domain matching (auth cookie, login form)
     log_shipper.py       # Centralized log shipping to Redis
   models/
     session.py           # Session model (with STIX observable FKs)
@@ -230,6 +237,7 @@ backend/
     dashboard.py         # Dashboard model (widget layouts)
     user.py              # User + ApiToken models (auth/RBAC)
     cors.py              # AllowedOrigin model (dynamic CORS)
+    domain.py            # DomainConfig model (monitored domains)
     taxii_feed.py        # TaxiiFeed model (published collections)
     stix.py              # All STIX 2.1 models (9 entity types + relationship)
   routes/
@@ -245,12 +253,13 @@ backend/
     connectors.py        # Connector status, enricher listing, logs
     dashboards.py        # CRUD /api/dashboards
     cors.py              # /api/admin/cors — CORS allowlist management
+    domains.py           # /api/admin/domains — monitored domains + JSON import/export
     taxii.py             # /taxii2 — TAXII 2.1 server
     taxii_feeds.py       # /api/taxii-feeds — feed management
   rules/
     engine.py            # Filter → SQLAlchemy query builder
     defaults/            # Built-in detection rules (JSON)
-  filters/               # Behavioral filter registry + IP filters + suggestions
+  filters/               # Behavioral filter registry + IP/domain filters + suggestions
   analysis/
     risk.py              # Built-in risk scoring (bot detection)
 
@@ -371,6 +380,19 @@ All `/api/*` endpoints except the ingestion ones require an `Authorization: Bear
 | POST | `/api/admin/cors/origins` | Add an allowed origin |
 | DELETE | `/api/admin/cors/origins/<id>` | Remove an origin |
 | PATCH | `/api/admin/cors/origins/<id>/toggle` | Enable/disable an origin |
+
+### Admin — Monitored Domains
+
+See [Monitored Domains](domains.md).
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/admin/domains` | List domain configurations |
+| POST | `/api/admin/domains` | Create a domain configuration |
+| PUT | `/api/admin/domains/<id>` | Update a domain configuration |
+| DELETE | `/api/admin/domains/<id>` | Delete a domain configuration |
+| GET | `/api/admin/domains/export` | Download all configurations as JSON |
+| POST | `/api/admin/domains/import` | Upsert configurations from JSON |
 
 ### TAXII 2.1
 

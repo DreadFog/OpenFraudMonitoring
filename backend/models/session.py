@@ -11,6 +11,8 @@ class Session(db.Model):
     risk_score = db.Column(db.Integer, default=0)
     flags = db.Column(JSONB, default=list)
     client_ip = db.Column(db.String(45), default="")
+    authenticated = db.Column(db.Boolean, nullable=False, default=False, index=True)
+    domains = db.Column(JSONB, nullable=False, default=list)
     # ── STIX observable links (Phase 1) ──
     # IP can be either ipv4 or ipv6; track the type to know which table
     # to look up in.  `None` if no STIX observable was created.
@@ -38,6 +40,8 @@ class Session(db.Model):
             "risk_score": self.risk_score,
             "flags": self.flags or [],
             "client_ip": self.client_ip,
+            "authenticated": bool(self.authenticated),
+            "domains": self.domains or [],
             "first_seen": self.first_seen,
             "last_seen": self.last_seen,
             "device_id": self.device_id,

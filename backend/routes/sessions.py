@@ -138,6 +138,8 @@ def get_sessions():
             "first_seen": sess.first_seen,
             "last_seen": sess.last_seen,
             "device_id": sess.device_id,
+            "authenticated": bool(sess.authenticated),
+            "domains": sess.domains or [],
             "heartbeats": heartbeats_count,
             "behavioral_events": behavioral_events_count,
             "urls": urls,
@@ -199,6 +201,8 @@ def get_session_detail(fsid):
         "first_seen": sess.first_seen,
         "last_seen": sess.last_seen,
         "device_id": sess.device_id,
+        "authenticated": bool(sess.authenticated),
+        "domains": sess.domains or [],
         "urls": urls,
         "session_ids": session_ids,
         "heartbeats_count": heartbeats_count,
@@ -231,6 +235,8 @@ def delete_session(fsid):
     PasteEvent.query.filter_by(session_id=sess.id).delete()
     FormSubmitEvent.query.filter_by(session_id=sess.id).delete()
     ButtonClickEvent.query.filter_by(session_id=sess.id).delete()
+    from models.behavioral_event import AuthAttemptEvent
+    AuthAttemptEvent.query.filter_by(session_id=sess.id).delete()
     SessionURL.query.filter_by(session_id=sess.id).delete()
     BrowserSession.query.filter_by(session_id=sess.id).delete()
     RuleMatch.query.filter_by(session_id=sess.id).delete()

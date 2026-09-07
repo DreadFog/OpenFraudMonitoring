@@ -20,6 +20,7 @@ from services.event_queue import enqueue_event, get_redis
 from services.stix_store import get_or_create_ip, get_or_create_user_agent
 from services.mq import publish_intel_request
 from services.device_matching import resolve_device
+from services.domains import add_session_domain, auth_cookie_present
 from utils.crypto import decrypt_fingerprint
 
 logger = logging.getLogger(__name__)
@@ -94,6 +95,12 @@ def collect():
 
     session_obj.last_seen = timestamp
     session_obj.client_ip = client_ip
+    session_obj.authenticated = auth_cookie_present(request, request.host)
+    add_session_domain(session_obj, url)
+    logger.debug(
+        "session authentication state: fsid=%s host=%s authenticated=%s",
+        fsid[:32], request.host, session_obj.authenticated,
+    )
 
     # ── Resolve device identity (fuzzy match, decoupled from volatile fsid) ──
     denorm = Fingerprint.extract_fields(fp)

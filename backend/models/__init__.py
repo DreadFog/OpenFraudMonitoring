@@ -12,6 +12,7 @@ from models.behavioral_event import (
     PasteEvent,
     FormSubmitEvent,
     ButtonClickEvent,
+    AuthAttemptEvent,
     TYPED_EVENT_MODELS,
 )
 from models.rule import Rule, RuleMatch
@@ -20,6 +21,7 @@ from models.dashboard import Dashboard
 from models.user import User, ApiToken
 from models.app_setting import AppSetting
 from models.cors import AllowedOrigin
+from models.domain import DomainConfig
 from models.taxii_feed import TaxiiFeed
 from models.stix import (
     StixIPv4Addr,
@@ -45,6 +47,7 @@ __all__ = [
     "PasteEvent",
     "FormSubmitEvent",
     "ButtonClickEvent",
+    "AuthAttemptEvent",
     "TYPED_EVENT_MODELS",
     "Rule",
     "RuleMatch",
@@ -55,6 +58,7 @@ __all__ = [
     "ApiToken",
     "AppSetting",
     "AllowedOrigin",
+    "DomainConfig",
     "TaxiiFeed",
     "StixIPv4Addr",
     "StixIPv6Addr",

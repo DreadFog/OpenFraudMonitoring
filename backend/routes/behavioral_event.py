@@ -15,7 +15,9 @@ import logging
 from flask import Blueprint, request, jsonify
 from services.database import db
 from models import Session, TYPED_EVENT_MODELS
+from models import AuthAttemptEvent
 from services.event_queue import enqueue_event
+from services.domains import add_session_domain, matching_form_config
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +82,8 @@ def behavioral_event():
     data = payload.get("data", {})
 
     # Validate event_type
+    if event_type == "auth_attempt":
+        return jsonify({"ok": False, "error": "auth_attempt events are generated server-side"}), 400
     if event_type not in ALLOWED_EVENT_TYPES:
         return jsonify({"ok": False, "error": f"Invalid event_type: {event_type}"}), 400
 
@@ -101,6 +105,27 @@ def behavioral_event():
     Model = TYPED_EVENT_MODELS[event_type]
     event_obj = _build_typed_event(Model, session_obj.id, timestamp, url, data)
     db.session.add(event_obj)
+    add_session_domain(session_obj, url)
+    if event_type == "form_submit":
+        action = str(data.get("action") or "")[:2048]
+        method = str(data.get("method") or "post")[:16]
+        field_names = data.get("fieldNames") or []
+        config = matching_form_config(request.host, action, method, field_names)
+        if config:
+            logger.info(
+                "authentication attempt detected: fsid=%s host=%s config_id=%s action=%s method=%s submitted_field_count=%d",
+                session_obj.fsid[:32], request.host, config.id, action,
+                method.lower(), len(field_names),
+            )
+            db.session.add(AuthAttemptEvent(
+                session_id=session_obj.id,
+                domain_config_id=config.id,
+                timestamp=timestamp,
+                url=url,
+                action=action,
+                method=method.lower(),
+                matched_field_names=field_names,
+            ))
     session_obj.last_seen = timestamp
     db.session.commit()
 

@@ -13,6 +13,7 @@ Self-hosted browser fingerprinting, behavioral analysis, and fraud monitoring pl
 - **Browser fingerprinting** — collects 35+ signal categories via [FPScanner](fpscanner/) (screen, GPU, codecs, fonts, WebGL, automation flags, etc.)
 - **Bot detection** — 21 built-in detection rules (WebDriver, CDP, Selenium, Playwright, spoofed GPU, impossible memory, etc.)
 - **Behavioral tracking** — mouse movements, clicks, keystrokes, scrolls, copy/paste, navigation events via heartbeats every 30s
+- **Monitored domains** — per-domain auth cookie detection, login-form authentication attempts, normalized session domains ([docs](docs/domains.md))
 - **Risk scoring** — automatic scoring from bot signals + customizable detection rules
 - **Custom dashboards** — drag-and-drop widgets (stats, pie charts, histograms, weighted lists) with saved layouts
 - **Session filtering** — 50+ filterable fields with autocomplete, composable filter conditions
@@ -37,7 +38,7 @@ docker compose up --build
 Add the fingerprint collection script to any page:
 
 ```html
-<script src="http://your-server/ofm.js"></script>
+<script src="/ofm.js"></script>
 ```
 
 The script automatically:
@@ -45,7 +46,7 @@ The script automatically:
 2. Sends behavioral heartbeats every 30 seconds
 3. Generates a deterministic device ID (`fsid`) that persists across sessions
 
-For cross-origin collection (script on a different domain than the backend), set `OFM_SERVER_URL` in `.env` before building.
+See [Deployment](docs/deployment.md) for same-origin, reverse-proxied, and separate-host setups. Cookie-based authentication detection requires the script and collection API to be reachable through the monitored domain.
 
 ## Screenshots
 
@@ -91,7 +92,7 @@ All variables are in [`.env.example`](.env.example). Key ones:
 
 | Variable | Purpose |
 |----------|---------|
-| `OFM_SERVER_URL` | Remote server URL for the client script (empty = same-origin) |
+| `OFM_SERVER_URL` | Client collection URL; empty for same-origin or reverse-proxied deployment |
 | `DATABASE_URL` | PostgreSQL connection string |
 | `REDIS_URL` | Redis connection string |
 | `POSTGRES_PASSWORD` | Database password |
@@ -101,6 +102,8 @@ All variables are in [`.env.example`](.env.example). Key ones:
 ## Documentation
 
 - [Architecture](docs/architecture.md) — system overview, data flow, STIX storage, folder structure
+- [Deployment](docs/deployment.md) — deployment modes, Caddy reverse proxying, and cookie-based collection requirements
+- [Monitored Domains](docs/domains.md) — per-domain auth cookie, authentication-attempt detection, JSON import/export
 - [Connectors](docs/connectors.md) — how enrichment connectors work, how to build your own
 - [Rules](docs/rules.md) — how to create and manage detection rules
 - [Filters](docs/filters.md) — how filtering works, schema fields, code mapping

@@ -59,6 +59,21 @@ Returns up to 20 distinct values from the database matching the search term. Use
 
 For boolean fields, returns `["true", "false"]`. For number fields, returns `[]` (no autocomplete).
 
+## Session Domain & Authentication Fields
+
+Two session-metadata fields come from the [monitored domain configuration](domains.md):
+
+| Field | Type | Notes |
+|---|---|---|
+| `authenticated` | boolean | `true` when the domain's configured auth cookie was present on the last collection request |
+| `domains` | string | Normalized hosts of every URL seen in the session, subdomains preserved |
+
+`domains` is a JSONB array, so `eq` and `contains` both test whether the array contains the given host (`neq`/`not_contains` invert it). It supports autocomplete and can be grouped in pie/histogram widgets.
+
+```
+GET /api/sessions?filters=[{"field":"domains","op":"eq","value":"shop.example.com"}]
+```
+
 ## Available Fields
 
 ### Behavioral custom fields

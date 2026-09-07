@@ -47,6 +47,7 @@ const EVENT_META = {
   form_submit: { icon: "📝", label: "Form submit" },
   copy: { icon: "📋", label: "Copy" },
   paste: { icon: "📎", label: "Paste" },
+  auth_attempt: { icon: "🔐", label: "Authentication attempt" },
 };
 
 function eventMeta(type) {
@@ -104,6 +105,12 @@ function getEventDetails(e) {
       row("Target ID",   e.target_id),
       row("Form action", e.form_action),
       row("Text",        e.text),
+    ].filter(r => !skip(r.v));
+
+    case "auth_attempt": return [
+      row("Action", e.action),
+      row("Method", e.method),
+      row("Matched fields", (e.matched_field_names || []).join(", ")),
     ].filter(r => !skip(r.v));
 
     default: return Object.entries(e)
@@ -378,6 +385,8 @@ export default function SessionDetail() {
           <Field label="Fingerprint ID (fsid)" value={data.fsid} />
           <Field label="Client IP"    value={data.client_ip} popoverIp={data.client_ip} />
           <Field label="Public IP"    value={ipExt.ip} popoverIp={ipExt.ip} />
+          <Field label="Authenticated" value={data.authenticated ? "Yes" : "No"} />
+          <Field label="Domains" value={(data.domains || []).join(", ")} />
           <Field label="Country"      value={ipExt.country} />
           <Field label="City"         value={ipExt.city} />
           <Field label="Bot Detected" value={fp.fastBotDetection ? "YES" : "No"} />

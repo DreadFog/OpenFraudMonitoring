@@ -7,6 +7,7 @@ export function send(endpoint, payload) {
       method: "POST",
       body,
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       keepalive: true,
     }).catch(() => {});
   }

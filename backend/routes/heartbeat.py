@@ -16,6 +16,7 @@ from services.database import db
 from models import Session, Heartbeat, SessionURL
 from utils import extract_behavior_summary
 from services.event_queue import enqueue_event
+from services.domains import add_session_domain, auth_cookie_present
 import logging
 import ipaddress
 
@@ -94,6 +95,12 @@ def heartbeat():
 
     # Update session
     session_obj.last_seen = timestamp
+    session_obj.authenticated = auth_cookie_present(request, request.host)
+    add_session_domain(session_obj, url)
+    logger.debug(
+        "session authentication state: fsid=%s host=%s authenticated=%s",
+        session_obj.fsid[:32], request.host, session_obj.authenticated,
+    )
 
     # Track URL
     if url:
