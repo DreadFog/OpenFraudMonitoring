@@ -145,4 +145,4 @@ Full docs: `docs/graph.md`. Route `/graph?seeds=<url-encoded JSON array>` (Cytos
 
 ## Key env vars
 
-`DATABASE_URL`, `REDIS_URL`, `RABBITMQ_URL`, `JWT_SECRET`, `JWT_EXPIRY_HOURS`, `OFM_ADMIN_USERNAME/PASSWORD/TOKEN`, `INTEL_DECAY_DAYS`(7), `PERIODIC_INTERVAL_SECONDS`(60), `FPSCANNER_KEY` (must match fpscanner build key), `OFM_SERVER_URL`, `FLASK_DEBUG`, `LOG_LEVEL`, `DB_POOL_SIZE`, `DB_MAX_OVERFLOW`. License: MIT.
+`DATABASE_URL`, `REDIS_URL`, `RABBITMQ_URL`, `JWT_SECRET`, `JWT_EXPIRY_HOURS`, `OFM_ADMIN_USERNAME/PASSWORD/TOKEN`, `INTEL_DECAY_DAYS`(7), `PERIODIC_INTERVAL_SECONDS`(60), `FPSCANNER_KEY` (must match fpscanner build key; passed to backend+frontend build args and backend runtime), `OFM_SERVER_URL`, `OFM_ENV`(production), `FLASK_DEBUG`, `LOG_LEVEL`, `DEVICE_MATCH_THRESHOLD`(0.75), `DB_POOL_SIZE`, `DB_MAX_OVERFLOW`. License: AGPL-3.0 (see `LICENSE` + `NOTICE`; vendored `fpscanner/` stays MIT © 2017 antoinevastel).

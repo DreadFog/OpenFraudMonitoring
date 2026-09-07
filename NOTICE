@@ -1,0 +1,36 @@
+OpenFraudMonitoring
+Copyright (C) 2026 Quentin Fraty <quentin.fraty@gmail.com>
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+
+Because this is an AGPL-3.0 program, anyone who runs a modified version and lets
+users interact with it over a network must offer those users the corresponding
+source code of their modified version (see section 13 of the license).
+
+--------------------------------------------------------------------------------
+Third-party components
+--------------------------------------------------------------------------------
+
+fpscanner/
+    Derived from the fpscanner project by Antoine Vastel.
+    Copyright (c) 2017 antoinevastel <antoine.vastel@gmail.com>
+    Licensed under the MIT License; see fpscanner/LICENSE for the full text.
+
+    The MIT License permits inclusion in this AGPL-3.0 distribution. The upstream
+    code remains available under the MIT License from its original author, and
+    the copyright notice above must be preserved in all copies.
+
+This project also depends on third-party packages declared in
+backend/requirements.txt, client/package.json, frontend/package.json,
+fpscanner/package.json, and connectors/*/requirements.txt. Those packages remain
+under their own respective licenses.

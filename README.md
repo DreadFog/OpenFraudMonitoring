@@ -111,4 +111,10 @@ All variables are in [`.env.example`](.env.example). Key ones:
 
 ## License
 
-MIT
+Copyright (C) 2026 Quentin Fraty.
+
+Licensed under the [GNU Affero General Public License v3.0](LICENSE). You may use, modify, and redistribute this software, including commercially, provided derivative works remain under the AGPL-3.0 and you keep the copyright notices intact.
+
+If you run a modified version as a network service, section 13 requires you to offer its complete source code to your users.
+
+Third-party attributions, including the MIT-licensed [fpscanner](fpscanner/LICENSE) component, are listed in [NOTICE](NOTICE).
