@@ -45,6 +45,7 @@ services:
       dockerfile: backend/Dockerfile
       args:
         OFM_SERVER_URL: ${OFM_SERVER_URL:-}
+        FPSCANNER_KEY: ${FPSCANNER_KEY:-dev-key}
         OFM_DEBUG: ${OFM_DEBUG:-true}
         OFM_CAPTURE_CLIPBOARD: ${OFM_CAPTURE_CLIPBOARD:-false}
     ports:
@@ -56,11 +57,17 @@ services:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       RABBITMQ_URL: ${RABBITMQ_URL:-amqp://ofm:ofm@rabbitmq:5672/}
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_EXPIRY_HOURS: ${JWT_EXPIRY_HOURS:-24}
+      OFM_ENV: ${OFM_ENV:-production}
       OFM_ADMIN_USERNAME: ${OFM_ADMIN_USERNAME:-admin}
       OFM_ADMIN_PASSWORD: ${OFM_ADMIN_PASSWORD:-admin}
       OFM_ADMIN_TOKEN: ${OFM_ADMIN_TOKEN:-dev-admin-token}
       INTEL_DECAY_DAYS: ${INTEL_DECAY_DAYS:-7}
       OFM_SAVE_PRIVATE_IP: ${OFM_SAVE_PRIVATE_IP:-false}
+      FPSCANNER_KEY: ${FPSCANNER_KEY:-dev-key}
+      DEVICE_MATCH_THRESHOLD: ${DEVICE_MATCH_THRESHOLD:-0.75}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-5}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-10}
     depends_on:
       db:
         condition: service_healthy
@@ -81,6 +88,9 @@ services:
       RABBITMQ_URL: ${RABBITMQ_URL:-amqp://ofm:ofm@rabbitmq:5672/}
       INTEL_DECAY_DAYS: ${INTEL_DECAY_DAYS:-7}
       PERIODIC_INTERVAL_SECONDS: ${PERIODIC_INTERVAL_SECONDS:-60}
+      DEVICE_MATCH_THRESHOLD: ${DEVICE_MATCH_THRESHOLD:-0.75}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-5}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-10}
     depends_on:
       db:
         condition: service_healthy
