@@ -77,6 +77,7 @@ class CopyEvent(db.Model):
     source_name = db.Column(db.String(256), default="")
     source_type = db.Column(db.String(64), default="")
     form_action = db.Column(db.String(2048), default="")
+    authenticated = db.Column(db.Boolean, nullable=False, default=False)
 
     session = db.relationship("Session")
 
@@ -93,6 +94,7 @@ class CopyEvent(db.Model):
             "source_name": self.source_name,
             "source_type": self.source_type,
             "form_action": self.form_action,
+            "authenticated": bool(self.authenticated),
         }
         if self.text is not None:
             d["text"] = self.text
@@ -119,6 +121,7 @@ class PasteEvent(db.Model):
     target_name = db.Column(db.String(256), default="", index=True)
     target_type = db.Column(db.String(64), default="")
     form_action = db.Column(db.String(2048), default="")
+    authenticated = db.Column(db.Boolean, nullable=False, default=False)
 
     session = db.relationship("Session")
 
@@ -135,6 +138,7 @@ class PasteEvent(db.Model):
             "target_name": self.target_name,
             "target_type": self.target_type,
             "form_action": self.form_action,
+            "authenticated": bool(self.authenticated),
         }
         if self.text is not None:
             d["text"] = self.text
@@ -158,6 +162,7 @@ class FormSubmitEvent(db.Model):
     method = db.Column(db.String(16), default="")
     # Variable-length array of field names — kept as JSONB with a GIN index.
     field_names = db.Column(JSONB, default=list)
+    authenticated = db.Column(db.Boolean, nullable=False, default=False)
 
     session = db.relationship("Session")
 
@@ -171,6 +176,7 @@ class FormSubmitEvent(db.Model):
             "action": self.action,
             "method": self.method,
             "field_names": self.field_names or [],
+            "authenticated": bool(self.authenticated),
         }
 
 
@@ -188,6 +194,7 @@ class ButtonClickEvent(db.Model):
     y = db.Column(db.Integer, nullable=True)
     tag = db.Column(db.String(64), default="")
     text = db.Column(db.String(512), default="")
+    authenticated = db.Column(db.Boolean, nullable=False, default=False)
 
     session = db.relationship("Session")
 
@@ -202,6 +209,7 @@ class ButtonClickEvent(db.Model):
             "y": self.y,
             "tag": self.tag,
             "text": self.text,
+            "authenticated": bool(self.authenticated),
         }
 
 
@@ -218,6 +226,7 @@ class AuthAttemptEvent(db.Model):
     action = db.Column(db.String(2048), default="")
     method = db.Column(db.String(16), default="post")
     matched_field_names = db.Column(JSONB, default=list)
+    authenticated = db.Column(db.Boolean, nullable=False, default=False)
 
     session = db.relationship("Session")
     domain_config = db.relationship("DomainConfig")
@@ -232,6 +241,7 @@ class AuthAttemptEvent(db.Model):
             "action": self.action,
             "method": self.method,
             "matched_field_names": self.matched_field_names or [],
+            "authenticated": bool(self.authenticated),
         }
 
 

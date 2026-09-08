@@ -133,19 +133,20 @@ function fmtFull(ms) {
 /**
  * Build a timeline grouped into "visit" boxes (a contiguous run of events that
  * share the same URL). Within each box, consecutive heartbeats are collapsed
- * into a single aggregated item carrying the first/last time and summed counts.
+ * into a single aggregated item carrying the first/last time and summed counts;
+ * that collapse also breaks whenever the authenticated state changes.
  */
 function buildTimeline(heartbeats, events) {
   const items = [
-    ...(heartbeats || []).map((h) => ({ kind: "heartbeat", timestamp: h.timestamp, url: h.url || "", hb: h })),
-    ...(events || []).map((e) => ({ kind: "event", timestamp: e.timestamp, url: e.url || "", event: e })),
+    ...(heartbeats || []).map((h) => ({ kind: "heartbeat", timestamp: h.timestamp, url: h.url || "", hb: h, authenticated: !!h.authenticated })),
+    ...(events || []).map((e) => ({ kind: "event", timestamp: e.timestamp, url: e.url || "", event: e, authenticated: !!e.authenticated })),
   ].sort((a, b) => a.timestamp - b.timestamp);
 
   const boxes = [];
   let cur = null;
   for (const it of items) {
     if (!cur || cur.url !== it.url) {
-      cur = { url: it.url, start: it.timestamp, end: it.timestamp, items: [] };
+      cur = { id: boxes.length, url: it.url, start: it.timestamp, end: it.timestamp, items: [] };
       boxes.push(cur);
     }
     cur.end = it.timestamp;
@@ -157,12 +158,13 @@ function buildTimeline(heartbeats, events) {
     let run = null;
     for (const it of box.items) {
       if (it.kind === "heartbeat") {
-        if (!run) {
+        if (!run || run.authenticated !== it.authenticated) {
           run = {
             kind: "heartbeat_group",
             first: it.timestamp,
             last: it.timestamp,
             count: 0,
+            authenticated: it.authenticated,
             sums: { mouseMoves: 0, clicks: 0, keydowns: 0, scrolls: 0, touches: 0 },
           };
           agg.push(run);
@@ -180,8 +182,29 @@ function buildTimeline(heartbeats, events) {
       }
     }
     box.agg = agg;
+    // A box only counts as "authenticated" for grouping when every raw item
+    // in it was authenticated — a mixed box is simply left out of a group.
+    box.authenticated = box.items.length > 0 && box.items.every((it) => it.authenticated);
   }
   return boxes;
+}
+
+/**
+ * Cluster consecutive authenticated boxes together (boxes themselves are
+ * unchanged/independent); non-authenticated boxes stay in their own
+ * single-box group, so grouping is purely a rendering-time concern.
+ */
+function groupBoxesByAuth(boxes) {
+  const groups = [];
+  for (const box of boxes) {
+    const last = groups[groups.length - 1];
+    if (box.authenticated && last && last.authenticated) {
+      last.boxes.push(box);
+    } else {
+      groups.push({ authenticated: box.authenticated, boxes: [box] });
+    }
+  }
+  return groups;
 }
 
 function DetailRow({ k, v }) {
@@ -252,27 +275,41 @@ function TimelineItem({ item }) {
 function SessionTimeline({ heartbeats, events }) {
   const boxes = buildTimeline(heartbeats, events);
   const total = (heartbeats?.length || 0) + (events?.length || 0);
+  const groups = groupBoxesByAuth(boxes);
+  const hasAuthGroup = groups.some((g) => g.authenticated);
+
+  const renderBox = (box) => (
+    <div className="tl-box" key={box.id}>
+      <div className="tl-box-head">
+        <span className="tl-url" title={box.url || "(no URL)"}>{box.url || "(no URL)"}</span>
+        <span className="tl-range">{fmtTime(box.start)} – {fmtTime(box.end)}</span>
+      </div>
+      <div className="tl-items">
+        {box.agg.map((it, j) => (
+          <TimelineItem item={it} key={j} />
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <div className="sd-section sd-timeline-section">
       <h3 className="sd-section-title">Activity Timeline ({total} events)</h3>
+      {hasAuthGroup && (
+        <div className="sd-timeline-legend">
+          <span className="tl-legend-swatch" /> 🔒 Authenticated activity
+        </div>
+      )}
       {boxes.length === 0 ? (
         <p className="empty-note">No activity recorded.</p>
       ) : (
         <div className="timeline">
-          {boxes.map((box, i) => (
-            <div className="tl-box" key={i}>
-              <div className="tl-box-head">
-                <span className="tl-url" title={box.url || "(no URL)"}>{box.url || "(no URL)"}</span>
-                <span className="tl-range">{fmtTime(box.start)} – {fmtTime(box.end)}</span>
-              </div>
-              <div className="tl-items">
-                {box.agg.map((it, j) => (
-                  <TimelineItem item={it} key={j} />
-                ))}
-              </div>
+          {groups.map((group) => group.authenticated ? (
+            <div className="tl-auth-group" key={`auth-${group.boxes[0].id}`}>
+              <span className="tl-auth-group-label">🔒 Authenticated</span>
+              {group.boxes.map(renderBox)}
             </div>
-          ))}
+          ) : renderBox(group.boxes[0]))}
         </div>
       )}
     </div>

@@ -29,6 +29,7 @@ class Fingerprint(db.Model):
     fsid = db.Column(db.String(512), default="", index=True)
     fast_bot_detection = db.Column(db.Boolean, default=False)
     url = db.Column(db.String(2048), default="")
+    authenticated = db.Column(db.Boolean, nullable=False, default=False)
 
     created_at = db.Column(db.DateTime, server_default=func.now())
 

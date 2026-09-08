@@ -27,6 +27,12 @@ Administration page → **Monitored domains**. Each entry has:
 | `form_field_names` | Field names that must all be present in the submitted form |
 | `active` | Inactive entries are ignored |
 
+### Choosing the right cookie
+
+Pick a cookie that only exists **after** a successful login and is cleared **on logout** — typically the application's own session identifier (e.g. `sid`, `PHPSESSID`, `connect.sid`). Verify it in the browser's Network/Storage panel: log out, reload, and confirm the cookie disappears.
+
+Avoid analytics/tracking cookies (RudderStack `rl_*`, Google Analytics `_ga*`, PostHog `ph_*`, etc.). These are set on every page load regardless of login state and never cleared on logout, so they will report `authenticated=true` even on the login page itself and after logging out. If `authenticated` is `true` on a login-page button click or auth-attempt event, that is the tell — the configured cookie is not an auth cookie.
+
 ### Matching rules
 
 An `auth_attempt` event is created when **all** of the following match a `form_submit` event:
@@ -58,12 +64,13 @@ Matching is evaluated at ingestion time only. Changing a configuration does **no
 }
 ```
 
-## Session fields
+## Session and event fields
 
-- `authenticated` (boolean) — refreshed on every `/api/initial` and `/api/heartbeat` from the configured cookie's presence. Filterable and usable in rules.
+- `authenticated` (boolean, session-level) — refreshed on every `/api/initial`, `/api/heartbeat`, and `/api/behavioral_event` from the configured cookie's presence. Filterable and usable in rules.
 - `domains` (array) — normalized hosts of every URL seen in the session, subdomains preserved (`api.example.com` stays distinct from `example.com`). Filterable with `eq`/`contains`/`neq`/`not_contains`, supports autocomplete, and can be grouped in pie/histogram widgets.
+- `authenticated` (boolean, per-record) — the same cookie-presence check, stamped independently onto every `Fingerprint`, `Heartbeat`, and typed behavioral event (including `AuthAttemptEvent`) at ingestion time. This is a request-time snapshot, not a continuous signal: the exact moment auth state changed between two events is not known, only that it changed somewhere in between. Historical rows recorded before this field existed default to `false` and are not backfilled.
 
-Both appear in the session overview of the session detail page. Authentication attempts appear in the activity timeline as **🔐 Authentication attempt**.
+Both session-level fields appear in the session overview of the session detail page. In the activity timeline, consecutive URL-boxes that are *fully* authenticated (every event inside them) are wrapped in a green-bordered "🔒 Authenticated" cluster — a cluster can span multiple boxes/pages, and a legend appears above the timeline only when at least one cluster exists. Heartbeat aggregation (the collapsed "N heartbeats" item) also breaks whenever the authenticated state changes, so a merged block never mixes states. A box with a mix of authenticated and non-authenticated events (rare — e.g. logging in mid-heartbeat-run on the same page) is simply left out of a cluster rather than split. Authentication attempts appear in the activity timeline as **🔐 Authentication attempt**.
 
 ## Troubleshooting
 
@@ -75,6 +82,7 @@ docker compose logs -f backend | grep -E "auth cookie check|auth form check|auth
 
 - `auth cookie check … configured=False` — no active entry for that host, or the request did not reach OFM through the monitored host.
 - `auth cookie check … cookie_present=False` — the cookie name does not match, or the cookie is not scoped to that host/path.
+- `auth cookie check … cookie_present=True` on a login-page event (before any credentials were submitted) or after logging out — the configured cookie is not an auth cookie (see "Choosing the right cookie" above); it is likely an always-present analytics/tracking cookie.
 - `auth form check … matched=False` — compare the logged `action`/`method` against the configuration; method and action mismatches are the common causes.
 - `authentication attempt detected` — a match was stored in `beh_auth_attempt`.
 

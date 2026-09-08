@@ -44,6 +44,13 @@ _COLUMN_UPGRADES = [
     "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS domains JSONB NOT NULL DEFAULT '[]'::jsonb",
     "ALTER TABLE devices ADD COLUMN IF NOT EXISTS is_mobile BOOLEAN NOT NULL DEFAULT false",
     "ALTER TABLE devices ADD COLUMN IF NOT EXISTS device_type VARCHAR(16) NOT NULL DEFAULT 'unknown'",
+    "ALTER TABLE heartbeats ADD COLUMN IF NOT EXISTS authenticated BOOLEAN NOT NULL DEFAULT false",
+    "ALTER TABLE fingerprints ADD COLUMN IF NOT EXISTS authenticated BOOLEAN NOT NULL DEFAULT false",
+    "ALTER TABLE beh_copy ADD COLUMN IF NOT EXISTS authenticated BOOLEAN NOT NULL DEFAULT false",
+    "ALTER TABLE beh_paste ADD COLUMN IF NOT EXISTS authenticated BOOLEAN NOT NULL DEFAULT false",
+    "ALTER TABLE beh_form_submit ADD COLUMN IF NOT EXISTS authenticated BOOLEAN NOT NULL DEFAULT false",
+    "ALTER TABLE beh_button_click ADD COLUMN IF NOT EXISTS authenticated BOOLEAN NOT NULL DEFAULT false",
+    "ALTER TABLE beh_auth_attempt ADD COLUMN IF NOT EXISTS authenticated BOOLEAN NOT NULL DEFAULT false",
 ]
 
 

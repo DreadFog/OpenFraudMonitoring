@@ -149,6 +149,7 @@ def collect():
         session_id=session_obj.id,
         timestamp=timestamp,
         data=stored_data,
+        authenticated=session_obj.authenticated,
         **denorm,
     )
     db.session.add(fingerprint)

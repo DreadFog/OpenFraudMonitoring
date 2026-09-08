@@ -388,6 +388,48 @@
   overflow: hidden;
 }
 
+.sd-timeline-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  margin: -4px 0 12px;
+}
+
+.tl-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: rgba(63, 185, 80, 0.18);
+  border: 1px solid #3fb950;
+}
+
+.tl-auth-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid #3fb950;
+  border-radius: 10px;
+  background: rgba(63, 185, 80, 0.06);
+  padding: 22px 10px 10px;
+  position: relative;
+}
+
+.tl-auth-group-label {
+  position: absolute;
+  top: -10px;
+  left: 10px;
+  background: #0d1117;
+  border: 1px solid #3fb950;
+  border-radius: 10px;
+  color: #3fb950;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 8px;
+  line-height: 1.6;
+}
+
 .tl-box-head {
   display: flex;
   align-items: baseline;
@@ -461,6 +503,7 @@
 .tl-item--form_submit .tl-dot { background: #d29922; }
 .tl-item--copy .tl-dot { background: #a371f7; }
 .tl-item--paste .tl-dot { background: #3fb950; }
+.tl-item--auth_attempt .tl-dot { background: #3fb950; }
 
 .tl-item-label {
   flex: 1;

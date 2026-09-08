@@ -90,12 +90,13 @@ def heartbeat():
         touches=behavior_summary["touches"],
         scrolls=behavior_summary["scrolls"],
         raw_behavior=behavior,
+        authenticated=auth_cookie_present(request, request.host),
     )
     db.session.add(hb_record)
 
     # Update session
     session_obj.last_seen = timestamp
-    session_obj.authenticated = auth_cookie_present(request, request.host)
+    session_obj.authenticated = hb_record.authenticated
     add_session_domain(session_obj, url)
     logger.debug(
         "session authentication state: fsid=%s host=%s authenticated=%s",

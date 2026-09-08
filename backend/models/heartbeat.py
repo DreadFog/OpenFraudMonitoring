@@ -16,6 +16,7 @@ class Heartbeat(db.Model):
     touches = db.Column(db.Integer, default=0)
     scrolls = db.Column(db.Integer, default=0)
     raw_behavior = db.Column(JSONB, default=dict)
+    authenticated = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(db.DateTime, server_default=func.now())
 
     session = db.relationship("Session", back_populates="heartbeats")
@@ -30,4 +31,5 @@ class Heartbeat(db.Model):
             "touches": self.touches,
             "scrolls": self.scrolls,
             "raw": self.raw_behavior,
+            "authenticated": bool(self.authenticated),
         }

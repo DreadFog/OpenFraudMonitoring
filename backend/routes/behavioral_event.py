@@ -17,7 +17,7 @@ from services.database import db
 from models import Session, TYPED_EVENT_MODELS
 from models import AuthAttemptEvent
 from services.event_queue import enqueue_event
-from services.domains import add_session_domain, matching_form_config
+from services.domains import add_session_domain, auth_cookie_present, matching_form_config
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +27,9 @@ behavioral_event_bp = Blueprint("behavioral_event", __name__, url_prefix="/api")
 ALLOWED_EVENT_TYPES = set(TYPED_EVENT_MODELS.keys())
 
 
-def _build_typed_event(Model, session_id, timestamp, url, data):
+def _build_typed_event(Model, session_id, timestamp, url, data, authenticated):
     """Construct a typed event model instance from the ingested payload dict."""
-    kwargs = {"session_id": session_id, "timestamp": timestamp, "url": url}
+    kwargs = {"session_id": session_id, "timestamp": timestamp, "url": url, "authenticated": authenticated}
 
     if Model.EVENT_TYPE == "copy":
         kwargs.update({
@@ -101,9 +101,11 @@ def behavioral_event():
     if not session_obj:
         return jsonify({"ok": False, "error": "session not found"}), 404
 
+    authenticated = auth_cookie_present(request, request.host)
+
     # Dispatch to the appropriate typed model
     Model = TYPED_EVENT_MODELS[event_type]
-    event_obj = _build_typed_event(Model, session_obj.id, timestamp, url, data)
+    event_obj = _build_typed_event(Model, session_obj.id, timestamp, url, data, authenticated)
     db.session.add(event_obj)
     add_session_domain(session_obj, url)
     if event_type == "form_submit":
@@ -125,13 +127,18 @@ def behavioral_event():
                 action=action,
                 method=method.lower(),
                 matched_field_names=field_names,
+                authenticated=authenticated,
             ))
     session_obj.last_seen = timestamp
+    session_obj.authenticated = authenticated
     db.session.commit()
 
     # Enqueue for rule evaluation (best-effort)
     enqueue_event(session_obj.id, "behavioral_event")
 
-    logger.debug("behavioral_event: fsid=%s type=%s url=%s", fsid[:32] if fsid else "", event_type, url)
+    logger.debug(
+        "behavioral_event: fsid=%s type=%s url=%s authenticated=%s",
+        fsid[:32] if fsid else "", event_type, url, authenticated,
+    )
 
     return jsonify({"ok": True}), 200

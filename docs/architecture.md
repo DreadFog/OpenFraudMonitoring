@@ -122,7 +122,7 @@ sessions
   │
   ├──< fingerprints
   │     ├── id, session_id, timestamp, data (JSONB)
-  │     ├── fsid, fast_bot_detection, url
+  │     ├── fsid, fast_bot_detection, url, authenticated (bool)
   │     ├── automation_* (webdriver, selenium, cdp, playwright, ...)
   │     ├── device_* (cpu_count, memory, platform, screen_resolution_*, ...)
   │     ├── browser_* (user_agent, features_*, plugins_*, extensions_*, ...)
@@ -131,7 +131,7 @@ sessions
   │     └── det_* (21 FPScanner detection booleans)
   │
   ├──< heartbeats
-  │     ├── id, session_id, timestamp, url
+  │     ├── id, session_id, timestamp, url, authenticated (bool)
   │     ├── mouse_moves, clicks, keydowns, touches, scrolls,
   │     │   copy_pastes, navigation_events
   │     └── raw_behavior (JSONB)
@@ -140,7 +140,7 @@ sessions
   │     └── id, session_id, timestamp, event_type, url, data (JSONB)
   ├──< beh_auth_attempt   ← server-generated login-form matches
   │     └── id, session_id, domain_config_id, timestamp, url,
-  │         action, method, matched_field_names (JSONB)
+  │         action, method, matched_field_names (JSONB), authenticated (bool)
   ├──< session_urls (session_id, url — unique pair)
   └──< browser_sessions (session_id, browser_session_id — unique)
 
