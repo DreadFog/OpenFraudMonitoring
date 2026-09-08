@@ -1,8 +1,8 @@
-"""Behavioral-event custom filters and suggestions.
+"""Session activity and behavioral-event custom filters and suggestions.
 
-All handlers query the typed behavioral event tables (beh_copy, beh_paste,
-beh_form_submit, beh_button_click) introduced to replace the legacy JSONB
-behavioral_events table.
+Behavior handlers query the typed event tables introduced to replace the
+legacy JSONB behavioral_events table. Session activity handlers expose counts
+for unique visited URLs and heartbeats.
 """
 
 from sqlalchemy import func, cast
@@ -25,7 +25,12 @@ from .suggestions import (
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _count_filter(Model, query, op, value):
-    """Apply a count comparison on a typed event model for the current session."""
+    """Apply a count comparison on a model related to the current session."""
+    return _count_models_filter((Model,), query, op, value)
+
+
+def _count_models_filter(Models, query, op, value):
+    """Apply a comparison to the combined row count of session-related models."""
     from models import Session
 
     try:
@@ -33,11 +38,14 @@ def _count_filter(Model, query, op, value):
     except (ValueError, TypeError):
         return query.filter(False)
 
-    count_expr = (
-        Model.query.with_entities(func.count(Model.id))
-        .filter(Model.session_id == Session.id)
-        .correlate(Session)
-        .scalar_subquery()
+    count_expr = sum(
+        (
+            Model.query.with_entities(func.count(Model.id))
+            .filter(Model.session_id == Session.id)
+            .correlate(Session)
+            .scalar_subquery()
+        )
+        for Model in Models
     )
 
     ops = {
@@ -138,6 +146,20 @@ def _form_field_name_filter(query, op, value):
 # Individual handlers (wired to registry below)
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _handle_url_count(query, op, value):
+    from models import SessionURL
+    return _count_filter(SessionURL, query, op, value)
+
+
+def _handle_heartbeat_count(query, op, value):
+    from models import Heartbeat
+    return _count_filter(Heartbeat, query, op, value)
+
+
+def _handle_behavioral_event_count(query, op, value):
+    from models.behavioral_event import TYPED_EVENT_MODELS
+    return _count_models_filter(tuple(TYPED_EVENT_MODELS.values()), query, op, value)
+
 def _handle_behavior_copy_count(query, op, value):
     from models import CopyEvent
     return _count_filter(CopyEvent, query, op, value)
@@ -233,7 +255,22 @@ def _handle_behavior_copy_source_id(query, op, value):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def register_filters():
-    """Register behavioral-event custom filters."""
+    """Register session activity and behavioral-event custom filters."""
+    register_custom_filter(
+        "url_count", "Visited URL Count", "number",
+        _handle_url_count,
+        category="Session Metadata",
+    )
+    register_custom_filter(
+        "heartbeat_count", "Heartbeat Count", "number",
+        _handle_heartbeat_count,
+        category="Session Metadata",
+    )
+    register_custom_filter(
+        "behavioral_event_count", "Behavioral Event Count", "number",
+        _handle_behavioral_event_count,
+        category="Behavior",
+    )
     # Counts
     register_custom_filter(
         "behavior_button_click_count", "Behavior: Button Click Count", "number",

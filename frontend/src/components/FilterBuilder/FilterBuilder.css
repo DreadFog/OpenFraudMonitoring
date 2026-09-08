@@ -91,7 +91,7 @@
 /* ── Searchable field combobox ── */
 .field-combobox {
   position: relative;
-  min-width: 140px;
+  min-width: 200px;
 }
 
 .field-combobox-trigger {
@@ -108,7 +108,7 @@
   top: 100%;
   left: 0;
   right: 0;
-  min-width: 220px;
+  min-width: 250px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 0 0 4px 4px;
@@ -129,7 +129,7 @@
 }
 
 .field-combobox-list {
-  max-height: 200px;
+  max-height: 400px;
   overflow-y: auto;
 }
 
