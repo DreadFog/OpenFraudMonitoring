@@ -16,6 +16,12 @@ const TILES = [
     description: "Browse cached threat intel — search any IP and view its STIX context.",
     icon: "🔍",
   },
+  {
+    path: "/devices",
+    title: "Devices",
+    description: "Review known devices, fingerprints and their associated activity.",
+    icon: "💻",
+  },
 ];
 
 const ADMIN_TILES = [
@@ -24,6 +30,12 @@ const ADMIN_TILES = [
     title: "Administration",
     description: "Queue depths, connector health, error logs, user and CORS management.",
     icon: "⚙️",
+  },
+  {
+    path: "/rules",
+    title: "Rules",
+    description: "Manage fraud detection rules and their evaluation priorities.",
+    icon: "📋",
   },
 ];
 
@@ -49,10 +61,10 @@ export default function Landing() {
             <p>{t.description}</p>
           </Link>
         ))}
+        <a href="/demo.html" className="landing-demo" target="_blank" rel="noopener noreferrer">
+          🎯 Try the Demo
+        </a>
       </div>
-      <a href="/demo.html" className="landing-demo" target="_blank" rel="noopener noreferrer">
-        🎯 Try the Demo
-      </a>
     </div>
   );
 }

@@ -99,8 +99,8 @@
 }
 
 .landing-demo {
-  margin-top: 40px;
-  padding: 12px 32px;
+  margin: 0;
+  padding: 28px 24px;
   border-radius: 8px;
   font-size: 15px;
   font-weight: 600;
@@ -108,6 +108,10 @@
   background: linear-gradient(135deg, #58a6ff, #bc8cff);
   text-decoration: none;
   transition: opacity 0.15s, transform 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .landing-demo:hover {
