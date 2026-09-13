@@ -68,8 +68,9 @@ def get_graph_expand_threshold() -> int:
 # User settings
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Canonical default graph visualization settings.  Colors are hex strings.
+# Canonical default settings.  Colors are hex strings.
 USER_SETTINGS_DEFAULTS = {
+    "defaultDashboardId": None,
     "graph": {
         "colors": {
             "session": "#3b82f6",

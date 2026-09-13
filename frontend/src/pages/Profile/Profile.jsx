@@ -1,7 +1,63 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../AuthContext";
 import { api } from "../../api";
+import { useUserSettings } from "../../hooks/useUserSettings";
 import "./Profile.css";
+
+function DashboardPreferencesSection() {
+  const { settings, loading, update } = useUserSettings();
+  const [dashboards, setDashboards] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState(null);
+
+  useEffect(() => {
+    api.getDashboards().then(setDashboards).catch(console.error);
+  }, []);
+
+  const currentDefault = settings?.defaultDashboardId ?? null;
+
+  const handleChange = async (e) => {
+    const val = e.target.value;
+    const newId = val === "" ? null : Number(val);
+    setSaving(true);
+    setMessage(null);
+    try {
+      await update({ defaultDashboardId: newId });
+      setMessage("Default dashboard updated.");
+      setTimeout(() => setMessage(null), 2500);
+    } catch {
+      setMessage("Failed to update default dashboard.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="profile-section">
+      <h3>Preferences</h3>
+      <div className="preference-row">
+        <label htmlFor="default-dashboard-select" className="preference-label">
+          Default Dashboard:
+        </label>
+        <select
+          id="default-dashboard-select"
+          className="preference-select"
+          value={currentDefault ?? ""}
+          disabled={loading || saving}
+          onChange={handleChange}
+        >
+          <option value="">Default System Dashboard</option>
+          {dashboards.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.name}
+            </option>
+          ))}
+        </select>
+        {message && <span className="preference-msg">{message}</span>}
+      </div>
+    </div>
+  );
+}
 
 function TokenSection() {
   const [tokens, setTokens] = useState([]);
@@ -104,6 +160,7 @@ export default function Profile() {
         <h1>Profile</h1>
         <p className="profile-sub">Signed in as <strong>{user?.username}</strong> ({user?.role})</p>
       </header>
+      <DashboardPreferencesSection />
       <TokenSection />
     </div>
   );

@@ -142,3 +142,44 @@
 .btn-danger-sm:hover {
   background: #3d1f28;
 }
+
+.preference-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  padding: 12px 16px;
+  border-radius: 8px;
+}
+
+.preference-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #e6edf3;
+}
+
+.preference-select {
+  padding: 6px 12px;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #0d1117;
+  color: #e6edf3;
+  font-size: 0.85rem;
+  outline: none;
+  min-width: 200px;
+}
+
+.preference-select:focus {
+  border-color: #58a6ff;
+}
+
+.preference-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.preference-msg {
+  font-size: 0.85rem;
+  color: #3fb950;
+}

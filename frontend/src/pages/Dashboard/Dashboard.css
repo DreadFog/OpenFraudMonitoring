@@ -359,50 +359,78 @@ body {
   }
 }
 
-/* ── Dashboard management bar ──────────────────────────────────────── */
+/* ── Dashboard page header ─────────────────────────────────────────── */
 
-.dashboard-bar {
+.dash-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 24px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px 16px;
+}
+
+.dash-header-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.dash-header-title h1 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+  letter-spacing: -0.2px;
 }
 
 .dashboard-select {
-  padding: 6px 10px;
+  padding: 6px 12px;
   border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg);
+  border-radius: 6px;
+  background: var(--surface);
   color: var(--text);
   font-size: 13px;
+  font-weight: 500;
   outline: none;
   min-width: 180px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.dashboard-select:hover:not(:disabled) {
+  border-color: var(--muted);
 }
 
 .dashboard-select:focus {
   border-color: var(--accent);
 }
 
-.dashboard-bar-spacer {
-  flex: 1;
+.dashboard-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dash-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .dash-btn {
-  padding: 5px 12px;
+  padding: 6px 14px;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 6px;
   background: var(--surface);
   color: var(--text);
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   transition: background 0.15s, border-color 0.15s;
 }
 
 .dash-btn:hover {
   background: #21262d;
+  border-color: var(--muted);
 }
 
 .dash-btn-danger {

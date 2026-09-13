@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ResponsiveGridLayout, useContainerWidth } from "react-grid-layout";
 import { api } from "../../api";
 import { usePersistentState } from "../../hooks/usePersistentState";
+import { useUserSettings } from "../../hooks/useUserSettings";
 import FilterBuilder from "../../components/FilterBuilder/FilterBuilder";
 import WidgetWizard from "../../components/WidgetWizard/WidgetWizard";
 import IpIntelPopover from "../../components/IpIntelPopover/IpIntelPopover";
@@ -119,6 +120,7 @@ export default function Dashboard() {
   }, [loading, measureWidth]);
 
   // Dashboard state
+  const { settings } = useUserSettings();
   const [dashboards, setDashboards] = useState([]);
   const [currentDashboardId, setCurrentDashboardId] = useState(null);
   const [widgets, setWidgets] = useState(DEFAULT_WIDGETS);
@@ -126,14 +128,33 @@ export default function Dashboard() {
   const [showWizard, setShowWizard] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editingWidgetIndex, setEditingWidgetIndex] = useState(null);
+  const initialDashboardLoadedRef = useRef(false);
 
   const isDefault = currentDashboardId === null;
 
   // Fetch schema + dashboards list on mount
   useEffect(() => {
     api.getSchema().then(setSchema).catch(console.error);
-    api.getDashboards().then(setDashboards).catch(console.error);
+    api.getDashboards().then((list) => {
+      setDashboards(list);
+    }).catch(console.error);
   }, []);
+
+  // When dashboards and settings are loaded, set the initial dashboard if user configured a default
+  useEffect(() => {
+    if (initialDashboardLoadedRef.current || !settings) return;
+    if (dashboards.length >= 0) {
+      initialDashboardLoadedRef.current = true;
+      const prefId = settings.defaultDashboardId;
+      if (prefId != null) {
+        const found = dashboards.find((d) => d.id === prefId);
+        if (found) {
+          setCurrentDashboardId(found.id);
+          setWidgets((found.widgets || []).map(migrateWidget));
+        }
+      }
+    }
+  }, [dashboards, settings]);
 
   // Compute complete filters
   const completeFilters = filters.filter((f) => f.field && f.op && f.value);
@@ -466,33 +487,37 @@ export default function Dashboard() {
 
   return (
     <div className={`container ${editMode ? "edit-mode" : ""}`}>
-      {/* Dashboard management bar */}
-      <div className="dashboard-bar">
-        <select
-          className="dashboard-select"
-          value={currentDashboardId ?? ""}
-          disabled={editMode}
-          onChange={(e) => loadDashboard(e.target.value)}
-        >
-          <option value="">Default Dashboard</option>
-          {dashboards.map((d) => (
-            <option key={d.id} value={String(d.id)}>{d.name}</option>
-          ))}
-          <option value="__new__">＋ New Dashboard…</option>
-        </select>
-        {currentDashboardId && !editMode && (
-          <button className="dash-btn dash-btn-danger" onClick={deleteDashboard}>Delete</button>
-        )}
-        <div className="dashboard-bar-spacer" />
-        {!isDefault && (
-          <button
-            className={`dash-btn ${editMode ? "dash-btn-edit-active" : ""}`}
-            onClick={handleEditToggle}
+      {/* Dashboard page header */}
+      <header className="dash-header">
+        <div className="dash-header-title">
+          <h1>Dashboard</h1>
+          <select
+            className="dashboard-select"
+            value={currentDashboardId ?? ""}
+            disabled={editMode}
+            onChange={(e) => loadDashboard(e.target.value)}
           >
-            {editMode ? "✓ Done Editing" : "✎ Edit Mode"}
-          </button>
-        )}
-      </div>
+            <option value="">Default Dashboard</option>
+            {dashboards.map((d) => (
+              <option key={d.id} value={String(d.id)}>{d.name}</option>
+            ))}
+            <option value="__new__">＋ New Dashboard…</option>
+          </select>
+        </div>
+        <div className="dash-header-actions">
+          {currentDashboardId && !editMode && (
+            <button className="dash-btn dash-btn-danger" onClick={deleteDashboard}>Delete</button>
+          )}
+          {!isDefault && (
+            <button
+              className={`dash-btn ${editMode ? "dash-btn-edit-active" : ""}`}
+              onClick={handleEditToggle}
+            >
+              {editMode ? "✓ Done Editing" : "✎ Edit Mode"}
+            </button>
+          )}
+        </div>
+      </header>
 
       {/* Filters — above widgets, applies to both widgets and session table */}
       <FilterBuilder
