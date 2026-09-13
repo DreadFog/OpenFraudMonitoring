@@ -284,11 +284,24 @@ export default function Dashboard() {
   const buildLayout = () =>
     widgets.map((w, i) => {
       const ly = w.layout || defaultLayout(w.type, i, []);
-      return { i: String(i), x: ly.x, y: ly.y, w: ly.w, h: ly.h, minW: 2, minH: 1 };
+      const isEditable = editMode && !isDefault;
+      return {
+        i: String(i),
+        x: ly.x,
+        y: ly.y,
+        w: ly.w,
+        h: ly.h,
+        minW: 2,
+        minH: 1,
+        static: !isEditable,
+        isDraggable: isEditable,
+        isResizable: isEditable,
+      };
     });
 
   // When the user drags or resizes, persist layout back to widgets
   const handleLayoutChange = (newLayout) => {
+    if (!editMode || isDefault) return;
     setWidgets((prev) =>
       prev.map((w, i) => {
         const item = newLayout.find((l) => l.i === String(i));

@@ -78,18 +78,18 @@ export const COUNTRY_CENTROIDS = {
   // Oceania
   AU: [133.8, -25.7], NZ: [172.5, -41.5],
   // World default
-  WORLD: [0, 20],
+  WORLD: [0, 10],
 };
 
 /**
  * Zoom level (1-5) → react-simple-maps projection scale.
  */
 export const ZOOM_TO_SCALE = {
-  1: 130,   // world view
-  2: 280,   // continental
-  3: 600,   // regional (default for France)
-  4: 1000,  // country-level
-  5: 1600,  // detail
+  1: 155,   // world view
+  2: 320,   // continental
+  3: 650,   // regional
+  4: 1200,  // country-level
+  5: 2000,  // detail
 };
 
 /**

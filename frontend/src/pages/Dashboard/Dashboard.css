@@ -653,14 +653,19 @@ body {
   position: relative;
   width: 100%;
   height: 100%;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .map-widget svg {
   display: block;
   width: 100% !important;
   height: 100% !important;
+  max-height: 100%;
 }
 
 .map-tooltip {

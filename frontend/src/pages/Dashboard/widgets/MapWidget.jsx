@@ -3,7 +3,7 @@ import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 import worldData from "world-atlas/countries-110m.json";
 import { ALPHA2_TO_NUMERIC, COUNTRY_CENTROIDS, ZOOM_TO_SCALE } from "./countryLookup";
 
-const DEFAULT_MAP_CONFIG = { centerCode: "FR", zoom: 3 };
+const DEFAULT_MAP_CONFIG = { centerCode: "WORLD", zoom: 1 };
 
 export default function MapWidget({ data, mapConfig = DEFAULT_MAP_CONFIG }) {
   const groups = data?.groups || [];
@@ -27,17 +27,19 @@ export default function MapWidget({ data, mapConfig = DEFAULT_MAP_CONFIG }) {
 
   const handleMouseLeave = useCallback(() => setTooltip(null), []);
 
-  const center = COUNTRY_CENTROIDS[mapConfig?.centerCode] || COUNTRY_CENTROIDS.FR;
-  const scale = ZOOM_TO_SCALE[mapConfig?.zoom] || ZOOM_TO_SCALE[3];
+  const center = COUNTRY_CENTROIDS[mapConfig?.centerCode] || COUNTRY_CENTROIDS.WORLD;
+  const scale = ZOOM_TO_SCALE[mapConfig?.zoom] || ZOOM_TO_SCALE[1];
 
   if (groups.length === 0) return <p className="empty-note">No data</p>;
 
   return (
     <div className="map-widget">
       <ComposableMap
+        width={800}
+        height={400}
         projectionConfig={{ scale, center }}
         style={{ width: "100%", height: "100%", display: "block" }}
-        preserveAspectRatio="xMidYMid slice"
+        preserveAspectRatio="xMidYMid meet"
       >
         <Geographies geography={worldData}>
           {({ geographies }) =>

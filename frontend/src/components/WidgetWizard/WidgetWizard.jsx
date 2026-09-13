@@ -19,7 +19,7 @@ const ZOOM_LEVELS = [
   { value: 5, label: "5 — Detail" },
 ];
 
-const DEFAULT_MAP_CONFIG = { centerCode: "FR", zoom: 3 };
+const DEFAULT_MAP_CONFIG = { centerCode: "WORLD", zoom: 1 };
 
 export default function WidgetWizard({ schema, onClose, onCreate, initialWidget }) {
   const isEditing = !!initialWidget;
