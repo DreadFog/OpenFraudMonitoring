@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ResponsiveGridLayout, useContainerWidth } from "react-grid-layout";
 import { api } from "../../api";
@@ -96,7 +96,27 @@ export default function Dashboard() {
   const [groupByDevice, setGroupByDevice] = usePersistentState("dashboard.groupByDevice", false);
   const [expandedGroups, setExpandedGroups] = useState(() => new Set());
   const navigate = useNavigate();
-  const { containerRef, width: containerWidth } = useContainerWidth({ initialWidth: 1200 });
+  const { containerRef, width: containerWidth, measureWidth } = useContainerWidth({ initialWidth: 1200 });
+  const rafRef = useRef(null);
+
+  // The grid's wrapper div only mounts once `loading` becomes false (see the
+  // early "Loading..." return below), so containerRef is still null when
+  // useContainerWidth's own mount-time ResizeObserver setup runs — it silently
+  // no-ops. Re-measure once the real grid div has actually mounted, and keep
+  // listening for later resizes as a fallback.
+  useEffect(() => {
+    if (loading) return;
+    const raf1 = requestAnimationFrame(() => {
+      const raf2 = requestAnimationFrame(() => measureWidth());
+      rafRef.current = raf2;
+    });
+    rafRef.current = raf1;
+    window.addEventListener("resize", measureWidth);
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      window.removeEventListener("resize", measureWidth);
+    };
+  }, [loading, measureWidth]);
 
   // Dashboard state
   const [dashboards, setDashboards] = useState([]);
@@ -480,7 +500,7 @@ export default function Dashboard() {
           rowHeight={ROW_HEIGHT}
           isDraggable={editMode && !isDefault}
           isResizable={editMode && !isDefault}
-          containerPadding={[24, 24]}
+          containerPadding={[0, 24]}
           onLayoutChange={handleLayoutChange}
         >
           {widgets.map((w, i) => (

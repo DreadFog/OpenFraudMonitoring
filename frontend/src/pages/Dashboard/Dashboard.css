@@ -117,7 +117,7 @@ body {
 
 /* Table */
 .table-wrapper {
-  padding: 0 24px 24px;
+  padding: 0 0px 24px;
 }
 
 .empty-message {
@@ -415,13 +415,6 @@ body {
 }
 
 /* ── Widgets grid (react-grid-layout) ──────────────────────────────── */
-
-.widgets-grid {
-}
-
-.widgets-grid > div {
-  /* Each grid item wrapper */
-}
 
 .widget-card {
   position: relative;
