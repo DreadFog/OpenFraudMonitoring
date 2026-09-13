@@ -76,7 +76,7 @@ On `/api/heartbeat`:
 - Push a Redis event
 
 On `/api/behavioral_event`:
-- Store a `BehavioralEvent` row (`event_type`, `url`, `data` JSONB) linked to the session. These power the `behavior_*` filter/rule fields (see [filters.md](filters.md)).
+- Store a typed behavioral event row (`beh_copy`, `beh_paste`, `beh_form_submit`, `beh_button_click`) linked to the session. These power the `behavior_*` filter/rule fields (see [filters.md](filters.md)).
 
 ### 3. Rule Evaluation (Worker)
 
@@ -136,8 +136,7 @@ sessions
   │     │   copy_pastes, navigation_events
   │     └── raw_behavior (JSONB)
   │
-  ├──< behavioral_events
-  │     └── id, session_id, timestamp, event_type, url, data (JSONB)
+  ├──< beh_copy, beh_paste, beh_form_submit, beh_button_click  ← typed behavioral events
   ├──< beh_auth_attempt   ← server-generated login-form matches
   │     └── id, session_id, domain_config_id, timestamp, url,
   │         action, method, matched_field_names (JSONB), authenticated (bool)
@@ -231,7 +230,7 @@ backend/
     session.py           # Session model (with STIX observable FKs)
     fingerprint.py       # Fingerprint model + extract_fields()
     heartbeat.py         # Heartbeat model + to_summary()
-    behavioral_event.py  # BehavioralEvent model (high-signal events)
+    behavioral_event.py  # Typed behavioral event models (beh_copy, beh_paste, etc.)
     rule.py              # Rule + RuleMatch models
     associations.py      # SessionURL, BrowserSession
     dashboard.py         # Dashboard model (widget layouts)

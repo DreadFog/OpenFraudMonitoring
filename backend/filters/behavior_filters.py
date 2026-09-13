@@ -1,7 +1,6 @@
 """Session activity and behavioral-event custom filters and suggestions.
 
-Behavior handlers query the typed event tables introduced to replace the
-legacy JSONB behavioral_events table. Session activity handlers expose counts
+Behavior handlers query the typed event tables. Session activity handlers expose counts
 for unique visited URLs and heartbeats.
 """
 

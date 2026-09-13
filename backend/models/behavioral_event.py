@@ -1,56 +1,17 @@
 """
 Typed behavioral event models — one table per high-signal event type.
 
-Replaces the previous single `behavioral_events` table (which stored all event
-data as an opaque JSONB blob).  The old table is left untouched in the DB so
-that existing data is not lost, but new events are written exclusively to these
-typed tables.
-
 Tables:
     beh_copy          — copy events
     beh_paste         — paste events
     beh_form_submit   — form submit events
     beh_button_click  — button click events
     beh_auth_attempt  — form submissions matching a configured login pattern
-
-The legacy BehavioralEvent model is kept for backward-compatible imports but
-is no longer written to by the ingestion route.
 """
 
 from services.database import db
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy import func, Index
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Legacy model (deprecated — kept for backward-compatible imports only)
-# ─────────────────────────────────────────────────────────────────────────────
-
-class BehavioralEvent(db.Model):
-    __tablename__ = "behavioral_events"
-    __table_args__ = (
-        db.Index("ix_behavioral_events_session_event_type", "session_id", "event_type"),
-        db.Index("ix_behavioral_events_event_type_timestamp", "event_type", "timestamp"),
-    )
-
-    id = db.Column(db.Integer, primary_key=True)
-    session_id = db.Column(db.Integer, db.ForeignKey("sessions.id"), nullable=False, index=True)
-    timestamp = db.Column(db.Float, default=0)
-    url = db.Column(db.String(2048), default="")
-    event_type = db.Column(db.String(64), default="", index=True)
-    data = db.Column(JSONB, default=dict)
-    created_at = db.Column(db.DateTime, server_default=func.now())
-
-    session = db.relationship("Session", back_populates="behavioral_events")
-
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "timestamp": self.timestamp,
-            "url": self.url,
-            "event_type": self.event_type,
-            "data": self.data or {},
-        }
 
 
 # ─────────────────────────────────────────────────────────────────────────────

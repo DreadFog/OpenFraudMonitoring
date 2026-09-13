@@ -4,7 +4,7 @@ Sessions endpoints - list and detail views
 
 import json
 from flask import Blueprint, request, jsonify
-from models import Session, Fingerprint, Heartbeat, BehavioralEvent
+from models import Session, Fingerprint, Heartbeat
 from models.behavioral_event import CopyEvent, PasteEvent, FormSubmitEvent, ButtonClickEvent, TYPED_EVENT_MODELS
 from models.associations import SessionURL, BrowserSession
 from models.rule import RuleMatch
@@ -229,7 +229,6 @@ def delete_session(fsid):
     # Explicitly delete children (lazy="dynamic" prevents ORM cascade)
     Fingerprint.query.filter_by(session_id=sess.id).delete()
     Heartbeat.query.filter_by(session_id=sess.id).delete()
-    BehavioralEvent.query.filter_by(session_id=sess.id).delete()  # legacy table
     from models.behavioral_event import CopyEvent, PasteEvent, FormSubmitEvent, ButtonClickEvent
     CopyEvent.query.filter_by(session_id=sess.id).delete()
     PasteEvent.query.filter_by(session_id=sess.id).delete()

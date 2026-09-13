@@ -7,7 +7,6 @@ from models.fingerprint import Fingerprint
 from models.device import Device, DeviceCookie
 from models.heartbeat import Heartbeat
 from models.behavioral_event import (
-    BehavioralEvent,  # legacy — kept for backward compat
     CopyEvent,
     PasteEvent,
     FormSubmitEvent,
@@ -42,7 +41,6 @@ __all__ = [
     "Device",
     "DeviceCookie",
     "Heartbeat",
-    "BehavioralEvent",
     "CopyEvent",
     "PasteEvent",
     "FormSubmitEvent",
