@@ -5,8 +5,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-ofm}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ofm}
       POSTGRES_DB: ${POSTGRES_DB:-ofm}
-    ports:
-      - "5432:5432"
+    networks:
+      - internal_network
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -17,8 +17,8 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    networks:
+      - internal_network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -27,9 +27,8 @@ services:
 
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
-    ports:
-      - "5672:5672"
-      - "15672:15672"
+    networks:
+      - internal_network
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-ofm}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-ofm}
@@ -50,6 +49,8 @@ services:
         OFM_CAPTURE_CLIPBOARD: ${OFM_CAPTURE_CLIPBOARD:-false}
     ports:
       - "${PORT:-5000}:5000"
+    networks:
+      - internal_network
     environment:
       FLASK_DEBUG: ${FLASK_DEBUG:-0}
       LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
@@ -81,6 +82,8 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     command: python worker.py
+    networks:
+      - internal_network
     environment:
       LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
       DATABASE_URL: ${DATABASE_URL:-postgresql://ofm:ofm@db:5432/ofm}
@@ -100,6 +103,7 @@ services:
         condition: service_healthy
 
   frontend:
+    container_name: ofm-frontend
     build:
       context: .
       dockerfile: frontend/Dockerfile
@@ -108,8 +112,10 @@ services:
         FPSCANNER_KEY: ${FPSCANNER_KEY:-dev-key}
         OFM_DEBUG: ${OFM_DEBUG:-true}
         OFM_CAPTURE_CLIPBOARD: ${OFM_CAPTURE_CLIPBOARD:-false}
-    ports:
-      - "30000:3000"
+    # ports:
+    #   - "30000:3000"
+    networks:
+      - internal_network
     depends_on:
       - backend
 
@@ -126,6 +132,8 @@ services:
       CONNECTOR_CONFIG: /connectors/opencti/config.yml
     volumes:
       - ./connectors/opencti/config.yml:/connectors/opencti/config.yml:ro
+    networks:
+      - internal_network
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -145,6 +153,8 @@ services:
       CONNECTOR_CONFIG: /connectors/ipinfo/config.yml
     volumes:
       - ./connectors/ipinfo/config.yml:/connectors/ipinfo/config.yml:ro
+    networks:
+      - internal_network
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -153,3 +163,7 @@ services:
 
 volumes:
   pgdata:
+
+networks:
+  internal_network:
+    external: true

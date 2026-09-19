@@ -2,6 +2,24 @@
 
 OpenFraudMonitoring can collect data in several deployment modes. The choice matters for cookie-based authentication detection: the browser only sends a site's cookies when the collection request is made to a host covered by those cookies.
 
+## Shared Docker network for a reverse proxy
+
+The Compose file uses an external Docker network named `internal_network`. Its purpose is to let a reverse proxy such as Caddy, managed by a separate Compose project, communicate with the OFM containers without publishing the frontend port on the host.
+
+Create the network once before starting OpenFraudMonitoring:
+
+```bash
+docker network create internal_network
+```
+
+The Caddy and OFM Compose projects must both attach their services to this network. Caddy can then use Docker service or container names as upstreams, for example:
+
+```caddy
+reverse_proxy ofm-frontend:3000
+```
+
+The OFM frontend exposes port `3000` only inside the Docker network. The backend remains reachable by its internal name, `backend:5000`, for services that need to communicate with it. Because `internal_network` is declared as external, Docker Compose does not create it automatically and startup fails if the network does not already exist.
+
 ## Deployment modes
 
 ### 1. Same-origin deployment
