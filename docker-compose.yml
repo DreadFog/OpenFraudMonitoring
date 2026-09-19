@@ -1,5 +1,6 @@
 services:
   db:
+    container_name: ofm-db
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-ofm}
@@ -16,6 +17,7 @@ services:
       retries: 5
 
   redis:
+    container_name: ofm-redis
     image: redis:7-alpine
     networks:
       - internal_network
@@ -26,6 +28,7 @@ services:
       retries: 5
 
   rabbitmq:
+    container_name: ofm-rabbitmq
     image: rabbitmq:3.13-management-alpine
     networks:
       - internal_network
@@ -39,6 +42,7 @@ services:
       retries: 5
 
   backend:
+    container_name: ofm-backend
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -78,6 +82,7 @@ services:
         condition: service_healthy
 
   worker:
+    container_name: ofm-worker
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -120,6 +125,7 @@ services:
       - backend
 
   connector-opencti:
+    container_name: ofm-connector-opencti
     build:
       context: .
       dockerfile: connectors/opencti/Dockerfile
@@ -141,6 +147,7 @@ services:
         condition: service_healthy
 
   connector-ipinfo:
+    container_name: ofm-connector-ipinfo
     build:
       context: .
       dockerfile: connectors/ipinfo/Dockerfile
