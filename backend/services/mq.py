@@ -184,10 +184,18 @@ def consume_responses(handler: Callable[[dict], None]):
 
 def queue_depth(queue_name: str) -> Optional[int]:
     """Return the current message count of a queue, or None on error."""
+    conn = None
     try:
-        ch = _get_channel()
+        conn = _connect()
+        ch = conn.channel()
         result = ch.queue_declare(queue=queue_name, durable=True, passive=True)
         return result.method.message_count
     except Exception as e:
         logger.debug("queue_depth(%s) failed: %s", queue_name, e)
         return None
+    finally:
+        try:
+            if conn is not None and conn.is_open:
+                conn.close()
+        except Exception:
+            pass
