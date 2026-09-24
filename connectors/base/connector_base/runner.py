@@ -14,6 +14,7 @@ The runner takes care of:
 
 import json
 import logging
+import os
 import threading
 import time
 from typing import Callable, Optional
@@ -41,7 +42,7 @@ class ConnectorRunner:
     ):
         self.config = config
         self.handler = handler
-        self.redis_url = redis_url or "redis://redis:6379/0"
+        self.redis_url = redis_url or os.environ.get("REDIS_URL", "redis://ofm-redis:6379/0")
         self._stop = False
 
     # ── Heartbeat ──

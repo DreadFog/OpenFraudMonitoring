@@ -50,7 +50,7 @@ class RedisLogHandler(logging.Handler):
 
 def install(source: str, redis_url: str = None, level=logging.WARNING) -> None:
     """Attach a RedisLogHandler to the root logger.  Idempotent."""
-    redis_url = redis_url or os.environ.get("REDIS_URL", "redis://redis:6379/0")
+    redis_url = redis_url or os.environ.get("REDIS_URL", "redis://ofm-redis:6379/0")
     root = logging.getLogger()
     # Avoid double-installing if called twice.
     for h in root.handlers:

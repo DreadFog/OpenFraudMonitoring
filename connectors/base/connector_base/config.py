@@ -15,8 +15,8 @@ class ConnectorConfig:
     mode: str = "manual"  # manual | auto | both
     connector_type: str = "enricher"  # enricher | importer | ...
     scope: list = field(default_factory=list)  # STIX entity types this connector can handle
-    rabbitmq_url: str = "amqp://ofm:ofm@rabbitmq:5672/"
-    backend_url: str = "http://backend:5000"
+    rabbitmq_url: str = "amqp://ofm:ofm@ofm-rabbitmq:5672/"
+    backend_url: str = "http://ofm-backend:5000"
     admin_token: str = ""
     params: Dict[str, Any] = field(default_factory=dict)
 
@@ -35,8 +35,8 @@ def load_config(path: str) -> ConnectorConfig:
         mode=data.get("mode", "manual"),
         connector_type=data.get("connector_type", "enricher"),
         scope=data.get("scope", []),
-        rabbitmq_url=data.get("rabbitmq_url", _from_env("RABBITMQ_URL", "amqp://ofm:ofm@rabbitmq:5672/")),
-        backend_url=data.get("backend_url", _from_env("BACKEND_URL", "http://backend:5000")),
+        rabbitmq_url=data.get("rabbitmq_url", _from_env("RABBITMQ_URL", "amqp://ofm:ofm@ofm-rabbitmq:5672/")),
+        backend_url=data.get("backend_url", _from_env("BACKEND_URL", "http://ofm-backend:5000")),
         admin_token=data.get("admin_token", _from_env("OFM_ADMIN_TOKEN", "")),
         params=data.get("params", {}) or {},
     )

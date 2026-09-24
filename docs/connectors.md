@@ -47,8 +47,8 @@ scope:                       # STIX entity types this connector can handle
   - ipv6-addr
 
 # Infrastructure (defaults work inside Docker)
-rabbitmq_url: amqp://ofm:ofm@rabbitmq:5672/
-backend_url: http://backend:5000
+rabbitmq_url: amqp://ofm:ofm@ofm-rabbitmq:5672/
+backend_url: http://ofm-backend:5000
 connector_token: ""
 
 # Connector-specific parameters (anything else is promoted to params)
@@ -211,9 +211,9 @@ connector-my-connector:
     dockerfile: connectors/my-connector/Dockerfile
   environment:
     LOG_LEVEL: ${LOG_LEVEL:-INFO}
-    RABBITMQ_URL: ${RABBITMQ_URL:-amqp://ofm:ofm@rabbitmq:5672/}
-    REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-    BACKEND_URL: ${BACKEND_URL:-http://backend:5000}
+    RABBITMQ_URL: ${RABBITMQ_URL:-amqp://ofm:ofm@ofm-rabbitmq:5672/}
+    REDIS_URL: ${REDIS_URL:-redis://ofm-redis:6379/0}
+    BACKEND_URL: ${BACKEND_URL:-http://ofm-backend:5000}
     CONNECTOR_TOKEN: ${CONNECTOR_TOKEN:-dev-connector-token}
     CONNECTOR_CONFIG: /connectors/my-connector/config.yml
   volumes:

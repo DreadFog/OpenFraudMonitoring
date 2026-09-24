@@ -10,7 +10,7 @@ class Config:
     ENVIRONMENT = os.environ.get("OFM_ENV", "production").strip().lower()
 
     # ── Database ──
-    DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://ofm:ofm@db:5432/ofm")
+    DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://ofm:ofm@ofm-db:5432/ofm")
     SQLALCHEMY_DATABASE_URI = DATABASE_URL
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
@@ -20,10 +20,10 @@ class Config:
     }
 
     # ── Redis ──
-    REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
+    REDIS_URL = os.environ.get("REDIS_URL", "redis://ofm-redis:6379/0")
 
     # ── RabbitMQ ──
-    RABBITMQ_URL = os.environ.get("RABBITMQ_URL", "amqp://ofm:ofm@rabbitmq:5672/")
+    RABBITMQ_URL = os.environ.get("RABBITMQ_URL", "amqp://ofm:ofm@ofm-rabbitmq:5672/")
 
     # ── Intel / Connectors ──
     INTEL_DECAY_DAYS = int(os.environ.get("INTEL_DECAY_DAYS", "7"))
