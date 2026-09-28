@@ -2,11 +2,14 @@
 Dashboard endpoints — CRUD for saved dashboards and widget data aggregation.
 """
 
+from datetime import datetime, timezone
+
 from flask import Blueprint, request, jsonify
 from sqlalchemy import func as sa_func
 from services.database import db
 from models.dashboard import Dashboard
 from models import Session, Fingerprint
+from models.rule import Rule, RuleMatch
 from rules.engine import build_session_query
 from services.schema import get_field_meta
 from services.auth import require_auth, require_role
@@ -106,6 +109,39 @@ def widget_data():
     # Stat widgets just return a count
     if widget_type == "stat":
         return jsonify({"count": query.count()}), 200
+
+    if widget_type == "timeline":
+        try:
+            start_ms, end_ms = int(body["from"]), int(body["to"])
+            start = datetime.fromtimestamp(start_ms / 1000, timezone.utc).replace(tzinfo=None)
+            end = datetime.fromtimestamp(end_ms / 1000, timezone.utc).replace(tzinfo=None)
+        except (KeyError, TypeError, ValueError, OverflowError):
+            return jsonify({"error": "valid from and to timestamps are required"}), 400
+        if start >= end:
+            return jsonify({"error": "from must be earlier than to"}), 400
+
+        span = end_ms - start_ms
+        unit = "minute" if span < 3600000 else "hour" if span <= 86400000 else "day"
+        bucket = sa_func.date_trunc(unit, RuleMatch.matched_at)
+        rows = (
+            db.session.query(bucket, Rule.name, sa_func.count(RuleMatch.id))
+            .join(Rule, Rule.id == RuleMatch.rule_id)
+            .filter(
+                RuleMatch.session_id.in_(query.with_entities(Session.id)),
+                RuleMatch.matched_at >= start,
+                RuleMatch.matched_at <= end,
+            )
+            .group_by(bucket, Rule.name)
+            .order_by(bucket, Rule.name)
+            .all()
+        )
+        return jsonify({
+            "unit": unit,
+            "groups": [
+                {"bucket": bucket_start.isoformat() + "Z", "value": name, "count": count}
+                for bucket_start, name, count in rows
+            ],
+        }), 200
 
     # All other types require a field to group by
     if not field:

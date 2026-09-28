@@ -19,6 +19,7 @@ from services.settings import (
     set_global_setting,
     GRAPH_EXPAND_WARN_THRESHOLD_KEY,
     CLIPBOARD_CENSOR_KEY,
+    DASHBOARD_DEFAULT_TIME_RANGE_KEY,
 )
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,7 @@ def get_globals():
 _ALLOWED_GLOBAL_KEYS = {
     GRAPH_EXPAND_WARN_THRESHOLD_KEY: lambda v: int(v) if int(v) >= 1 else None,
     CLIPBOARD_CENSOR_KEY: lambda v: bool(v) if isinstance(v, bool) else (str(v).strip().lower() in ("true", "1", "yes")),
+    DASHBOARD_DEFAULT_TIME_RANGE_KEY: lambda v: v if v in ("24h", "7d", "1m") else None,
 }
 
 

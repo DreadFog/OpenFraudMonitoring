@@ -4,11 +4,12 @@ import PieWidget from "./PieWidget";
 import HistogramWidget from "./HistogramWidget";
 import VerticalHistogramWidget from "./VerticalHistogramWidget";
 import MapWidget from "./MapWidget";
+import TimelineWidget from "./TimelineWidget";
 
-export default function WidgetCard({ widget, data, editMode, onEdit, onRemove, onFilter, schema = [] }) {
+export default function WidgetCard({ widget, data, editMode, onEdit, onRemove, onFilter, schema = [], timeWindow }) {
   const [selectedValue, setSelectedValue] = useState(null);
   const panelRef = useRef(null);
-  const field = widget.type === "map" ? "ip_country" : widget.field;
+  const field = widget.type === "map" ? "ip_country" : widget.type === "timeline" ? "triggered_flag" : widget.field;
   const fieldDef = schema.find((entry) => entry.name === field);
 
   useEffect(() => {
@@ -51,6 +52,7 @@ export default function WidgetCard({ widget, data, editMode, onEdit, onRemove, o
     if (widget.type === "histogram" || widget.type === "weighted_list") return <HistogramWidget groups={groups} onValueClick={onValueClick} selectedValue={selectedValue} isBoolean={fieldDef?.type === "boolean"} requiresFilterValue={field === "ip_as"} onApply={applyFilter} onCancel={() => setSelectedValue(null)} />;
     if (widget.type === "vertical_histogram") return <VerticalHistogramWidget groups={groups} onValueClick={onValueClick} />;
     if (widget.type === "map") return <MapWidget data={data} mapConfig={widget.mapConfig} onValueClick={onValueClick} />;
+    if (widget.type === "timeline") return <TimelineWidget data={data} from={timeWindow.from} to={timeWindow.to} onValueClick={onValueClick} />;
     return null;
   };
 
@@ -65,7 +67,7 @@ export default function WidgetCard({ widget, data, editMode, onEdit, onRemove, o
       <div className="widget-content">{renderContent()}</div>
       <div className="stat-label">{widget.name}</div>
       {selectedValue !== null && widget.type !== "histogram" && widget.type !== "weighted_list" && (
-        <div className="widget-filter-overlay" ref={panelRef}>
+        <div className="widget-filter-overlay" ref={panelRef} role="dialog" aria-label={`Filter ${String(selectedValue.label)}`}>
           <button type="button" className="widget-filter-close" onClick={() => setSelectedValue(null)} aria-label="Close filter options">×</button>
           <div className="widget-filter-value" title={String(selectedValue.label)}>{String(selectedValue.label)}</div>
           <div className="widget-filter-actions">

@@ -184,6 +184,15 @@
   font-size: 12px;
 }
 
+.dashboard-global-select {
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
 .logs-list {
   font-family: monospace;
   font-size: 12px;

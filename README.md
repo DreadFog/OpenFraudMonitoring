@@ -56,13 +56,13 @@ See [Deployment](docs/deployment.md) for same-origin, reverse-proxied, and separ
 
 ### Dashboard
 
-The dashboard supports customizable widgets with drag-and-drop layout. Use the filter builder to narrow results by any of 50+ fields.
+The dashboard supports customizable widgets with drag-and-drop layout. A pinned Last Seen range (24 hours by default, 7 days, 30 days, or custom dates) filters all widgets and sessions; administrators can change the default in Administration. Use the filter builder to narrow results by any of 50+ other fields.
 
 ![Session Filters](images/session_filters.png)
 
 #### Adding Widgets
 
-Create stat counters, pie charts, ranked histograms, bar charts, or world maps — each with their own filter conditions. Choose dark or light mode and widget colors (blue, red, green, or multi-color) in Profile:
+Create stat counters, pie charts, ranked histograms, bar charts, rule timelines, or world maps — each with their own filter conditions. The timeline stacks rule matches by minute (ranges under one hour), hour (up to 24 hours), or day (longer ranges); click a segment to filter by its rule. Choose dark or light mode and widget colors (blue, red, green, or multi-color) in Profile:
 
 Number widgets can use a custom color instead of the selected palette. The default dashboard keeps low, medium, and high risk counters green, orange, and red in either theme.
 

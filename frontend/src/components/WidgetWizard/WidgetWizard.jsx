@@ -7,6 +7,7 @@ const WIDGET_TYPES = [
   { value: "pie", label: "Pie Chart", icon: "🥧", desc: "Distribution of values as proportional slices" },
   { value: "histogram", label: "Histogram", icon: "📊", desc: "Ranked values with proportional bars" },
   { value: "vertical_histogram", label: "Bar Chart", icon: "📊", desc: "Vertical bars of a number field sorted by value" },
+  { value: "timeline", label: "Rule Timeline", icon: "▥", desc: "Rule matches over time" },
   { value: "map", label: "World Map", icon: "🗺️", desc: "Geographic session distribution by IP country" },
 ];
 
@@ -37,7 +38,7 @@ export default function WidgetWizard({ schema, onClose, onCreate, initialWidget 
   const [mapConfig, setMapConfig] = useState(initialWidget?.mapConfig || DEFAULT_MAP_CONFIG);
 
   // stat has no field step; map has a locked field step; others have a free field step
-  const needsField = type && type !== "stat";
+  const needsField = type && type !== "stat" && type !== "timeline";
   const fieldIsLocked = type === "map";
 
   const canNext = () => {

@@ -3,6 +3,7 @@ import { useAuth } from "../../AuthContext";
 import { api } from "../../api";
 import CorsSettings from "../../components/CorsSettings/CorsSettings";
 import GraphGlobalSettings from "../../components/GraphGlobalSettings/GraphGlobalSettings";
+import DashboardGlobalSettings from "../../components/DashboardGlobalSettings/DashboardGlobalSettings";
 import PrivacySettings from "../../components/PrivacySettings/PrivacySettings";
 import UserManagement from "../Users/Users";
 import DomainSettings from "../../components/DomainSettings/DomainSettings";
@@ -151,6 +152,8 @@ export default function Administration() {
       {isAdmin && <DomainSettings />}
 
       {isAdmin && <GraphGlobalSettings />}
+
+      {isAdmin && <DashboardGlobalSettings />}
 
       {isAdmin && <PrivacySettings />}
 

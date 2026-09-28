@@ -22,10 +22,12 @@ from models.app_setting import AppSetting
 # nodes prompt a confirmation in the graph UI.
 GRAPH_EXPAND_WARN_THRESHOLD_KEY = "graph.expand_warn_threshold"
 CLIPBOARD_CENSOR_KEY = "clipboard_censor"
+DASHBOARD_DEFAULT_TIME_RANGE_KEY = "dashboard.default_time_range"
 
 GLOBAL_DEFAULTS = {
     GRAPH_EXPAND_WARN_THRESHOLD_KEY: 1000,
     CLIPBOARD_CENSOR_KEY: True,
+    DASHBOARD_DEFAULT_TIME_RANGE_KEY: "24h",
 }
 
 

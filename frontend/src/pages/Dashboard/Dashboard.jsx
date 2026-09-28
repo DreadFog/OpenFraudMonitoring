@@ -8,6 +8,8 @@ import FilterBuilder from "../../components/FilterBuilder/FilterBuilder";
 import WidgetWizard from "../../components/WidgetWizard/WidgetWizard";
 import IpIntelPopover from "../../components/IpIntelPopover/IpIntelPopover";
 import WidgetCard from "./widgets/WidgetCard";
+import TimeRangeFilter from "./TimeRangeFilter";
+import { resolveTimeRange } from "./timeRange";
 import { buildGraphUrl, sessionSeed } from "../Graph/graphLink";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -26,8 +28,8 @@ const DEFAULT_WIDGETS = [
 
 /* ── Default layout for new widget types ── */
 function defaultLayout(type, index, existingWidgets) {
-  const w = type === "stat" ? 2 : 4;
-  const h = 2;
+  const w = type === "stat" ? 2 : type === "timeline" ? 8 : 4;
+  const h = type === "timeline" ? 4 : 2;
   // Place below existing widgets
   const maxY = existingWidgets.reduce((m, wd) => {
     const ly = wd.layout || { y: 0, h: 2 };
@@ -88,6 +90,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [schema, setSchema] = useState([]);
   const [filters, setFilters] = usePersistentState("dashboard.filters", []);
+  const [timeRange, setTimeRange] = usePersistentState("dashboard.timeRange", null);
+  const [defaultTimeRange, setDefaultTimeRange] = useState("24h");
+  const [clock, setClock] = useState(() => Date.now());
   const [sortBy, setSortBy] = usePersistentState("dashboard.sortBy", "last_seen");
   const [sortOrder, setSortOrder] = usePersistentState("dashboard.sortOrder", "desc");
   const [page, setPage] = useState(1);
@@ -136,9 +141,15 @@ export default function Dashboard() {
   // Fetch schema + dashboards list on mount
   useEffect(() => {
     api.getSchema().then(setSchema).catch(console.error);
+    api.getGlobalSettings().then((settings) => setDefaultTimeRange(settings["dashboard.default_time_range"] || "24h")).catch(console.error);
     api.getDashboards().then((list) => {
       setDashboards(list);
     }).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => setClock(Date.now()), 60000);
+    return () => clearInterval(timer);
   }, []);
 
   // When dashboards and settings are loaded, set the initial dashboard if user configured a default
@@ -158,7 +169,12 @@ export default function Dashboard() {
   }, [dashboards, settings]);
 
   // Compute complete filters
-  const completeFilters = filters.filter((f) => f.field && f.op && f.value);
+  const windowRange = resolveTimeRange(timeRange, defaultTimeRange, clock);
+  const completeFilters = [
+    ...filters.filter((f) => f.field && f.field !== "last_seen" && f.op && f.value),
+    { field: "last_seen", op: "gte", value: String(windowRange.from) },
+    { field: "last_seen", op: "lte", value: String(windowRange.to) },
+  ];
 
   // Fetch sessions
   const loadSessions = useCallback(async () => {
@@ -194,6 +210,8 @@ export default function Dashboard() {
             // Merge widget-level filters (e.g. default High Risk filter) with global filters
             filters: [...(w.filters || []), ...completeFilters],
             limit: w.limit || 10,
+            from: windowRange.from,
+            to: windowRange.to,
           });
         } catch {
           results[i] = null;
@@ -525,10 +543,11 @@ export default function Dashboard() {
         </div>
       </header>
 
+      <TimeRangeFilter range={timeRange} defaultPreset={defaultTimeRange} onChange={(range) => { setTimeRange(range); setPage(1); }} />
       {/* Filters — above widgets, applies to both widgets and session table */}
       <FilterBuilder
-        schema={schema}
-        filters={filters}
+        schema={schema.filter((field) => field.name !== "last_seen")}
+        filters={filters.filter((filter) => filter.field !== "last_seen")}
         onChange={(f) => { setFilters(f); setPage(1); }}
         onClear={clearFilters}
       />
@@ -554,6 +573,7 @@ export default function Dashboard() {
                 data={widgetData[i]}
                 editMode={editMode && !isDefault}
                 schema={schema}
+                timeWindow={windowRange}
                 onFilter={addWidgetFilter}
                 onEdit={() => openEditWidget(i)}
                 onRemove={() => removeWidget(i)}
