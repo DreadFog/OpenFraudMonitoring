@@ -5,9 +5,8 @@ import "./WidgetWizard.css";
 const WIDGET_TYPES = [
   { value: "stat", label: "Statistic", icon: "#️⃣", desc: "A single number — count of matching sessions" },
   { value: "pie", label: "Pie Chart", icon: "🥧", desc: "Distribution of values as proportional slices" },
-  { value: "histogram", label: "Histogram", icon: "📊", desc: "Horizontal bar chart of value counts" },
+  { value: "histogram", label: "Histogram", icon: "📊", desc: "Ranked values with proportional bars" },
   { value: "vertical_histogram", label: "Bar Chart", icon: "📊", desc: "Vertical bars of a number field sorted by value" },
-  { value: "weighted_list", label: "Weighted List", icon: "📋", desc: "Ranked list with proportional bars" },
   { value: "map", label: "World Map", icon: "🗺️", desc: "Geographic session distribution by IP country" },
 ];
 
@@ -20,6 +19,12 @@ const ZOOM_LEVELS = [
 ];
 
 const DEFAULT_MAP_CONFIG = { centerCode: "WORLD", zoom: 1 };
+const STAT_COLOR_PRESETS = [
+  { name: "Blue", value: "#58a6ff" },
+  { name: "Green", value: "#238636" },
+  { name: "Orange", value: "#bc6318" },
+  { name: "Red", value: "#d03b40" },
+];
 
 export default function WidgetWizard({ schema, onClose, onCreate, initialWidget }) {
   const isEditing = !!initialWidget;
@@ -28,6 +33,7 @@ export default function WidgetWizard({ schema, onClose, onCreate, initialWidget 
   const [field, setField] = useState(initialWidget?.field || "");
   const [limit, setLimit] = useState(initialWidget?.limit || 10);
   const [name, setName] = useState(initialWidget?.name || "");
+  const [color, setColor] = useState(initialWidget?.color || "");
   const [mapConfig, setMapConfig] = useState(initialWidget?.mapConfig || DEFAULT_MAP_CONFIG);
 
   // stat has no field step; map has a locked field step; others have a free field step
@@ -64,11 +70,13 @@ export default function WidgetWizard({ schema, onClose, onCreate, initialWidget 
 
   const handleCreate = () => {
     const widget = {
+      ...initialWidget,
       type,
       name: name.trim(),
       field: needsField ? field : null,
       limit: needsField && !fieldIsLocked ? limit : null,
       mapConfig: type === "map" ? mapConfig : undefined,
+      color: type === "stat" ? color : undefined,
     };
     onCreate(widget);
   };
@@ -188,6 +196,30 @@ export default function WidgetWizard({ schema, onClose, onCreate, initialWidget 
                 onChange={(e) => setName(e.target.value)}
                 autoFocus
               />
+              {type === "stat" && (
+                <>
+                  <h3 className="wizard-color-heading">Number color</h3>
+                  <div className="wizard-colors">
+                    <button type="button" className={`wizard-color-theme ${!color ? "selected" : ""}`} aria-pressed={!color} onClick={() => setColor("")}>Theme</button>
+                    {STAT_COLOR_PRESETS.map((preset) => (
+                      <button
+                        key={preset.name}
+                        type="button"
+                        className={`wizard-color-preset ${color === preset.value ? "selected" : ""}`}
+                        style={{ backgroundColor: preset.value }}
+                        title={preset.name}
+                        aria-label={`${preset.name} number color`}
+                        aria-pressed={color === preset.value}
+                        onClick={() => setColor(preset.value)}
+                      />
+                    ))}
+                    <label className="wizard-color-custom">
+                      Custom
+                      <input type="color" value={color || "#58a6ff"} onChange={(e) => setColor(e.target.value)} aria-label="Custom number color" />
+                    </label>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

@@ -71,6 +71,7 @@ def get_graph_expand_threshold() -> int:
 # Canonical default settings.  Colors are hex strings.
 USER_SETTINGS_DEFAULTS = {
     "defaultDashboardId": None,
+    "appearance": {"theme": "dark", "widgetColors": "blue"},
     "graph": {
         "colors": {
             "session": "#3b82f6",

@@ -15,6 +15,7 @@ function DashboardPreferencesSection() {
   }, []);
 
   const currentDefault = settings?.defaultDashboardId ?? null;
+  const appearance = settings?.appearance || {};
 
   const handleChange = async (e) => {
     const val = e.target.value;
@@ -55,6 +56,25 @@ function DashboardPreferencesSection() {
         </select>
         {message && <span className="preference-msg">{message}</span>}
       </div>
+      <fieldset className="preference-row preference-options" disabled={loading}>
+        <legend className="preference-label">Theme</legend>
+        {["dark", "light"].map((theme) => (
+          <label key={theme} className="preference-choice">
+            <input type="radio" name="theme" value={theme} checked={(appearance.theme || "dark") === theme} onChange={() => update({ appearance: { theme } })} />
+            {theme === "dark" ? "Dark" : "Light"}
+          </label>
+        ))}
+      </fieldset>
+      <fieldset className="preference-row preference-options" disabled={loading}>
+        <legend className="preference-label">Widget colors</legend>
+        {["blue", "red", "green", "multi"].map((color) => (
+          <label key={color} className={`preference-choice preference-color-${color}`}>
+            <input type="radio" name="widget-colors" value={color} checked={(appearance.widgetColors || "blue") === color} onChange={() => update({ appearance: { widgetColors: color } })} />
+            <span className="preference-swatch" aria-hidden="true" />
+            {color === "multi" ? "Multi-color" : color[0].toUpperCase() + color.slice(1)}
+          </label>
+        ))}
+      </fieldset>
     </div>
   );
 }

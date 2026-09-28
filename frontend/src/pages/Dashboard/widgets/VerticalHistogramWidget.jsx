@@ -1,6 +1,7 @@
 import React from "react";
+import { widgetShade } from "./widgetShade";
 
-export default function VerticalHistogramWidget({ groups }) {
+export default function VerticalHistogramWidget({ groups, onValueClick }) {
   // Sort numerically ascending by value so bars go left→right in order
   const sorted = [...groups].sort((a, b) => Number(a.value) - Number(b.value));
   const max = Math.max(...sorted.map((g) => g.count), 1);
@@ -10,7 +11,7 @@ export default function VerticalHistogramWidget({ groups }) {
   return (
     <div className="vhisto">
       {sorted.map((g, i) => (
-        <div key={i} className="vhisto-col" title={`${g.value}: ${g.count} sessions`}>
+        <button key={i} type="button" className="vhisto-col widget-value-button" style={{ "--row-color": widgetShade(g.count, groups, i) }} disabled={!onValueClick || g.value === "N/A" || g.value === ""} onClick={() => onValueClick(g.value)} title={`${g.value}: ${g.count} sessions`}>
           <div className="vhisto-bar-wrapper">
             <div
               className="vhisto-bar"
@@ -18,7 +19,7 @@ export default function VerticalHistogramWidget({ groups }) {
             />
           </div>
           <span className="vhisto-label">{g.value}</span>
-        </div>
+        </button>
       ))}
     </div>
   );

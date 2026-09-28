@@ -1,7 +1,7 @@
 .landing {
   min-height: calc(100vh - 49px);
-  background: #0d1117;
-  color: #e6edf3;
+  background: var(--bg);
+  color: var(--text);
   padding: 60px 24px;
   display: flex;
   flex-direction: column;
@@ -34,21 +34,21 @@
   font-size: 44px;
   font-weight: 700;
   margin: 0 0 12px;
-  background: linear-gradient(90deg, #58a6ff, #bc8cff);
+  background: linear-gradient(90deg, var(--accent), #bc8cff);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .landing-hero p {
-  color: #8b949e;
+  color: var(--muted);
   font-size: 16px;
   margin: 0;
 }
 
 .landing-welcome {
   font-size: 18px;
-  color: #e6edf3;
+  color: var(--text);
   margin: 0 0 8px;
 }
 
@@ -61,8 +61,8 @@
 }
 
 .landing-tile {
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 28px 24px;
   text-decoration: none;
@@ -75,8 +75,8 @@
 
 .landing-tile:hover {
   transform: translateY(-2px);
-  border-color: #58a6ff;
-  background: #1a2030;
+  border-color: var(--accent);
+  background: var(--raised);
 }
 
 .landing-tile-icon {
@@ -88,13 +88,13 @@
   font-size: 18px;
   font-weight: 600;
   margin: 0;
-  color: #e6edf3;
+  color: var(--text);
 }
 
 .landing-tile p {
   margin: 0;
   font-size: 13px;
-  color: #8b949e;
+  color: var(--muted);
   line-height: 1.5;
 }
 
@@ -105,7 +105,7 @@
   font-size: 15px;
   font-weight: 600;
   color: #ffffff;
-  background: linear-gradient(135deg, #58a6ff, #bc8cff);
+  background: linear-gradient(135deg, var(--accent), #bc8cff);
   text-decoration: none;
   transition: opacity 0.15s, transform 0.15s;
   display: flex;

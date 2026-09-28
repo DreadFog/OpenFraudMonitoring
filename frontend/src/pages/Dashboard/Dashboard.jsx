@@ -18,9 +18,10 @@ const ROW_HEIGHT = 80;
 
 const DEFAULT_WIDGETS = [
   { type: "stat", name: "Total Sessions", field: null, limit: null, layout: { x: 0, y: 0, w: 2, h: 2 } },
-  { type: "stat", name: "High Risk", filters: [{ field: "risk_score", op: "gte", value: "60" }], field: null, limit: null, layout: { x: 2, y: 0, w: 2, h: 2 } },
-  { type: "stat", name: "Bots Detected", filters: [{ field: "fast_bot_detection", op: "eq", value: "true" }], field: null, limit: null, layout: { x: 4, y: 0, w: 2, h: 2 } },
-  { type: "stat", name: "Low Risk", filters: [{ field: "risk_score", op: "lt", value: "30" }], field: null, limit: null, layout: { x: 6, y: 0, w: 2, h: 2 } },
+  { type: "stat", name: "High Risk", color: "#d03b40", filters: [{ field: "risk_score", op: "gte", value: "60" }], field: null, limit: null, layout: { x: 2, y: 0, w: 2, h: 2 } },
+  { type: "stat", name: "Medium Risk", color: "#bc6318", filters: [{ field: "risk_score", op: "gte", value: "30" }, { field: "risk_score", op: "lt", value: "60" }], field: null, limit: null, layout: { x: 4, y: 0, w: 2, h: 2 } },
+  { type: "stat", name: "Low Risk", color: "#238636", filters: [{ field: "risk_score", op: "lt", value: "30" }], field: null, limit: null, layout: { x: 6, y: 0, w: 2, h: 2 } },
+  { type: "stat", name: "Bots Detected", filters: [{ field: "fast_bot_detection", op: "eq", value: "true" }], field: null, limit: null, layout: { x: 8, y: 0, w: 2, h: 2 } },
 ];
 
 /* ── Default layout for new widget types ── */
@@ -334,6 +335,11 @@ export default function Dashboard() {
 
   const clearFilters = () => { setFilters([]); setPage(1); };
 
+  const addWidgetFilter = (filter) => {
+    setFilters((prev) => [...prev, filter]);
+    setPage(1);
+  };
+
   const handleSort = (column) => {
     if (sortBy === column) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -547,6 +553,8 @@ export default function Dashboard() {
                 widget={w}
                 data={widgetData[i]}
                 editMode={editMode && !isDefault}
+                schema={schema}
+                onFilter={addWidgetFilter}
                 onEdit={() => openEditWidget(i)}
                 onRemove={() => removeWidget(i)}
               />

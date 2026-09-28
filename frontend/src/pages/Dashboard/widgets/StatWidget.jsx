@@ -1,16 +1,9 @@
 import React from "react";
-
-const STAT_COLORS = {
-  "Total Sessions": "#58a6ff",
-  "High Risk": "#f85149",
-  "Bots Detected": "#f0883e",
-  "Low Risk": "#3fb950",
-};
+import { widgetShade } from "./widgetShade";
 
 export default function StatWidget({ data, widget }) {
-  const color = STAT_COLORS[widget.name] || "#58a6ff";
   return (
-    <div className="stat-num" style={{ color }}>
+    <div className="stat-num" style={{ color: widget.color || widgetShade(data.count || 0, [{ count: data.count || 0 }], 0) }}>
       {data.count ?? "—"}
     </div>
   );

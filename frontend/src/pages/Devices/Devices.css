@@ -32,3 +32,7 @@
   background: #3a0f0f;
   color: var(--risk-high);
 }
+
+:root[data-theme="light"] .confidence-high { background: #e0f2e8; }
+:root[data-theme="light"] .confidence-med { background: #fff0ce; }
+:root[data-theme="light"] .confidence-low { background: #fce6e6; }

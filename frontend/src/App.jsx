@@ -14,6 +14,7 @@ import RulesPage from "./pages/Rules/Rules";
 import Login from "./pages/Login/Login";
 import Profile from "./pages/Profile/Profile";
 import NavHeader from "./components/NavHeader/NavHeader";
+import { useUserSettings } from "./hooks/useUserSettings";
 import "./App.css";
 
 function ProtectedRoute({ children }) {
@@ -36,10 +37,24 @@ function Chrome({ children }) {
   const showNav = isAuthenticated && pathname !== "/" && pathname !== "/login";
   return (
     <>
+      {isAuthenticated && <Appearance />}
       {showNav && <NavHeader />}
       {children}
     </>
   );
+}
+
+function Appearance() {
+  const { settings } = useUserSettings();
+  React.useEffect(() => {
+    document.documentElement.dataset.theme = settings?.appearance?.theme === "light" ? "light" : "dark";
+    document.documentElement.dataset.widgetColors = settings?.appearance?.widgetColors || "blue";
+  }, [settings?.appearance?.theme, settings?.appearance?.widgetColors]);
+  React.useEffect(() => () => {
+    delete document.documentElement.dataset.theme;
+    delete document.documentElement.dataset.widgetColors;
+  }, []);
+  return null;
 }
 
 function App() {

@@ -1,7 +1,7 @@
 .intel-page {
   min-height: calc(100vh - 49px);
-  background: #0d1117;
-  color: #e6edf3;
+  background: var(--bg);
+  color: var(--text);
   padding: 32px;
   max-width: 1400px;
   margin: 0 auto;
@@ -14,11 +14,11 @@
 .intel-header h1 {
   font-size: 24px;
   margin: 0 0 4px;
-  color: #58a6ff;
+  color: var(--accent);
 }
 
 .intel-sub {
-  color: #8b949e;
+  color: var(--muted);
   font-size: 13px;
   margin: 0;
 }
@@ -33,25 +33,25 @@
 .intel-input {
   flex: 1;
   padding: 10px 14px;
-  border: 1px solid #30363d;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: #161b22;
-  color: #e6edf3;
+  background: var(--surface);
+  color: var(--text);
   font-size: 14px;
   outline: none;
   transition: border-color 0.15s;
 }
 
 .intel-input:focus {
-  border-color: #58a6ff;
+  border-color: var(--accent);
 }
 
 .intel-select {
   padding: 10px 14px;
-  border: 1px solid #30363d;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: #161b22;
-  color: #e6edf3;
+  background: var(--surface);
+  color: var(--text);
   font-size: 13px;
   outline: none;
   cursor: pointer;
@@ -60,22 +60,22 @@
 }
 
 .intel-select:focus {
-  border-color: #58a6ff;
+  border-color: var(--accent);
 }
 
 .intel-btn {
   padding: 8px 16px;
-  border: 1px solid #30363d;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: #21262d;
-  color: #e6edf3;
+  background: var(--raised);
+  color: var(--text);
   font-size: 13px;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
 
 .intel-btn:hover:not(:disabled) {
-  background: #30363d;
+  background: var(--border);
 }
 
 .intel-btn:disabled {
@@ -84,14 +84,18 @@
 }
 
 .intel-btn-primary {
-  background: #58a6ff;
+  background: var(--accent);
   color: #000;
-  border-color: #58a6ff;
+  border-color: var(--accent);
   font-weight: 600;
 }
 
 .intel-btn-primary:hover:not(:disabled) {
-  background: #79c0ff;
+  background: var(--accent);
+}
+
+:root[data-theme="light"] .intel-btn-primary {
+  color: #fff;
 }
 
 .intel-back-btn {
@@ -101,17 +105,17 @@
 .intel-limit-select {
   margin-left: auto;
   padding: 4px 10px;
-  border: 1px solid #30363d;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: #161b22;
-  color: #e6edf3;
+  background: var(--surface);
+  color: var(--text);
   font-size: 12px;
   cursor: pointer;
   outline: none;
 }
 
 .intel-limit-select:focus {
-  border-color: #58a6ff;
+  border-color: var(--accent);
 }
 
 .intel-entity-list tbody tr {
@@ -120,12 +124,12 @@
 }
 
 .intel-entity-list tbody tr:hover {
-  background: #1a2332;
+  background: var(--raised);
 }
 
 .intel-entity-value {
   font-family: monospace;
-  color: #58a6ff;
+  color: var(--accent);
   max-width: 500px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -133,9 +137,9 @@
 }
 
 .intel-note {
-  background: #1a2b4a;
+  background: var(--raised);
   border: 1px solid #1f6feb;
-  color: #79c0ff;
+  color: var(--accent);
   padding: 8px 12px;
   border-radius: 6px;
   font-size: 13px;
@@ -153,20 +157,20 @@
 }
 
 .intel-empty {
-  background: #161b22;
-  border: 1px dashed #30363d;
+  background: var(--surface);
+  border: 1px dashed var(--border);
   border-radius: 8px;
   padding: 28px;
   text-align: center;
-  color: #8b949e;
+  color: var(--muted);
   font-size: 14px;
 }
 
 .intel-empty code {
-  background: #21262d;
+  background: var(--raised);
   padding: 1px 6px;
   border-radius: 4px;
-  color: #e6edf3;
+  color: var(--text);
 }
 
 .intel-filters-card {
@@ -197,8 +201,8 @@
 }
 
 .intel-card {
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 18px 20px;
 }
@@ -213,24 +217,24 @@
 .intel-card-head h2 {
   font-size: 16px;
   margin: 0;
-  color: #e6edf3;
+  color: var(--text);
   font-family: monospace;
 }
 
 .intel-card-head .intel-count {
   margin-left: auto;
   font-size: 12px;
-  color: #8b949e;
+  color: var(--muted);
 }
 
 .intel-pill {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 10px;
-  background: #21262d;
-  border: 1px solid #30363d;
+  background: var(--raised);
+  border: 1px solid var(--border);
   font-size: 11px;
-  color: #79c0ff;
+  color: var(--accent);
   text-transform: lowercase;
 }
 
@@ -254,20 +258,20 @@
 }
 
 .intel-meta span {
-  color: #8b949e;
+  color: var(--muted);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.4px;
 }
 
 .intel-meta b {
-  color: #e6edf3;
+  color: var(--text);
   font-weight: 500;
 }
 
 .intel-meta code {
   font-family: monospace;
-  color: #79c0ff;
+  color: var(--accent);
   font-size: 11px;
   word-break: break-all;
 }
@@ -280,15 +284,15 @@
 }
 
 .intel-mini {
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 14px 18px;
 }
 
 .intel-mini-label {
   font-size: 11px;
-  color: #8b949e;
+  color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.4px;
   margin-bottom: 6px;
@@ -296,22 +300,22 @@
 
 .intel-mini-value {
   font-size: 14px;
-  color: #e6edf3;
+  color: var(--text);
 }
 
 .intel-muted {
-  color: #6e7681;
+  color: var(--muted);
 }
 
 /* Clickable entity links */
 .intel-link {
-  color: #58a6ff;
+  color: var(--accent);
   cursor: pointer;
   transition: color 0.12s;
 }
 
 .intel-link:hover {
-  color: #79c0ff;
+  color: var(--accent);
   text-decoration: underline;
 }
 
@@ -327,29 +331,29 @@
 }
 
 .intel-table th {
-  background: #21262d;
+  background: var(--raised);
   padding: 8px 12px;
   text-align: left;
   font-size: 11px;
-  color: #8b949e;
+  color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  border-bottom: 1px solid #30363d;
+  border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
 
 .intel-table td {
   padding: 10px 12px;
-  border-bottom: 1px solid #21262d;
+  border-bottom: 1px solid var(--raised);
   vertical-align: top;
 }
 
 .intel-rel-type {
   display: inline-block;
   padding: 2px 8px;
-  background: #1a2b4a;
+  background: var(--raised);
   border-radius: 10px;
-  color: #79c0ff;
+  color: var(--accent);
   font-size: 11px;
 }
 
@@ -363,12 +367,12 @@
   right: 0;
   top: 50%;
   transform: translateY(-50%);
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 6px 10px;
   font-size: 11px;
-  color: #8b949e;
+  color: var(--muted);
   white-space: nowrap;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   z-index: 10;
@@ -383,12 +387,12 @@
 
 /* Raw JSON */
 .intel-raw {
-  background: #0d1117;
-  border: 1px solid #30363d;
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 12px;
   margin-top: 12px;
-  color: #79c0ff;
+  color: var(--accent);
   font-size: 11px;
   max-height: 500px;
   overflow: auto;
@@ -404,8 +408,8 @@
   top: calc(100% + 4px);
   left: 0;
   min-width: 220px;
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   z-index: 10;
@@ -420,7 +424,7 @@
   padding: 10px 14px;
   border: none;
   background: transparent;
-  color: #e6edf3;
+  color: var(--text);
   font-size: 13px;
   text-align: left;
   cursor: pointer;
@@ -428,11 +432,11 @@
 }
 
 .intel-enrich-option:hover {
-  background: #21262d;
+  background: var(--raised);
 }
 
 .intel-enrich-option + .intel-enrich-option {
-  border-top: 1px solid #21262d;
+  border-top: 1px solid var(--raised);
 }
 
 .intel-enrich-name {
@@ -441,7 +445,7 @@
 
 .intel-enrich-scope {
   font-size: 11px;
-  color: #8b949e;
+  color: var(--muted);
 }
 
 @media (max-width: 900px) {
@@ -461,12 +465,12 @@
 }
 
 .intel-session-row:hover {
-  background: #161b22;
+  background: var(--surface);
 }
 
 .intel-session-id {
   font-family: monospace;
-  color: #58a6ff;
+  color: var(--accent);
   font-size: 11px;
   word-break: break-all;
 }

@@ -1,6 +1,6 @@
 .cors-settings {
-  background: #0d1117;
-  border: 1px solid #30363d;
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1.5rem;
   margin-top: 1.5rem;
@@ -8,13 +8,13 @@
 
 .cors-settings h3 {
   margin: 0 0 0.5rem;
-  color: #e6edf3;
+  color: var(--text);
   font-size: 1.1rem;
 }
 
 .cors-description {
   margin: 0 0 1rem;
-  color: #8b949e;
+  color: var(--muted);
   font-size: 0.85rem;
 }
 
@@ -36,17 +36,17 @@
 
 .cors-add-form input {
   flex: 1;
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 6px;
-  color: #e6edf3;
+  color: var(--text);
   padding: 0.5rem 0.75rem;
   font-size: 0.9rem;
 }
 
 .cors-add-form input:focus {
   outline: none;
-  border-color: #58a6ff;
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
 }
 
@@ -79,19 +79,19 @@
 .cors-table th {
   text-align: left;
   padding: 0.75rem;
-  border-bottom: 1px solid #30363d;
-  color: #8b949e;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
   font-weight: 600;
 }
 
 .cors-table td {
   padding: 0.75rem;
-  border-bottom: 1px solid #21262d;
-  color: #e6edf3;
+  border-bottom: 1px solid var(--raised);
+  color: var(--text);
 }
 
 .cors-table code {
-  background: #161b22;
+  background: var(--surface);
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 0.8rem;
@@ -104,7 +104,7 @@
 
 .cors-empty {
   text-align: center;
-  color: #8b949e;
+  color: var(--muted);
   padding: 1.5rem !important;
 }
 
@@ -135,6 +135,19 @@
 .cors-inactive:hover {
   background: #3d1f28;
 }
+
+:root[data-theme="light"] .cors-active {
+  background: #e0f2e8;
+  color: var(--risk-low);
+}
+
+:root[data-theme="light"] .cors-inactive {
+  background: #fce6e6;
+  color: var(--risk-high);
+}
+
+:root[data-theme="light"] .cors-active:hover { background: #c8e9d5; }
+:root[data-theme="light"] .cors-inactive:hover { background: #f6d4d4; }
 
 .cors-btn-delete {
   background: transparent;

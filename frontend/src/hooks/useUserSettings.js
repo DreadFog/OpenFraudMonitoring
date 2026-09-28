@@ -19,12 +19,20 @@ export function useUserSettings() {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    const sync = (event) => setSettings((prev) => deepMerge(prev || {}, event.detail));
+    window.addEventListener("ofm:settings-updated", sync);
+    return () => window.removeEventListener("ofm:settings-updated", sync);
+  }, []);
+
   const update = useCallback(async (patch) => {
     // Optimistic local merge for immediate UI feedback.
     setSettings((prev) => deepMerge(prev || {}, patch));
+    window.dispatchEvent(new CustomEvent("ofm:settings-updated", { detail: patch }));
     try {
       const next = await api.updateMySettings(patch);
       setSettings(next);
+      window.dispatchEvent(new CustomEvent("ofm:settings-updated", { detail: next }));
       return next;
     } catch {
       // Keep the optimistic value; persistence is best-effort.

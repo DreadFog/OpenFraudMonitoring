@@ -1,7 +1,7 @@
 .logging-page {
   min-height: calc(100vh - 49px);
-  background: #0d1117;
-  color: #e6edf3;
+  background: var(--bg);
+  color: var(--text);
   padding: 32px;
   max-width: 1400px;
   margin: 0 auto;
@@ -18,11 +18,11 @@
 .logging-header h1 {
   font-size: 24px;
   margin: 0;
-  color: #58a6ff;
+  color: var(--accent);
 }
 
 .logging-sub {
-  color: #8b949e;
+  color: var(--muted);
   font-size: 13px;
   margin: 0;
 }
@@ -32,16 +32,16 @@
   right: 0;
   top: 0;
   padding: 8px 16px;
-  border: 1px solid #30363d;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: #21262d;
-  color: #e6edf3;
+  background: var(--raised);
+  color: var(--text);
   font-size: 13px;
   cursor: pointer;
 }
 
 .logging-btn:hover {
-  background: #30363d;
+  background: var(--border);
 }
 
 .logging-error {
@@ -55,8 +55,8 @@
 }
 
 .logging-card {
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 18px 20px;
   margin-bottom: 16px;
@@ -65,13 +65,13 @@
 .logging-card h2 {
   font-size: 14px;
   margin: 0 0 14px;
-  color: #e6edf3;
+  color: var(--text);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .logging-muted {
-  color: #6e7681;
+  color: var(--muted);
   font-size: 13px;
 }
 
@@ -83,8 +83,8 @@
 }
 
 .queue-card {
-  background: #0d1117;
-  border: 1px solid #30363d;
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 12px 14px;
   display: flex;
@@ -95,12 +95,12 @@
 .queue-name {
   font-size: 12px;
   font-family: monospace;
-  color: #79c0ff;
+  color: var(--accent);
   word-break: break-all;
 }
 
 .queue-sub {
-  color: #6e7681;
+  color: var(--muted);
   font-family: inherit;
   font-size: 11px;
   margin-left: 4px;
@@ -109,7 +109,7 @@
 .queue-depth {
   font-size: 24px;
   font-weight: 700;
-  color: #e6edf3;
+  color: var(--text);
 }
 
 /* Connectors table */
@@ -120,19 +120,19 @@
 }
 
 .logging-table th {
-  background: #21262d;
+  background: var(--raised);
   padding: 8px 12px;
   text-align: left;
   font-size: 11px;
-  color: #8b949e;
+  color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  border-bottom: 1px solid #30363d;
+  border-bottom: 1px solid var(--border);
 }
 
 .logging-table td {
   padding: 10px 12px;
-  border-bottom: 1px solid #21262d;
+  border-bottom: 1px solid var(--raised);
 }
 
 .status-pill {
@@ -152,6 +152,16 @@
   color: #f85149;
 }
 
+:root[data-theme="light"] .status-healthy {
+  background: #e0f2e8;
+  color: var(--risk-low);
+}
+
+:root[data-theme="light"] .status-unhealthy {
+  background: #fce6e6;
+  color: var(--risk-high);
+}
+
 /* Logs */
 .logs-head {
   display: flex;
@@ -167,10 +177,10 @@
 .logging-select {
   margin-left: auto;
   padding: 4px 10px;
-  border: 1px solid #30363d;
+  border: 1px solid var(--border);
   border-radius: 4px;
-  background: #0d1117;
-  color: #e6edf3;
+  background: var(--bg);
+  color: var(--text);
   font-size: 12px;
 }
 
@@ -179,8 +189,8 @@
   font-size: 12px;
   max-height: 480px;
   overflow-y: auto;
-  background: #0d1117;
-  border: 1px solid #30363d;
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: 6px;
 }
 
@@ -189,16 +199,16 @@
   grid-template-columns: 70px 70px 130px 1fr;
   gap: 10px;
   padding: 5px 12px;
-  border-bottom: 1px solid #161b22;
+  border-bottom: 1px solid var(--surface);
   align-items: start;
 }
 
 .log-row:hover {
-  background: #161b22;
+  background: var(--surface);
 }
 
 .log-ts {
-  color: #6e7681;
+  color: var(--muted);
 }
 
 .log-level {
@@ -217,11 +227,11 @@
 }
 
 .log-source {
-  color: #79c0ff;
+  color: var(--accent);
 }
 
 .log-msg {
-  color: #e6edf3;
+  color: var(--text);
   word-break: break-word;
   white-space: pre-wrap;
 }

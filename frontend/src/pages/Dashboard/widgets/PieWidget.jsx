@@ -1,9 +1,5 @@
 import React from "react";
-
-const PALETTE = [
-  "#58a6ff", "#f85149", "#f0883e", "#3fb950", "#bc8cff",
-  "#79c0ff", "#d29922", "#ff7b72", "#56d364", "#e3b341",
-];
+import { widgetShade } from "./widgetShade";
 
 export default function PieWidget({ groups }) {
   const total = groups.reduce((s, g) => s + g.count, 0);
@@ -14,7 +10,7 @@ export default function PieWidget({ groups }) {
     const pct = (g.count / total) * 100;
     const start = cumPct;
     cumPct += pct;
-    return `${PALETTE[i % PALETTE.length]} ${start}% ${cumPct}%`;
+    return `${widgetShade(g.count, groups, i)} ${start}% ${cumPct}%`;
   });
 
   return (
@@ -26,7 +22,7 @@ export default function PieWidget({ groups }) {
       <div className="pie-legend">
         {groups.map((g, i) => (
           <div key={i} className="pie-legend-item">
-            <span className="pie-swatch" style={{ background: PALETTE[i % PALETTE.length] }} />
+            <span className="pie-swatch" style={{ background: widgetShade(g.count, groups, i) }} />
             <span className="pie-legend-label">{g.value}</span>
             <span className="pie-legend-count">{g.count}</span>
           </div>

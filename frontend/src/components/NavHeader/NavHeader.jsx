@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../AuthContext";
+import { useUserSettings } from "../../hooks/useUserSettings";
 import "./NavHeader.css";
 
 const TABS = [
@@ -19,6 +20,7 @@ const ADMIN_TABS = [
 export default function NavHeader() {
   const { pathname } = useLocation();
   const { user, logout } = useAuth();
+  const { settings, loading, update } = useUserSettings();
   const navigate = useNavigate();
   const isAdmin = user?.role === "admin";
   const tabs = isAdmin ? [...TABS, ...ADMIN_TABS] : TABS;
@@ -48,6 +50,20 @@ export default function NavHeader() {
       </div>
       <div className="nav-right">
         {user && <Link to="/profile" className="nav-user-link">{user.username}</Link>}
+        {user && (
+          <button
+            type="button"
+            className="nav-theme-switch"
+            role="switch"
+            aria-label="Light mode"
+            aria-checked={settings?.appearance?.theme === "light"}
+            title={`Switch to ${settings?.appearance?.theme === "light" ? "dark" : "light"} mode`}
+            disabled={loading}
+            onClick={() => update({ appearance: { theme: settings?.appearance?.theme === "light" ? "dark" : "light" } })}
+          >
+            <span className="nav-theme-thumb" aria-hidden="true">{settings?.appearance?.theme === "light" ? "☀" : "☾"}</span>
+          </button>
+        )}
         <a href="/demo.html" className="nav-demo" target="_blank" rel="noopener noreferrer">Demo</a>
         {user && (
           <button className="nav-logout" onClick={handleLogout}>

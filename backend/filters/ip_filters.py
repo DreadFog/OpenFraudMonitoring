@@ -149,14 +149,17 @@ def _aggregate_ip_as(session_ids, limit: int):
         for a in StixAutonomousSystem.query.filter(StixAutonomousSystem.stix_id.in_(as_stix_ids)).all():
             name = a.raw.get("name", "") if a.raw else ""
             label = f"AS{a.value}" + (f" ({name})" if name else "")
-            as_map[a.stix_id] = label
+            as_map[a.stix_id] = (label, str(a.value))
 
     for r in rels:
         as_label = as_map.get(r.target_ref)
         if as_label:
             counter[as_label] += len(stix_to_sessions.get(r.source_ref, []))
 
-    return [{"value": val, "count": cnt} for val, cnt in counter.most_common(limit)]
+    return [
+        {"value": label, "filter_value": number, "count": cnt}
+        for (label, number), cnt in counter.most_common(limit)
+    ]
 
 
 def _ip_observable_condition(ip_stix_ids: set):

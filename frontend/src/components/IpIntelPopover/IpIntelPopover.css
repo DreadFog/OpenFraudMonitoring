@@ -24,8 +24,8 @@
   z-index: 9999;
   min-width: 240px;
   max-width: 320px;
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   overflow: hidden;
@@ -35,9 +35,9 @@
   padding: 8px 12px;
   font-size: 13px;
   font-weight: 600;
-  color: #58a6ff;
-  background: #0d1117;
-  border-bottom: 1px solid #21262d;
+  color: var(--accent);
+  background: var(--bg);
+  border-bottom: 1px solid var(--raised);
   font-family: monospace;
   display: flex;
   justify-content: space-between;
@@ -51,7 +51,7 @@
 }
 
 .ip-intel-loading {
-  color: #8b949e;
+  color: var(--muted);
 }
 
 .ip-intel-row {
@@ -63,7 +63,7 @@
 }
 
 .ip-intel-label {
-  color: #8b949e;
+  color: var(--muted);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -71,19 +71,19 @@
 }
 
 .ip-intel-value {
-  color: #e6edf3;
+  color: var(--text);
   text-align: right;
   word-break: break-word;
 }
 
 .ip-intel-muted {
-  color: #6e7681;
+  color: var(--muted);
 }
 
 .ip-intel-malware-section {
   margin-top: 4px;
   padding-top: 6px;
-  border-top: 1px solid #21262d;
+  border-top: 1px solid var(--raised);
 }
 
 .ip-intel-malware-item {
@@ -100,7 +100,7 @@
 }
 
 .ip-intel-malware-date {
-  color: #8b949e;
+  color: var(--muted);
   font-size: 11px;
   white-space: nowrap;
 }

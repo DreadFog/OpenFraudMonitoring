@@ -59,7 +59,7 @@
 }
 
 .rules-btn-secondary {
-  background: #21262d;
+  background: var(--raised);
 }
 
 .rules-btn-danger {
@@ -95,7 +95,7 @@
 .rules-form input,
 .rules-form select,
 .rules-form textarea {
-  background: #0d1117;
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text);
@@ -162,7 +162,7 @@
 }
 
 .rules-off {
-  background: #6e7681;
+  background: var(--muted);
 }
 
 .rules-error {

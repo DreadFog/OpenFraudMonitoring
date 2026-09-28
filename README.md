@@ -15,7 +15,7 @@ Self-hosted browser fingerprinting, behavioral analysis, and fraud monitoring pl
 - **Behavioral tracking** — mouse movements, clicks, keystrokes, scrolls, copy/paste, navigation events via heartbeats every 30s
 - **Monitored domains** — per-domain auth cookie detection, login-form authentication attempts, normalized session domains ([docs](docs/domains.md))
 - **Risk scoring** — automatic scoring from bot signals + customizable detection rules
-- **Custom dashboards** — drag-and-drop widgets (stats, pie charts, histograms, weighted lists) with saved layouts
+- **Custom dashboards** — drag-and-drop widgets (stats, pie charts, ranked histograms, bar charts, world maps) with saved layouts and user appearance preferences
 - **Session filtering** — 50+ filterable fields with autocomplete, composable filter conditions
 - **Threat intelligence** — STIX 2.1 entity store with enrichment connectors (IPinfo, OpenCTI), relationship graph navigation
 - **Connector architecture** — pluggable enrichment connectors via RabbitMQ, auto/manual trigger modes, health monitoring
@@ -62,7 +62,9 @@ The dashboard supports customizable widgets with drag-and-drop layout. Use the f
 
 #### Adding Widgets
 
-Create stat counters, pie charts, histograms, or weighted lists — each with their own filter conditions:
+Create stat counters, pie charts, ranked histograms, bar charts, or world maps — each with their own filter conditions. Choose dark or light mode and widget colors (blue, red, green, or multi-color) in Profile:
+
+Number widgets can use a custom color instead of the selected palette. The default dashboard keeps low, medium, and high risk counters green, orange, and red in either theme.
 
 | Step 1: Choose type | Step 2: Configure | Step 3: Result |
 |---------------------|-------------------|----------------|

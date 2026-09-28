@@ -59,7 +59,7 @@
 }
 
 .exports-form input {
-  background: #0d1117;
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text);
@@ -67,7 +67,7 @@
 }
 
 .exports-form select {
-  background: #0d1117;
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text);
@@ -144,7 +144,7 @@
 }
 
 .exports-btn-secondary {
-  background: #21262d;
+  background: var(--raised);
 }
 
 .exports-btn-danger {

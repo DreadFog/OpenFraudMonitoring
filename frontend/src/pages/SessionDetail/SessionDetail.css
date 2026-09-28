@@ -26,7 +26,7 @@
 
 .back-btn {
   padding: 6px 14px;
-  background: #21262d;
+  background: var(--raised);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -55,7 +55,7 @@
   margin-left: auto;
   padding: 6px 14px;
   background: #17223b;
-  color: #93c5fd;
+  color: var(--accent);
   border: 1px solid #274060;
   border-radius: 6px;
   cursor: pointer;
@@ -177,9 +177,9 @@
 }
 
 .flag-item {
-  background: #1a2b4a;
+  background: var(--raised);
   border: 1px solid #1f3a6e;
-  color: #79c0ff;
+  color: var(--accent);
   font-family: monospace;
   font-size: 11px;
   padding: 4px 8px;
@@ -201,7 +201,7 @@
 }
 
 .url-item {
-  background: #0d1117;
+  background: var(--bg);
   border: 1px solid var(--border);
   color: var(--accent);
   font-family: monospace;
@@ -219,7 +219,7 @@
 }
 
 .ip-item {
-  background: #21262d;
+  background: var(--raised);
   border: 1px solid var(--border);
   font-family: monospace;
   font-size: 12px;
@@ -241,7 +241,7 @@
 }
 
 .hb-table th {
-  background: #21262d;
+  background: var(--raised);
   padding: 6px 10px;
   text-align: left;
   color: var(--muted);
@@ -252,7 +252,7 @@
 
 .hb-table td {
   padding: 6px 10px;
-  border-bottom: 1px solid #21262d;
+  border-bottom: 1px solid var(--raised);
 }
 
 .hb-table tr:last-child td {
@@ -272,7 +272,7 @@
 
 /* Raw JSON toggle */
 .toggle-btn {
-  background: #21262d;
+  background: var(--raised);
   border: 1px solid var(--border);
   color: var(--muted);
   padding: 6px 12px;
@@ -292,13 +292,13 @@
   font: 11px/1.5 monospace;
   white-space: pre-wrap;
   word-break: break-all;
-  background: #0d1117;
+  background: var(--bg);
   padding: 14px;
   border-radius: 6px;
   border: 1px solid var(--border);
   max-height: 500px;
   overflow-y: auto;
-  color: #79c0ff;
+  color: var(--accent);
   margin-top: 8px;
 }
 
@@ -316,7 +316,7 @@
 /* Details button in dashboard table */
 .details-btn {
   padding: 4px 10px;
-  background: #21262d;
+  background: var(--raised);
   color: var(--accent);
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -348,7 +348,7 @@
 
 .event-badge--heartbeat {
   background: #424a4f;
-  color: #c9d1d9;
+  color: var(--text);
 }
 
 .event-badge--button_click {
@@ -384,7 +384,7 @@
 .tl-box {
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #0d1117;
+  background: var(--bg);
   overflow: hidden;
 }
 
@@ -420,7 +420,7 @@
   position: absolute;
   top: -10px;
   left: 10px;
-  background: #0d1117;
+  background: var(--bg);
   border: 1px solid #3fb950;
   border-radius: 10px;
   color: #3fb950;
@@ -436,7 +436,7 @@
   justify-content: space-between;
   gap: 10px;
   padding: 8px 12px;
-  background: #161b22;
+  background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
 
@@ -462,7 +462,7 @@
 }
 
 .tl-item {
-  border-bottom: 1px solid #161b22;
+  border-bottom: 1px solid var(--surface);
 }
 
 .tl-item:last-child {
@@ -484,7 +484,7 @@
 }
 
 .tl-item-head:hover {
-  background: #161b22;
+  background: var(--surface);
 }
 
 .tl-dot {
@@ -499,7 +499,7 @@
   background: #6b7280;
 }
 
-.tl-item--button_click .tl-dot { background: #58a6ff; }
+.tl-item--button_click .tl-dot { background: var(--accent); }
 .tl-item--form_submit .tl-dot { background: #d29922; }
 .tl-item--copy .tl-dot { background: #a371f7; }
 .tl-item--paste .tl-dot { background: #3fb950; }
@@ -538,7 +538,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  background: #0a0d12;
+  background: var(--raised);
 }
 
 .tl-detail-row {
