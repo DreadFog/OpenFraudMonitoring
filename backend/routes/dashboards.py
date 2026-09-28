@@ -121,7 +121,10 @@ def widget_data():
             return jsonify({"error": "from must be earlier than to"}), 400
 
         span = end_ms - start_ms
-        unit = "minute" if span < 3600000 else "hour" if span <= 86400000 else "day"
+        requested_unit = body.get("granularity")
+        unit = requested_unit if requested_unit in ("minute", "hour", "day") else (
+            "minute" if span < 3600000 else "hour" if span <= 86400000 else "day"
+        )
         bucket = sa_func.date_trunc(unit, RuleMatch.matched_at)
         rows = (
             db.session.query(bucket, Rule.name, sa_func.count(RuleMatch.id))

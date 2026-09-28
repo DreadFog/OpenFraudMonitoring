@@ -212,6 +212,7 @@ export default function Dashboard() {
             limit: w.limit || 10,
             from: windowRange.from,
             to: windowRange.to,
+            granularity: w.granularity,
           });
         } catch {
           results[i] = null;

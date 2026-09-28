@@ -26,6 +26,12 @@ const STAT_COLOR_PRESETS = [
   { name: "Orange", value: "#bc6318" },
   { name: "Red", value: "#d03b40" },
 ];
+const TIMELINE_GRANULARITIES = [
+  { value: "auto", label: "Automatic" },
+  { value: "minute", label: "Minutes" },
+  { value: "hour", label: "Hours" },
+  { value: "day", label: "Days" },
+];
 
 export default function WidgetWizard({ schema, onClose, onCreate, initialWidget }) {
   const isEditing = !!initialWidget;
@@ -35,6 +41,7 @@ export default function WidgetWizard({ schema, onClose, onCreate, initialWidget 
   const [limit, setLimit] = useState(initialWidget?.limit || 10);
   const [name, setName] = useState(initialWidget?.name || "");
   const [color, setColor] = useState(initialWidget?.color || "");
+  const [granularity, setGranularity] = useState(initialWidget?.granularity || "auto");
   const [mapConfig, setMapConfig] = useState(initialWidget?.mapConfig || DEFAULT_MAP_CONFIG);
 
   // stat has no field step; map has a locked field step; others have a free field step
@@ -43,6 +50,7 @@ export default function WidgetWizard({ schema, onClose, onCreate, initialWidget 
 
   const canNext = () => {
     if (step === 1) return !!type;
+    if (step === 2 && type === "timeline") return !!granularity;
     if (step === 2) return fieldIsLocked || !!field;
     if (step === 3) return !!name.trim();
     return false;
@@ -51,7 +59,7 @@ export default function WidgetWizard({ schema, onClose, onCreate, initialWidget 
   const handleNext = () => {
     if (step === 1) {
       if (!needsField) {
-        setStep(3); // stat skips field step
+        setStep(type === "timeline" ? 2 : 3);
       } else {
         if (type === "map") setField("ip_country");
         setStep(2);
@@ -62,7 +70,9 @@ export default function WidgetWizard({ schema, onClose, onCreate, initialWidget 
   };
 
   const handleBack = () => {
-    if (step === 3 && !needsField) {
+    if (step === 3 && type === "timeline") {
+      setStep(2);
+    } else if (step === 3 && !needsField) {
       setStep(1); // stat came from step 1
     } else {
       setStep((s) => s - 1);
@@ -78,6 +88,7 @@ export default function WidgetWizard({ schema, onClose, onCreate, initialWidget 
       limit: needsField && !fieldIsLocked ? limit : null,
       mapConfig: type === "map" ? mapConfig : undefined,
       color: type === "stat" ? color : undefined,
+      granularity: type === "timeline" ? granularity : undefined,
     };
     onCreate(widget);
   };
@@ -115,31 +126,36 @@ export default function WidgetWizard({ schema, onClose, onCreate, initialWidget 
           {/* Step 2: Field selection */}
           {step === 2 && (
             <div className="wizard-step">
-              <h3>Which field to group by?</h3>
-              <select
-                className={`wizard-select ${fieldIsLocked ? "wizard-select-locked" : ""}`}
-                value={fieldIsLocked ? "ip_country" : field}
-                disabled={fieldIsLocked}
-                onChange={(e) => setField(e.target.value)}
-              >
-                {fieldIsLocked ? (
-                  <option value="ip_country">IP Country Code</option>
-                ) : (
-                  <>
-                    <option value="">Select a field…</option>
-                    {(type === "vertical_histogram"
-                      ? schema.filter((f) => f.type === "number")
-                      : schema
-                    ).map((f) => (
-                      <option key={f.name} value={f.name}>
-                        {f.label}
-                      </option>
-                    ))}
-                  </>
-                )}
-              </select>
-              {fieldIsLocked && (
-                <p className="wizard-field-note">Field is fixed for Map widgets.</p>
+              {type === "timeline" ? (
+                <>
+                  <h3>Time granularity</h3>
+                  <select className="wizard-select" value={granularity} onChange={(e) => setGranularity(e.target.value)}>
+                    {TIMELINE_GRANULARITIES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                  <p className="wizard-field-note">Automatic uses minutes below one hour, hours up to one day, and days for longer ranges.</p>
+                </>
+              ) : (
+                <>
+                  <h3>Which field to group by?</h3>
+                  <select
+                    className={`wizard-select ${fieldIsLocked ? "wizard-select-locked" : ""}`}
+                    value={fieldIsLocked ? "ip_country" : field}
+                    disabled={fieldIsLocked}
+                    onChange={(e) => setField(e.target.value)}
+                  >
+                    {fieldIsLocked ? (
+                      <option value="ip_country">IP Country Code</option>
+                    ) : (
+                      <>
+                        <option value="">Select a field…</option>
+                        {(type === "vertical_histogram" ? schema.filter((f) => f.type === "number") : schema).map((f) => (
+                          <option key={f.name} value={f.name}>{f.label}</option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                  {fieldIsLocked && <p className="wizard-field-note">Field is fixed for Map widgets.</p>}
+                </>
               )}
             </div>
           )}

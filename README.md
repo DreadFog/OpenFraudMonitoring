@@ -62,7 +62,7 @@ The dashboard supports customizable widgets with drag-and-drop layout. A pinned 
 
 #### Adding Widgets
 
-Create stat counters, pie charts, ranked histograms, bar charts, rule timelines, or world maps — each with their own filter conditions. The timeline stacks rule matches by minute (ranges under one hour), hour (up to 24 hours), or day (longer ranges); click a segment to filter by its rule. Choose dark or light mode and widget colors (blue, red, green, or multi-color) in Profile:
+Create stat counters, pie charts, ranked histograms, bar charts, rule timelines, or world maps — each with their own filter conditions. Timeline widgets can use automatic, minute, hour, or day granularity; click a segment to filter by its rule. Choose dark or light mode and widget colors (blue, red, green, or multi-color) in Profile:
 
 Number widgets can use a custom color instead of the selected palette. The default dashboard keeps low, medium, and high risk counters green, orange, and red in either theme.
 
