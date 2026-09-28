@@ -6,6 +6,7 @@
 
 :root {
   color-scheme: dark;
+  --content-max-width: 100%;
   --bg: #0d1117;
   --surface: #161b22;
   --raised: #21262d;
@@ -108,6 +109,11 @@
 body {
   background: var(--bg);
   color: var(--text);
+}
+
+.container {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
 }
 
 html, body, #root {

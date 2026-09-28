@@ -56,7 +56,7 @@ See [Deployment](docs/deployment.md) for same-origin, reverse-proxied, and separ
 
 ### Dashboard
 
-The dashboard supports customizable widgets with drag-and-drop layout. A pinned Last Seen range (24 hours by default, 7 days, 30 days, or custom dates) filters all widgets and sessions; administrators can change the default in Administration. Use the filter builder to narrow results by any of 50+ other fields.
+The dashboard supports customizable widgets with drag-and-drop layout. A pinned Last Seen range (24 hours by default, 7 days, 30 days, or custom dates) filters all widgets and sessions; administrators can change the default and the shared content width percentage (25% to 100%) in Administration. Dashboard, Devices, Intelligence, Administration, Exports, Rules, Profile, Users, and session-detail views use the same configurable width. Use the filter builder to narrow results by any of 50+ other fields.
 
 ![Session Filters](images/session_filters.png)
 

@@ -23,11 +23,13 @@ from models.app_setting import AppSetting
 GRAPH_EXPAND_WARN_THRESHOLD_KEY = "graph.expand_warn_threshold"
 CLIPBOARD_CENSOR_KEY = "clipboard_censor"
 DASHBOARD_DEFAULT_TIME_RANGE_KEY = "dashboard.default_time_range"
+CONTENT_WIDTH_PERCENT_KEY = "layout.content_width_percent"
 
 GLOBAL_DEFAULTS = {
     GRAPH_EXPAND_WARN_THRESHOLD_KEY: 1000,
     CLIPBOARD_CENSOR_KEY: True,
     DASHBOARD_DEFAULT_TIME_RANGE_KEY: "24h",
+    CONTENT_WIDTH_PERCENT_KEY: 100,
 }
 
 

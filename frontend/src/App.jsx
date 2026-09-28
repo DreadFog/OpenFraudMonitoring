@@ -15,6 +15,7 @@ import Login from "./pages/Login/Login";
 import Profile from "./pages/Profile/Profile";
 import NavHeader from "./components/NavHeader/NavHeader";
 import { useUserSettings } from "./hooks/useUserSettings";
+import { api } from "./api";
 import "./App.css";
 
 function ProtectedRoute({ children }) {
@@ -46,13 +47,26 @@ function Chrome({ children }) {
 
 function Appearance() {
   const { settings } = useUserSettings();
+  const [contentWidthPercent, setContentWidthPercent] = React.useState(100);
+
+  React.useEffect(() => {
+    const loadWidth = () => api.getGlobalSettings()
+      .then((globalSettings) => setContentWidthPercent(Number(globalSettings["layout.content_width_percent"]) || 100))
+      .catch(() => {});
+    loadWidth();
+    window.addEventListener("ofm:global-settings-updated", loadWidth);
+    return () => window.removeEventListener("ofm:global-settings-updated", loadWidth);
+  }, []);
+
   React.useEffect(() => {
     document.documentElement.dataset.theme = settings?.appearance?.theme === "light" ? "light" : "dark";
     document.documentElement.dataset.widgetColors = settings?.appearance?.widgetColors || "blue";
-  }, [settings?.appearance?.theme, settings?.appearance?.widgetColors]);
+    document.documentElement.style.setProperty("--content-max-width", `${contentWidthPercent}%`);
+  }, [settings?.appearance?.theme, settings?.appearance?.widgetColors, contentWidthPercent]);
   React.useEffect(() => () => {
     delete document.documentElement.dataset.theme;
     delete document.documentElement.dataset.widgetColors;
+    document.documentElement.style.removeProperty("--content-max-width");
   }, []);
   return null;
 }

@@ -3,7 +3,7 @@
   background: var(--bg);
   color: var(--text);
   padding: 32px;
-  max-width: 1400px;
+  max-width: var(--content-max-width);
   margin: 0 auto;
 }
 

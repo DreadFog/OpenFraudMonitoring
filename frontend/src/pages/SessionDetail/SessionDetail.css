@@ -1,5 +1,5 @@
 .sd-container {
-  max-width: 1280px;
+  max-width: var(--content-max-width);
   margin: 0 auto;
   padding: 0 0 48px;
   color: var(--text);

@@ -3,7 +3,7 @@
   background: var(--bg);
   color: var(--text);
   padding: 32px;
-  max-width: 1400px;
+  max-width: var(--content-max-width);
   margin: 0 auto;
 }
 
@@ -186,6 +186,25 @@
 
 .dashboard-global-select {
   padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.dashboard-width-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.dashboard-width-field input {
+  width: 86px;
+  padding: 7px 8px;
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--surface);
