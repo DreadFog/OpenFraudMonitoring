@@ -56,7 +56,7 @@ export default function Administration() {
 
   return (
     <div className="logging-page">
-      <header className="logging-header">
+      <header className="page-header logging-header">
         <h1>Administration</h1>
         <p className="logging-sub">Connector health, queue depths, recent warnings/errors, and system settings. Auto-refreshes every {POLL_MS / 1000}s.</p>
         <button className="logging-btn" type="button" onClick={refresh}>↻ Refresh now</button>

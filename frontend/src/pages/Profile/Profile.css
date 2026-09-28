@@ -6,17 +6,18 @@
 }
 
 .profile-header {
-  margin-bottom: 2rem;
+  margin-bottom: 24px;
 }
 
 .profile-header h1 {
-  margin: 0 0 0.25rem;
-  color: var(--text);
+  margin: 0;
+  color: var(--accent);
+  font-size: 24px;
 }
 
 .profile-sub {
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 13px;
   margin: 0;
 }
 

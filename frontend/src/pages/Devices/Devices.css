@@ -1,8 +1,10 @@
 /* Devices page — reuses global table/pagination styles from Dashboard.css */
 
 .devices-header {
-  padding: 16px 24px;
+  padding: 0 24px;
 }
+
+.devices-header h1 { font-size: 24px; color: var(--accent); margin: 0; }
 
 .devices-subtitle {
   color: var(--muted);

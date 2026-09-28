@@ -398,7 +398,7 @@ export default function SessionDetail() {
   return (
     <div className="sd-container">
       {/* Header */}
-      <header className="sd-header">
+      <header className="page-header sd-header">
         <button className="back-btn" onClick={() => navigate("/")}>← Back</button>
         <h1>Session Detail</h1>
         <span className={`risk-badge ${riskClass}`}>{data.risk_score}</span>

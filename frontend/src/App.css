@@ -111,9 +111,31 @@ body {
   color: var(--text);
 }
 
+.page-header {
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+}
+
+.page-header h1 {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--accent);
+}
+
+.page-header p {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+}
+
 .container {
   max-width: var(--content-max-width);
   margin: 0 auto;
+  padding-top: 32px;
 }
 
 html, body, #root {

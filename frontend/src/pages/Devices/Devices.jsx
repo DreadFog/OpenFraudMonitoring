@@ -46,7 +46,7 @@ export default function Devices() {
 
   return (
     <div className="container">
-      <header className="devices-header">
+      <header className="page-header devices-header">
         <h1>Devices</h1>
         <p className="devices-subtitle">
           Device clusters resolved from stable hardware/OS signals, decoupled from the volatile fingerprint ID.

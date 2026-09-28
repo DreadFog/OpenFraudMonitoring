@@ -378,7 +378,7 @@ export default function Intelligence() {
 
   return (
     <div className="intel-page">
-      <header className="intel-header">
+      <header className="page-header intel-header">
         <h1>Intelligence</h1>
         <p className="intel-sub">Browse cached threat intelligence by entity type and value.</p>
       </header>

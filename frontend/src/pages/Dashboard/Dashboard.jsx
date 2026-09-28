@@ -513,7 +513,7 @@ export default function Dashboard() {
   return (
     <div className={`container ${editMode ? "edit-mode" : ""}`}>
       {/* Dashboard page header */}
-      <header className="dash-header">
+      <header className="page-header dash-header">
         <div className="dash-header-title">
           <h1>Dashboard</h1>
           <select

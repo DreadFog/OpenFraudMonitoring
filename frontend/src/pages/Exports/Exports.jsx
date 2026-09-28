@@ -212,7 +212,7 @@ export default function ExportsPage() {
 
   return (
     <div className="exports-page">
-      <header className="exports-header">
+      <header className="page-header exports-header">
         <h1>TAXII Exports</h1>
         <p>Manage authenticated TAXII collections and copy feed object URLs for downstream ingesters.</p>
       </header>

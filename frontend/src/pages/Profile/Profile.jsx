@@ -176,7 +176,7 @@ export default function Profile() {
 
   return (
     <div className="profile-page">
-      <header className="profile-header">
+      <header className="page-header profile-header">
         <h1>Profile</h1>
         <p className="profile-sub">Signed in as <strong>{user?.username}</strong> ({user?.role})</p>
       </header>

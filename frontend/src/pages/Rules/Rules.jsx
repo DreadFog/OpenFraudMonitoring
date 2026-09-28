@@ -222,7 +222,7 @@ export default function RulesPage() {
 
   return (
     <div className="rules-page">
-      <header className="rules-header">
+      <header className="page-header rules-header">
         <h1>Rules</h1>
         <p>Manage detection rules, toggle activation, and import/export JSON rule sets.</p>
         <div className="rules-actions">
