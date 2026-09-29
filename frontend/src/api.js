@@ -246,12 +246,13 @@ export const api = {
 
   // ── Devices ──
 
-  getDevices: async (page = 1, perPage = 10, filters = []) => {
+  getDevices: async (page = 1, perPage = 10, filters = [], logic = "AND") => {
     const params = new URLSearchParams();
     params.append("page", String(page));
     params.append("per_page", String(perPage));
     if (filters.length > 0) {
       params.append("filters", JSON.stringify(filters));
+      params.append("logic", logic);
     }
     const res = await authFetch(`/api/devices?${params.toString()}`);
     if (!res.ok) throw new Error("Failed to fetch devices");

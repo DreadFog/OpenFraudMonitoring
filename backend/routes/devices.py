@@ -59,7 +59,7 @@ def get_devices():
     if not isinstance(filters, list):
         filters = []
 
-    query = build_device_query(filters).order_by(Device.last_seen.desc())
+    query = build_device_query(filters, logic=request.args.get("logic", "AND")).order_by(Device.last_seen.desc())
     total = query.count()
     pages = max(1, -(-total // per_page))  # ceil division
     page = min(page, pages)

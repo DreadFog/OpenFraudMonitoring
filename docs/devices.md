@@ -126,7 +126,7 @@ session list API. It's only shown when browsing devices (`/devices`,
 
 - `GET /api/devices` — paginated list: id, platform, GPU renderer,
   device type, confidence, session/fsid/IP counts, first/last seen.
-  Accepts `filters` (JSON array of `{field, op, value}`, AND-combined).
+  Accepts `filters` (JSON array of `{field, op, value}`) and `logic` (`AND` default, or `OR`).
 - `GET /api/devices/schema` — filterable device fields, generated from the
   `Device` model columns (see `services/device_filters.py`) plus linked-session
   aggregates: `sessions_count`, `distinct_fsids`, `distinct_ips`.

@@ -844,7 +844,7 @@ function AddEntityDrawer({ onAdd, onClose }) {
     if (searchKind === "session") {
       api.getSchema().then((s) => setSchema(normalizeSchema(s))).catch(() => setSchema([]));
     } else if (searchKind === "device") {
-      setSchema([]);
+      api.getDeviceSchema().then((s) => setSchema(normalizeSchema(s))).catch(() => setSchema([]));
     } else {
       api.getIntelFilterSchema(searchKind).then((r) => setSchema(normalizeSchema(r.fields || []))).catch(() => setSchema([]));
     }
@@ -857,7 +857,7 @@ function AddEntityDrawer({ onAdd, onClose }) {
     const run = searchKind === "session"
       ? api.getSessions(applied, "last_seen", "desc", 1, 25).then((r) => r.sessions || [])
       : searchKind === "device"
-      ? api.getDevices(1, 25).then((r) => r.devices || [])
+      ? api.getDevices(1, 25, applied, logic).then((r) => r.devices || [])
       : api.listEntities(searchKind, 25, applied, logic).then((r) => r.entities || []);
     run.then(setResults).catch(() => setResults([])).finally(() => setLoading(false));
   }, [searchKind, applied, logic]);
@@ -942,8 +942,6 @@ function AddEntityDrawer({ onAdd, onClose }) {
         </select>
 
         {/* Optional filters */}
-        {searchKind !== "device" && (
-        <>
         <div className="graph-drawer-title" style={{ marginTop: 10 }}>Filters (optional)</div>
         {searchKind !== "session" && (
           <select className="graph-select graph-drawer-select" value={logic} onChange={(e) => setLogic(e.target.value)}>
@@ -983,8 +981,6 @@ function AddEntityDrawer({ onAdd, onClose }) {
           <button className="graph-btn" onClick={applyFilters}>Apply</button>
           <button className="graph-btn" onClick={clearFilters}>Clear</button>
         </div>
-        </>
-        )}
       </div>
 
       {/* Results */}
