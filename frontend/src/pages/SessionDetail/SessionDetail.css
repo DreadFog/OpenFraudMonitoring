@@ -378,6 +378,22 @@
   padding-left: 8px;
 }
 
+.tl-day-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tl-day-divider::before,
+.tl-day-divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px dashed var(--border);
+}
+
 .tl-box {
   border: 1px solid var(--border);
   border-radius: 8px;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { Fragment, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import IpIntelPopover from "../../components/IpIntelPopover/IpIntelPopover";
@@ -130,6 +130,14 @@ function fmtFull(ms) {
   return new Date(ms).toLocaleString();
 }
 
+function dayKey(ms) {
+  return new Date(ms).toDateString();
+}
+
+function fmtDay(ms) {
+  return new Date(ms).toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+}
+
 /**
  * Build a timeline grouped into "visit" boxes (a contiguous run of events that
  * share the same URL). Within each box, consecutive heartbeats are collapsed
@@ -145,7 +153,7 @@ function buildTimeline(heartbeats, events) {
   const boxes = [];
   let cur = null;
   for (const it of items) {
-    if (!cur || cur.url !== it.url) {
+    if (!cur || cur.url !== it.url || dayKey(cur.start) !== dayKey(it.timestamp)) {
       cur = { id: boxes.length, url: it.url, start: it.timestamp, end: it.timestamp, items: [] };
       boxes.push(cur);
     }
@@ -277,9 +285,17 @@ function SessionTimeline({ heartbeats, events }) {
   const total = (heartbeats?.length || 0) + (events?.length || 0);
   const groups = groupBoxesByAuth(boxes);
   const hasAuthGroup = groups.some((g) => g.authenticated);
+  const multiDay = boxes.length > 0 && dayKey(boxes[0].start) !== dayKey(boxes[boxes.length - 1].start);
+  const dayStarts = new Set(
+    boxes.filter((b, i) => i === 0 || dayKey(b.start) !== dayKey(boxes[i - 1].start)).map((b) => b.id)
+  );
 
   const renderBox = (box) => (
-    <div className="tl-box" key={box.id}>
+    <Fragment key={box.id}>
+    {multiDay && dayStarts.has(box.id) && (
+      <div className="tl-day-divider"><span>{fmtDay(box.start)}</span></div>
+    )}
+    <div className="tl-box">
       <div className="tl-box-head">
         <span className="tl-url" title={box.url || "(no URL)"}>{box.url || "(no URL)"}</span>
         <span className="tl-range">{fmtTime(box.start)} – {fmtTime(box.end)}</span>
@@ -290,6 +306,7 @@ function SessionTimeline({ heartbeats, events }) {
         ))}
       </div>
     </div>
+    </Fragment>
   );
 
   return (
