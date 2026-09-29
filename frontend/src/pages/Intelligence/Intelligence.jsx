@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { usePersistentState } from "../../hooks/usePersistentState";
+import { useRecentItems } from "../../hooks/useRecentItems";
 import { buildGraphUrl, stixSeed } from "../Graph/graphLink";
 import "./Intelligence.css";
 
@@ -153,6 +154,20 @@ export default function Intelligence() {
   const [filters, setFilters] = usePersistentState("intel.filters", []);
   const [filterLogic, setFilterLogic] = usePersistentState("intel.filterLogic", "AND");
   const [filterDrafts, setFilterDrafts] = usePersistentState("intel.filterDrafts", [{ field: "", op: "", value: "" }]);
+  const [, recordRecent] = useRecentItems();
+
+  const observable = data?.found ? data.observable : null;
+  useEffect(() => {
+    if (!observable?.stix_type || !observable.value) return;
+    const { stix_type: type, value } = observable;
+    recordRecent({
+      key: `stix:${type}:${value}`,
+      kind: "entity",
+      label: observable.raw?.name || value,
+      sub: type,
+      path: `/intelligence?type=${encodeURIComponent(type)}&value=${encodeURIComponent(value)}`,
+    });
+  }, [observable?.stix_type, observable?.value]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Filters are scoped to a specific entity type's schema. We must not clear
   // persisted filters on the very first schema load (mount), only when the user

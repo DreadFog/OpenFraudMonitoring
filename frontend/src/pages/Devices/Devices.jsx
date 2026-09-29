@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import FilterBuilder from "../../components/FilterBuilder/FilterBuilder";
 import { usePersistentState } from "../../hooks/usePersistentState";
@@ -21,6 +21,14 @@ export default function Devices() {
   const [schema, setSchema] = useState([]);
   const [filters, setFilters] = usePersistentState("devices.filters", []);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!location.state?.filters) return;
+    setFilters(location.state.filters);
+    setPage(1);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.state]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     api.getDeviceSchema().then(setSchema).catch(() => setSchema([]));

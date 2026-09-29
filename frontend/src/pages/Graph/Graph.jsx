@@ -3,7 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import cytoscape from "cytoscape";
 import { api } from "../../api";
 import { useUserSettings } from "../../hooks/useUserSettings";
-import { parseSeeds } from "./graphLink";
+import { useRecentItems } from "../../hooks/useRecentItems";
+import { buildGraphUrl, parseSeeds } from "./graphLink";
 import "./Graph.css";
 
 const FALLBACK = {
@@ -168,6 +169,7 @@ function mapEdge(e) {
 
 export default function Graph() {
   const [searchParams] = useSearchParams();
+  const [, recordRecent] = useRecentItems();
   const { settings, update } = useUserSettings();
 
   const containerRef = useRef(null);
@@ -321,6 +323,13 @@ export default function Graph() {
       return;
     }
     setLoading(true);
+    recordRecent({
+      key: `graph:${searchParams.get("seeds")}`,
+      kind: "graph",
+      label: `Graph · ${seeds.length} seed${seeds.length > 1 ? "s" : ""}`,
+      sub: seeds.map((s) => s.kind === "session" ? `session ${String(s.fsid).slice(0, 8)}…` : s.kind === "device" ? `device #${s.id}` : `${s.type} ${s.value || ""}`).join(", "),
+      path: buildGraphUrl(seeds),
+    });
     api.graphSeed(seeds)
       .then((res) => {
         setThreshold(res.threshold || 1000);

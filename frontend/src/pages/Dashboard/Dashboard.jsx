@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ResponsiveGridLayout, useContainerWidth } from "react-grid-layout";
 import { api } from "../../api";
 import { usePersistentState } from "../../hooks/usePersistentState";
@@ -103,7 +103,18 @@ export default function Dashboard() {
   const [groupByDevice, setGroupByDevice] = usePersistentState("dashboard.groupByDevice", false);
   const [expandedGroups, setExpandedGroups] = useState(() => new Set());
   const navigate = useNavigate();
+  const location = useLocation();
   const { containerRef, width: containerWidth, measureWidth } = useContainerWidth({ initialWidth: 1200 });
+
+  // Landing-page links pass {filters, timeRange} as router state; apply once, then drop it.
+  useEffect(() => {
+    const preset = location.state;
+    if (!preset?.filters) return;
+    setFilters(preset.filters);
+    if (preset.timeRange) setTimeRange(preset.timeRange);
+    setPage(1);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.state]); // eslint-disable-line react-hooks/exhaustive-deps
   const rafRef = useRef(null);
 
   // The grid's wrapper div only mounts once `loading` becomes false (see the

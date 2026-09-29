@@ -285,6 +285,18 @@ export const api = {
     return res.json();
   },
 
+  getOverview: async () => {
+    const res = await authFetch("/api/overview");
+    if (!res.ok) throw new Error("Failed to fetch overview");
+    return res.json();
+  },
+
+  overviewSearch: async (q) => {
+    const res = await authFetch(`/api/overview/search?q=${encodeURIComponent(q)}`);
+    if (!res.ok) throw new Error("Search failed");
+    return res.json();
+  },
+
   // ── Schema & suggestions (for filter builder) ──
 
   getSchema: async () => {

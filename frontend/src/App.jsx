@@ -34,8 +34,8 @@ function AdminRoute({ children }) {
 function Chrome({ children }) {
   const { pathname } = useLocation();
   const { isAuthenticated } = useAuth();
-  // Hide the global nav on the landing page and login page.
-  const showNav = isAuthenticated && pathname !== "/" && pathname !== "/login";
+  // Hide the global nav on the login page.
+  const showNav = isAuthenticated && pathname !== "/login";
   return (
     <>
       {isAuthenticated && <Appearance />}

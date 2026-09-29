@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import IpIntelPopover from "../../components/IpIntelPopover/IpIntelPopover";
 import { buildGraphUrl, sessionSeed } from "../Graph/graphLink";
+import { useRecentItems } from "../../hooks/useRecentItems";
 import "./SessionDetail.css";
 
 function Field({ label, value, popoverIp }) {
@@ -340,6 +341,18 @@ export default function SessionDetail() {
   const [error, setError] = useState(null);
   const [ruleDescriptions, setRuleDescriptions] = useState({});
   const [deleting, setDeleting] = useState(false);
+  const [, recordRecent] = useRecentItems();
+
+  useEffect(() => {
+    if (!data?.fsid) return;
+    recordRecent({
+      key: `session:${data.fsid}`,
+      kind: "session",
+      label: `Session ${data.fsid.slice(0, 12)}…`,
+      sub: `${data.client_ip || "unknown IP"} · risk ${data.risk_score}`,
+      path: `/session/${encodeURIComponent(data.fsid)}`,
+    });
+  }, [data?.fsid]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDelete = async () => {
     if (!window.confirm("Delete this session and all its data? This cannot be undone.")) return;

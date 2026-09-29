@@ -52,6 +52,8 @@ See [Deployment](docs/deployment.md) for same-origin, reverse-proxied, and separ
 
 ### Landing Page
 
+The home page is a triage overview: quick search (IP, fsid, device, user agent), 24-hour counters with trends, high-risk sessions to review, rule activity with spike detection, platform health, and recently viewed items. New installations get a setup checklist until the first fingerprint arrives.
+
 ![Landing Page](images/main_page.png)
 
 ### Dashboard

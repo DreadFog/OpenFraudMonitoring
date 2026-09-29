@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import IpIntelPopover from "../../components/IpIntelPopover/IpIntelPopover";
 import { buildGraphUrl, deviceSeed } from "../Graph/graphLink";
+import { useRecentItems } from "../../hooks/useRecentItems";
 import "../Devices/Devices.css";
 
 function Field({ label, value, popoverIp }) {
@@ -41,6 +42,18 @@ export default function DeviceDetail() {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const [, recordRecent] = useRecentItems();
+
+  useEffect(() => {
+    if (!data?.id) return;
+    recordRecent({
+      key: `device:${data.id}`,
+      kind: "device",
+      label: `Device #${data.id}`,
+      sub: data.platform || "unknown platform",
+      path: `/device/${data.id}`,
+    });
+  }, [data?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     api.getDeviceDetail(id)
