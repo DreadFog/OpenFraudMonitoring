@@ -2,6 +2,7 @@ import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../AuthContext";
 import { useUserSettings } from "../../hooks/useUserSettings";
+import { ADMIN_SECTIONS } from "../../pages/Logging/adminSections";
 import "./NavHeader.css";
 
 const TABS = [
@@ -37,15 +38,35 @@ export default function NavHeader() {
         OpenFraudMonitoring
       </Link>
       <div className="nav-tabs">
-        {tabs.map((t) => (
-          <Link
-            key={t.path}
-            to={t.path}
-            className={`nav-tab ${pathname.startsWith(t.path) ? "nav-tab-active" : ""}`}
-          >
-            {t.label}
-          </Link>
-        ))}
+        {tabs.map((t) => {
+          const link = (
+            <Link
+              key={t.path}
+              to={t.path}
+              className={`nav-tab ${pathname.startsWith(t.path) ? "nav-tab-active" : ""}`}
+            >
+              {t.label}
+            </Link>
+          );
+          if (t.path !== "/admin") return link;
+          return (
+            <div className="nav-dropdown" key={t.path}>
+              {link}
+              <div className="nav-dropdown-menu">
+                {ADMIN_SECTIONS.map((s) => (
+                  <Link
+                    key={s.id}
+                    to={s.path}
+                    onClick={(e) => e.currentTarget.blur()}
+                    className={`nav-dropdown-item ${pathname === s.path ? "nav-dropdown-item-active" : ""}`}
+                  >
+                    {s.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          );
+        })}
 
       </div>
       <div className="nav-right">

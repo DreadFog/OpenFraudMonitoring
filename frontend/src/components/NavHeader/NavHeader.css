@@ -56,6 +56,61 @@
   font-weight: 600;
 }
 
+.nav-dropdown {
+  position: relative;
+  display: flex;
+}
+
+.nav-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 160px;
+  padding: 6px;
+  margin-top: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  z-index: 60;
+}
+
+/* Invisible bridge so the menu stays open while the pointer crosses the gap */
+.nav-dropdown-menu::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 0;
+  right: 0;
+  height: 6px;
+}
+
+.nav-dropdown:hover .nav-dropdown-menu,
+.nav-dropdown:focus-within .nav-dropdown-menu {
+  display: flex;
+  flex-direction: column;
+}
+
+.nav-dropdown-item {
+  padding: 6px 10px;
+  border-radius: 5px;
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.nav-dropdown-item:hover {
+  background: var(--raised);
+  color: var(--text);
+}
+
+.nav-dropdown-item-active {
+  color: var(--text);
+  font-weight: 600;
+}
+
 .nav-demo {
   padding: 6px 14px;
   border-radius: 6px;

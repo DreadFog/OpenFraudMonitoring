@@ -27,10 +27,43 @@
   margin: 0;
 }
 
+.admin-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-subnav-link {
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.admin-subnav-link:hover {
+  color: var(--text);
+}
+
+.admin-subnav-active {
+  color: var(--text);
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+
+.logging-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
 .logging-btn {
-  position: absolute;
-  right: 0;
-  top: 0;
+  flex-shrink: 0;
   padding: 8px 16px;
   border: 1px solid var(--border);
   border-radius: 6px;

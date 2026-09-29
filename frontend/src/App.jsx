@@ -84,6 +84,7 @@ function App() {
             <Route path="/graph" element={<ProtectedRoute><Graph /></ProtectedRoute>} />
             <Route path="/exports" element={<ProtectedRoute><ExportsPage /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute><Administration /></ProtectedRoute>} />
+            <Route path="/admin/:section" element={<ProtectedRoute><Administration /></ProtectedRoute>} />
             <Route path="/rules" element={<AdminRoute><RulesPage /></AdminRoute>} />
             <Route path="/session/:fsid" element={<ProtectedRoute><SessionDetail /></ProtectedRoute>} />
             <Route path="/devices" element={<ProtectedRoute><Devices /></ProtectedRoute>} />

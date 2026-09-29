@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { NavLink, Navigate, useParams } from "react-router-dom";
 import { useAuth } from "../../AuthContext";
 import { api } from "../../api";
 import CorsSettings from "../../components/CorsSettings/CorsSettings";
@@ -7,6 +8,7 @@ import DashboardGlobalSettings from "../../components/DashboardGlobalSettings/Da
 import PrivacySettings from "../../components/PrivacySettings/PrivacySettings";
 import UserManagement from "../Users/Users";
 import DomainSettings from "../../components/DomainSettings/DomainSettings";
+import { ADMIN_SECTIONS } from "./adminSections";
 import "./Logging.css";
 
 const POLL_MS = 5000;
@@ -30,6 +32,60 @@ function utcDay(ms) {
 export default function Administration() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const { section = "logging" } = useParams();
+
+  if (!ADMIN_SECTIONS.some((s) => s.id === section) || (!isAdmin && section !== "logging")) {
+    return <Navigate to="/admin" replace />;
+  }
+
+  return (
+    <div className="logging-page">
+      <header className="page-header logging-header">
+        <h1>Administration</h1>
+        {isAdmin && (
+          <nav className="admin-subnav">
+            {ADMIN_SECTIONS.map((s) => (
+              <NavLink
+                key={s.id}
+                to={s.path}
+                end
+                className={({ isActive }) => `admin-subnav-link ${isActive ? "admin-subnav-active" : ""}`}
+              >
+                {s.label}
+              </NavLink>
+            ))}
+          </nav>
+        )}
+      </header>
+
+      {section === "logging" && <LoggingSection />}
+
+      {section === "monitoring" && (
+        <>
+          <CorsSettings />
+          <DomainSettings />
+        </>
+      )}
+
+      {section === "frontend" && (
+        <>
+          <DashboardGlobalSettings />
+          <PrivacySettings />
+        </>
+      )}
+
+      {section === "graph" && <GraphGlobalSettings />}
+
+      {section === "users" && (
+        <section className="logging-card">
+          <UserManagement />
+        </section>
+      )}
+    </div>
+  );
+}
+
+function LoggingSection() {
   const [status, setStatus] = useState(null);
   const [logs, setLogs] = useState([]);
   const [error, setError] = useState("");
@@ -59,12 +115,11 @@ export default function Administration() {
   const queues = status?.queues || {};
 
   return (
-    <div className="logging-page">
-      <header className="page-header logging-header">
-        <h1>Administration</h1>
-        <p className="logging-sub">Connector health, queue depths, recent warnings/errors, and system settings. Auto-refreshes every {POLL_MS / 1000}s.</p>
+    <>
+      <div className="logging-toolbar">
+        <p className="logging-sub">Connector health, queue depths, and recent warnings/errors. Auto-refreshes every {POLL_MS / 1000}s.</p>
         <button className="logging-btn" type="button" onClick={refresh}>↻ Refresh now</button>
-      </header>
+      </div>
 
       {error && <div className="logging-error">{error}</div>}
 
@@ -157,22 +212,6 @@ export default function Administration() {
           </div>
         )}
       </section>
-
-      {isAdmin && <CorsSettings />}
-
-      {isAdmin && <DomainSettings />}
-
-      {isAdmin && <GraphGlobalSettings />}
-
-      {isAdmin && <DashboardGlobalSettings />}
-
-      {isAdmin && <PrivacySettings />}
-
-      {isAdmin && (
-        <section className="logging-card">
-          <UserManagement />
-        </section>
-      )}
-    </div>
+    </>
   );
 }
