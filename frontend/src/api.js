@@ -291,13 +291,19 @@ export const api = {
     return res.json();
   },
 
+  getSequenceSchema: async () => {
+    const res = await authFetch("/api/rules/sequence-schema");
+    if (!res.ok) throw new Error("Failed to fetch sequence schema");
+    return res.json();
+  },
+
   createRule: async (rule) => {
     const res = await authFetch("/api/rules", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(rule),
     });
-    if (!res.ok) throw new Error("Failed to create rule");
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Failed to create rule");
     return res.json();
   },
 
@@ -307,7 +313,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(rule),
     });
-    if (!res.ok) throw new Error("Failed to update rule");
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Failed to update rule");
     return res.json();
   },
 

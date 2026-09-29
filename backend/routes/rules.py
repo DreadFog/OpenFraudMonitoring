@@ -130,6 +130,25 @@ def list_rules():
     return jsonify([r.to_dict() for r in rules]), 200
 
 
+@rules_bp.route("/rules/sequence-schema", methods=["GET"])
+@require_auth
+@require_role("admin")
+def sequence_schema():
+    return jsonify({
+        event_type: [
+            {
+                "name": name,
+                "label": name.replace("_", " ").capitalize(),
+                "type": field_type,
+                "category": "Event fields",
+                "operators": OPERATORS[field_type],
+            }
+            for name, field_type in fields.items()
+        ]
+        for event_type, fields in _SEQUENCE_FIELDS.items()
+    }), 200
+
+
 @rules_bp.route("/rules", methods=["POST"])
 @require_auth
 @require_role("admin")

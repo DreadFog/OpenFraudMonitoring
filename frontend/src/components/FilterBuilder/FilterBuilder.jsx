@@ -107,7 +107,7 @@ function FieldCombobox({ schema, value, onChange }) {
   );
 }
 
-function FilterRow({ filter, schema, onUpdate, onRemove }) {
+function FilterRow({ filter, schema, onUpdate, onRemove, suggest }) {
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [valueFocused, setValueFocused] = useState(false);
@@ -126,14 +126,14 @@ function FilterRow({ filter, schema, onUpdate, onRemove }) {
 
   // Debounced suggestion fetch — triggers on focus or value change
   useEffect(() => {
-    if (!filter.field || !valueFocused) {
+    if (!filter.field || !valueFocused || !suggest) {
       setSuggestions([]);
       return;
     }
 
     const timer = setTimeout(async () => {
       try {
-        const results = await api.getSuggestions(filter.field, filter.value || "");
+        const results = await suggest(filter.field, filter.value || "");
         setSuggestions(results);
         setShowSuggestions(true);
       } catch {
@@ -142,7 +142,7 @@ function FilterRow({ filter, schema, onUpdate, onRemove }) {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [filter.field, filter.value, valueFocused]);
+  }, [filter.field, filter.value, valueFocused, suggest]);
 
   return (
     <div className="filter-row">
@@ -216,6 +216,7 @@ function FilterRow({ filter, schema, onUpdate, onRemove }) {
           onChange={(e) => onUpdate("value", e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
+              e.preventDefault();
               setShowSuggestions(false);
               setValueFocused(false);
             }
@@ -244,14 +245,23 @@ function FilterRow({ filter, schema, onUpdate, onRemove }) {
       </div>
       )}
 
-      <button className="filter-remove" onClick={onRemove} title="Remove filter">
+      <button type="button" className="filter-remove" onClick={onRemove} title="Remove filter">
         ×
       </button>
     </div>
   );
 }
 
-export default function FilterBuilder({ schema, filters, onChange, onClear }) {
+export default function FilterBuilder({
+  schema,
+  filters,
+  onChange,
+  onClear,
+  title = "Filters",
+  addLabel = "+ Add Filter",
+  className = "",
+  suggest = api.getSuggestions,
+}) {
   const addFilter = () => {
     onChange([...filters, { field: "", op: "", value: "" }]);
   };
@@ -272,14 +282,14 @@ export default function FilterBuilder({ schema, filters, onChange, onClear }) {
   };
 
   return (
-    <div className="filter-builder">
+    <div className={`filter-builder ${className}`}>
       <div className="filter-header">
-        <span className="filter-title">Filters</span>
-        <button className="filter-add-btn" onClick={addFilter}>
-          + Add Filter
+        <span className="filter-title">{title}</span>
+        <button type="button" className="filter-add-btn" onClick={addFilter}>
+          {addLabel}
         </button>
         {filters.length > 0 && (
-            <button className="filter-clear-btn" onClick={onClear}>
+            <button type="button" className="filter-clear-btn" onClick={onClear}>
               Clear
             </button>
         )}
@@ -291,6 +301,7 @@ export default function FilterBuilder({ schema, filters, onChange, onClear }) {
           schema={schema}
           onUpdate={(key, value) => updateFilter(i, key, value)}
           onRemove={() => removeFilter(i)}
+          suggest={suggest}
         />
       ))}
     </div>

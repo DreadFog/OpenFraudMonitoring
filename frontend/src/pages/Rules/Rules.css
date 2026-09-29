@@ -88,9 +88,9 @@
   color: var(--muted);
 }
 
-.rules-form input,
-.rules-form select,
-.rules-form textarea {
+.rules-form label > input,
+.rules-form label > select,
+.rules-form label > textarea {
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -111,6 +111,88 @@
 .rules-form-actions {
   display: flex;
   gap: 8px;
+}
+
+.rules-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.rules-filter-builder.filter-builder {
+  padding: 0;
+  margin: 0;
+}
+
+.rules-sequences .filter-add-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rules-sequence {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.rules-sequence-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  font-size: 12px;
+}
+
+.rules-sequence-head .filter-clear-btn {
+  margin-left: auto;
+}
+
+.rules-sequence-title {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.rules-step {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding-left: 12px;
+  border-left: 2px solid var(--accent);
+}
+
+.rules-step-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rules-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--bg);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.rules-step-head .filter-remove:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .rules-table-wrap {

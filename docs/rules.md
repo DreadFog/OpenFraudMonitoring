@@ -8,6 +8,10 @@ OFM ships with built-in rules stored as JSON files in [`backend/rules/defaults/`
 
 To add a new default rule, drop a `.json` file in that folder — it will be picked up on the next restart.
 
+## Rule Builder
+
+The **Rules** page provides a visual builder: conditions use the same field picker, operators, and value autocomplete as the session filters (`/api/schema`, `/api/suggest`). Periodic rules can also add ordered event sequences; their per-event fields come from `GET /api/rules/sequence-schema`. JSON import/export remains available for bulk changes.
+
 ## Rule Syntax
 
 A rule is a JSON object with the following fields:

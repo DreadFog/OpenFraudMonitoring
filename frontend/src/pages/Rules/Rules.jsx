@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../api";
 import { useAuth } from "../../AuthContext";
+import FilterBuilder from "../../components/FilterBuilder/FilterBuilder";
 import "./Rules.css";
 
 const EMPTY_FORM = {
@@ -11,18 +12,30 @@ const EMPTY_FORM = {
   logic: "AND",
   score_modifier: 0,
   period_seconds: 0,
-  conditionsText: "[]",
+  conditions: [],
+  sequences: [],
 };
 
+const newStep = () => ({ event_type: "", filters: [] });
+const newSequence = () => ({ steps: [newStep(), newStep()] });
+
+function isIncomplete(f) {
+  return !f.field || !f.op;
+}
+
 function pickRulePayload(form) {
-  let parsed = [];
-  try {
-    parsed = JSON.parse(form.conditionsText || "[]");
-  } catch {
-    throw new Error("Conditions must be valid JSON.");
+  if (form.conditions.some(isIncomplete)) {
+    throw new Error("Complete or remove every condition (field and operator are required).");
   }
-  if (!Array.isArray(parsed)) {
-    throw new Error("Conditions JSON must be an array.");
+  if (form.sequences.length > 0) {
+    if (form.rule_type !== "periodic") throw new Error("Sequences are only allowed in periodic rules.");
+    if (form.logic !== "AND") throw new Error("Rules with sequences must use AND logic.");
+    for (const seq of form.sequences) {
+      if (seq.steps.some((s) => !s.event_type)) throw new Error("Every sequence step needs an event type.");
+      if (seq.steps.some((s) => s.filters.some(isIncomplete))) {
+        throw new Error("Complete or remove every sequence step condition.");
+      }
+    }
   }
 
   return {
@@ -33,8 +46,73 @@ function pickRulePayload(form) {
     logic: form.logic,
     score_modifier: Number(form.score_modifier) || 0,
     period_seconds: Number(form.period_seconds) || 0,
-    conditions: parsed,
+    conditions: [
+      ...form.conditions,
+      ...form.sequences.map((seq) => ({ type: "sequence", steps: seq.steps })),
+    ],
   };
+}
+
+function SequenceEditor({ index, sequence, eventSchema, onChange, onRemove }) {
+  const eventTypes = Object.keys(eventSchema);
+  const updateStep = (i, patch) =>
+    onChange({ steps: sequence.steps.map((s, j) => (j === i ? { ...s, ...patch } : s)) });
+  const removeStep = (i) => onChange({ steps: sequence.steps.filter((_, j) => j !== i) });
+
+  return (
+    <div className="rules-sequence">
+      <div className="rules-sequence-head">
+        <span className="rules-sequence-title">Sequence {index + 1}</span>
+        <span className="rules-muted">Steps must occur in this order within the session.</span>
+        <button type="button" className="filter-clear-btn" onClick={onRemove}>Remove sequence</button>
+      </div>
+      {sequence.steps.map((step, i) => (
+        <div className="rules-step" key={i}>
+          <div className="rules-step-head">
+            <span className="rules-step-num">{i + 1}</span>
+            <select
+              className="filter-select"
+              value={step.event_type}
+              onChange={(e) => updateStep(i, { event_type: e.target.value, filters: [] })}
+            >
+              <option value="">Event type…</option>
+              {eventTypes.map((t) => (
+                <option key={t} value={t}>{t.replace(/_/g, " ")}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="filter-remove"
+              onClick={() => removeStep(i)}
+              disabled={sequence.steps.length <= 2}
+              title={sequence.steps.length <= 2 ? "A sequence needs at least 2 steps" : "Remove step"}
+            >
+              ×
+            </button>
+          </div>
+          {step.event_type && (
+            <FilterBuilder
+              className="rules-filter-builder"
+              title="Where"
+              addLabel="+ Add Condition"
+              schema={eventSchema[step.event_type] || []}
+              filters={step.filters}
+              onChange={(filters) => updateStep(i, { filters })}
+              onClear={() => updateStep(i, { filters: [] })}
+              suggest={null}
+            />
+          )}
+        </div>
+      ))}
+      <button
+        type="button"
+        className="filter-add-btn"
+        onClick={() => onChange({ steps: [...sequence.steps, newStep()] })}
+      >
+        + Add Step
+      </button>
+    </div>
+  );
 }
 
 export default function RulesPage() {
@@ -47,6 +125,8 @@ export default function RulesPage() {
   const [editingId, setEditingId] = useState(null);
   const [replaceOnImport, setReplaceOnImport] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [schema, setSchema] = useState([]);
+  const [eventSchema, setEventSchema] = useState({});
   const fileInputRef = useRef(null);
 
   const sortedRules = useMemo(
@@ -69,6 +149,8 @@ export default function RulesPage() {
 
   useEffect(() => {
     loadRules();
+    api.getSchema().then(setSchema).catch(() => setSchema([]));
+    api.getSequenceSchema().then(setEventSchema).catch(() => setEventSchema({}));
   }, []);
 
   function resetForm() {
@@ -77,6 +159,7 @@ export default function RulesPage() {
   }
 
   function onEdit(rule) {
+    const conditions = rule.conditions || [];
     setEditingId(rule.id);
     setForm({
       name: rule.name || "",
@@ -86,7 +169,14 @@ export default function RulesPage() {
       logic: rule.logic || "AND",
       score_modifier: rule.score_modifier ?? 0,
       period_seconds: rule.period_seconds ?? 0,
-      conditionsText: JSON.stringify(rule.conditions || [], null, 2),
+      conditions: conditions
+        .filter((c) => c.type !== "sequence")
+        .map((c) => ({ field: c.field || "", op: c.op || "", value: c.value == null ? "" : String(c.value) })),
+      sequences: conditions
+        .filter((c) => c.type === "sequence")
+        .map((c) => ({
+          steps: (c.steps || []).map((s) => ({ event_type: s.event_type || "", filters: s.filters || [] })),
+        })),
     });
   }
 
@@ -270,8 +360,8 @@ export default function RulesPage() {
           <label>
             Logic
             <select value={form.logic} onChange={(e) => setForm((f) => ({ ...f, logic: e.target.value }))}>
-              <option value="AND">AND</option>
-              <option value="OR">OR</option>
+              <option value="AND">AND — all conditions must match</option>
+              <option value="OR" disabled={form.sequences.length > 0}>OR — any condition matches</option>
             </select>
           </label>
           <label>
@@ -299,14 +389,44 @@ export default function RulesPage() {
             />
             Enabled
           </label>
-          <label className="rules-wide">
-            Conditions JSON (array)
-            <textarea
-              rows={8}
-              value={form.conditionsText}
-              onChange={(e) => setForm((f) => ({ ...f, conditionsText: e.target.value }))}
+          <div className="rules-wide rules-builder">
+            <FilterBuilder
+              className="rules-filter-builder"
+              title={`Conditions (${form.logic === "AND" ? "all must match" : "any matches"})`}
+              addLabel="+ Add Condition"
+              schema={schema}
+              filters={form.conditions}
+              onChange={(conditions) => setForm((f) => ({ ...f, conditions }))}
+              onClear={() => setForm((f) => ({ ...f, conditions: [] }))}
             />
-          </label>
+
+            <div className="rules-sequences">
+              <div className="filter-header">
+                <span className="filter-title">Event sequences</span>
+                <button
+                  type="button"
+                  className="filter-add-btn"
+                  onClick={() => setForm((f) => ({ ...f, logic: "AND", sequences: [...f.sequences, newSequence()] }))}
+                  disabled={form.rule_type !== "periodic"}
+                >
+                  + Add Sequence
+                </button>
+                {form.rule_type !== "periodic" && (
+                  <span className="rules-muted">Available for periodic rules only.</span>
+                )}
+              </div>
+              {form.sequences.map((seq, i) => (
+                <SequenceEditor
+                  key={i}
+                  index={i}
+                  sequence={seq}
+                  eventSchema={eventSchema}
+                  onChange={(next) => setForm((f) => ({ ...f, sequences: f.sequences.map((s, j) => (j === i ? next : s)) }))}
+                  onRemove={() => setForm((f) => ({ ...f, sequences: f.sequences.filter((_, j) => j !== i) }))}
+                />
+              ))}
+            </div>
+          </div>
           <div className="rules-form-actions rules-wide">
             <button className="rules-btn" type="submit" disabled={saving}>{editingId ? "Save" : "Create"}</button>
             <button className="rules-btn rules-btn-secondary" type="button" onClick={resetForm} disabled={saving}>Clear</button>
