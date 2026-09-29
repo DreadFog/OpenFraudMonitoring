@@ -126,6 +126,11 @@ session list API. It's only shown when browsing devices (`/devices`,
 
 - `GET /api/devices` — paginated list: id, platform, GPU renderer,
   device type, confidence, session/fsid/IP counts, first/last seen.
+  Accepts `filters` (JSON array of `{field, op, value}`, AND-combined).
+- `GET /api/devices/schema` — filterable device fields, generated from the
+  `Device` model columns (see `services/device_filters.py`) plus linked-session
+  aggregates: `sessions_count`, `distinct_fsids`, `distinct_ips`.
+- `GET /api/devices/suggest?field=&q=` — autocomplete values for device string fields.
 - `GET /api/devices/<id>` — full canonical field breakdown (incl. device
   type) + all linked sessions (fsid, risk score, IP, first/last seen).
 - `device_id` is also filterable from the existing session filter builder
@@ -134,7 +139,8 @@ session list API. It's only shown when browsing devices (`/devices`,
 ## Frontend
 
 - **Devices** page (`/devices`) — paginated device list with a confidence
-  badge and device type per row.
+  badge and device type per row, filterable with the same filter builder as
+  the session view.
 - **Device detail** (`/device/:id`) — canonical fields grouped by tier
   (including device type) + table of linked sessions (click-through to
   `/session/:fsid`).

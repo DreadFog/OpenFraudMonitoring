@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api";
+import FilterBuilder from "../../components/FilterBuilder/FilterBuilder";
+import { usePersistentState } from "../../hooks/usePersistentState";
 import "./Devices.css";
 
 function confidenceClass(confidence) {
@@ -16,11 +18,20 @@ export default function Devices() {
   const [perPage, setPerPage] = useState(25);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [schema, setSchema] = useState([]);
+  const [filters, setFilters] = usePersistentState("devices.filters", []);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    api.getDeviceSchema().then(setSchema).catch(() => setSchema([]));
+  }, []);
+
+  const completeKey = JSON.stringify(filters.filter((f) => f.field && f.op && f.value !== ""));
+  const completeFilters = useMemo(() => JSON.parse(completeKey), [completeKey]);
 
   const loadDevices = useCallback(async () => {
     try {
-      const result = await api.getDevices(page, perPage);
+      const result = await api.getDevices(page, perPage, completeFilters);
       setDevices(result.devices || []);
       setTotal(result.total || 0);
       setTotalPages(result.pages || 1);
@@ -30,7 +41,7 @@ export default function Devices() {
     } finally {
       setLoading(false);
     }
-  }, [page, perPage]);
+  }, [page, perPage, completeFilters]);
 
   useEffect(() => {
     loadDevices();
@@ -53,9 +64,21 @@ export default function Devices() {
         </p>
       </header>
 
+      <FilterBuilder
+        schema={schema}
+        filters={filters}
+        onChange={(f) => { setFilters(f); setPage(1); }}
+        onClear={() => { setFilters([]); setPage(1); }}
+        suggest={api.getDeviceSuggestions}
+      />
+
       <div className="table-wrapper">
         {devices.length === 0 ? (
-          <p className="empty-message">No devices yet — load a page with ofm.js included.</p>
+          <p className="empty-message">
+            {completeFilters.length > 0
+              ? "No devices match the current filters."
+              : "No devices yet — load a page with ofm.js included."}
+          </p>
         ) : (
           <table className="sessions-table">
             <thead>

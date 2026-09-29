@@ -4,10 +4,13 @@ Devices endpoints — list and detail views for fuzzy-matched device clusters.
 See services/device_matching.py for how sessions are linked to a Device.
 """
 
+import json
+
 from flask import Blueprint, request, jsonify
 from models import Session
 from models.device import Device
 from services.auth import require_auth
+from services.device_filters import build_device_query, get_device_schema, suggest_device_values
 
 devices_bp = Blueprint("devices", __name__, url_prefix="/api")
 
@@ -49,7 +52,14 @@ def get_devices():
     if per_page not in (10, 25, 50, 100):
         per_page = 10
 
-    query = Device.query.order_by(Device.last_seen.desc())
+    try:
+        filters = json.loads(request.args.get("filters", "[]"))
+    except (json.JSONDecodeError, TypeError):
+        filters = []
+    if not isinstance(filters, list):
+        filters = []
+
+    query = build_device_query(filters).order_by(Device.last_seen.desc())
     total = query.count()
     pages = max(1, -(-total // per_page))  # ceil division
     page = min(page, pages)
@@ -64,6 +74,19 @@ def get_devices():
         "total": total,
         "pages": pages,
     }), 200
+
+
+@devices_bp.route("/devices/schema", methods=["GET"])
+@require_auth
+def get_devices_schema():
+    """Filterable device fields, generated from the Device model plus linked-session aggregates."""
+    return jsonify(get_device_schema()), 200
+
+
+@devices_bp.route("/devices/suggest", methods=["GET"])
+@require_auth
+def suggest_devices():
+    return jsonify(suggest_device_values(request.args.get("field", ""), request.args.get("q", ""))), 200
 
 
 @devices_bp.route("/devices/<int:device_id>", methods=["GET"])

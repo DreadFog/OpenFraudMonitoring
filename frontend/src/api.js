@@ -246,12 +246,29 @@ export const api = {
 
   // ── Devices ──
 
-  getDevices: async (page = 1, perPage = 10) => {
+  getDevices: async (page = 1, perPage = 10, filters = []) => {
     const params = new URLSearchParams();
     params.append("page", String(page));
     params.append("per_page", String(perPage));
+    if (filters.length > 0) {
+      params.append("filters", JSON.stringify(filters));
+    }
     const res = await authFetch(`/api/devices?${params.toString()}`);
     if (!res.ok) throw new Error("Failed to fetch devices");
+    return res.json();
+  },
+
+  getDeviceSchema: async () => {
+    const res = await authFetch("/api/devices/schema");
+    if (!res.ok) throw new Error("Failed to fetch device schema");
+    return res.json();
+  },
+
+  getDeviceSuggestions: async (field, q) => {
+    const res = await authFetch(
+      `/api/devices/suggest?field=${encodeURIComponent(field)}&q=${encodeURIComponent(q)}`
+    );
+    if (!res.ok) throw new Error("Failed to fetch device suggestions");
     return res.json();
   },
 

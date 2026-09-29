@@ -51,8 +51,11 @@ def build_condition(field_meta, op, value):
     """Build a single SQLAlchemy filter condition from field metadata + operator + value."""
     model = _get_model(field_meta["model"])
     column = getattr(model, field_meta["column"])
-    field_type = field_meta["type"]
+    return apply_operator(column, field_meta["type"], op, value)
 
+
+def apply_operator(column, field_type, op, value):
+    """Build a condition comparing any SQL column expression against a filter value."""
     # Cast value to the appropriate Python type
     if field_type in ("number", "date"):
         try:
