@@ -73,6 +73,21 @@
   cursor: not-allowed;
 }
 
+:root[data-theme="light"] .graph-explore-btn {
+  background: #e3eef9;
+  border-color: #a9c8e6;
+}
+
+:root[data-theme="light"] .graph-explore-btn:hover { background: #cde0f3; }
+
+:root[data-theme="light"] .delete-btn {
+  background: #fce6e6;
+  color: var(--risk-high);
+  border-color: #eab4b4;
+}
+
+:root[data-theme="light"] .delete-btn:hover:not(:disabled) { background: #f6d4d4; }
+
 .sd-body {
   padding: 24px;
   display: flex;
