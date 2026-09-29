@@ -23,6 +23,10 @@ function fmtTs(ms) {
   return new Date(ms).toISOString().replace("T", " ").slice(11, 19);
 }
 
+function utcDay(ms) {
+  return ms ? new Date(ms).toISOString().slice(0, 10) : "";
+}
+
 export default function Administration() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -135,14 +139,21 @@ export default function Administration() {
           <p className="logging-muted">No log entries.</p>
         ) : (
           <div className="logs-list">
-            {logs.map((l, i) => (
-              <div key={i} className={`log-row log-${(l.level || "").toLowerCase()}`}>
-                <span className="log-ts">{fmtTs(l.ts)}</span>
-                <span className={`log-level log-level-${(l.level || "").toLowerCase()}`}>{l.level}</span>
-                <span className="log-source">{l.source}</span>
-                <span className="log-msg">{l.message}</span>
-              </div>
-            ))}
+            {logs.map((l, i) => {
+              const day = utcDay(l.ts);
+              const newDay = day && (i === 0 || day !== utcDay(logs[i - 1].ts));
+              return (
+                <React.Fragment key={i}>
+                  {newDay && <div className="log-day-divider"><span>{day} UTC</span></div>}
+                  <div className={`log-row log-${(l.level || "").toLowerCase()}`}>
+                    <span className="log-ts">{fmtTs(l.ts)}</span>
+                    <span className={`log-level log-level-${(l.level || "").toLowerCase()}`}>{l.level}</span>
+                    <span className="log-source">{l.source}</span>
+                    <span className="log-msg">{l.message}</span>
+                  </div>
+                </React.Fragment>
+              );
+            })}
           </div>
         )}
       </section>

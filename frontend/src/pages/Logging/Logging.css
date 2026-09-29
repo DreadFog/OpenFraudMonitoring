@@ -235,6 +235,27 @@
   background: var(--surface);
 }
 
+.log-day-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 11px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+}
+
+.log-day-divider::before,
+.log-day-divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px dashed var(--border);
+}
+
 .log-ts {
   color: var(--muted);
 }
