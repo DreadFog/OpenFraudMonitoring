@@ -14,8 +14,10 @@
 
 import behavior from "./behavior.js";
 import deviceId from "./device_id.js";
+import privacyNotice from "./privacy_notice.js";
 
 const extensions = [
+  privacyNotice,
   behavior,
   deviceId,
 ];

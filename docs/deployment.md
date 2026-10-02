@@ -2,6 +2,14 @@
 
 OpenFraudMonitoring can collect data in several deployment modes. The choice matters for cookie-based authentication detection: the browser only sends a site's cookies when the collection request is made to a host covered by those cookies.
 
+## Visitor notice
+
+Loading `ofm.js` displays a bottom-of-page notice: "This website protects itself against fraud attempts using OpenFraudMonitoring. For this purpose, data about your web browser and activity on this site will be collected." The project name links to [the GitHub repository](https://github.com/DreadFog/OpenFraudMonitoring).
+
+The **OK** button dismisses the notice and sets `ofm_notice_acknowledged=1` on the monitored page's host, not the script server's host. The cookie has `Path=/`, `Max-Age=31536000` (one year), `SameSite=Lax`, and `Secure` on HTTPS. It contains only the acknowledgment flag, is readable by client JavaScript, and is unrelated to the monitored site's authentication cookie. Removing it or allowing it to expire makes the notice appear again. If cookies are unavailable, dismissal still works for the current page but may not persist.
+
+The banner is informational: **OK is not a consent gate**, and fingerprint/behavior collection is not delayed or disabled by the notice. Site operators remain responsible for any required consent mechanism and privacy disclosures. Rebuild the client/backend image and refresh cached copies of `ofm.js` to deploy the notice.
+
 ## Shared Docker network for a reverse proxy
 
 The Compose file uses an external Docker network named `internal_network`. Its purpose is to let a reverse proxy such as Caddy, managed by a separate Compose project, communicate with the OFM containers without publishing the frontend port on the host.

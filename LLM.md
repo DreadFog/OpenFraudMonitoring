@@ -144,6 +144,7 @@ Full docs: `docs/graph.md`. Route `/graph?seeds=<url-encoded JSON array>` (Cytos
 
 - `index.js` entry: runs fpscanner, `collect()` → `/api/initial`, registers extensions. `config.js` endpoints + `OFM_SERVER_URL` (build-time Vite inject; empty=same-origin). `send.js` beacon/fetch transport (fetch fallback uses `credentials: "include"`).
 - **Cookie-based auth detection requires same-origin collection**: serve `/ofm.js` and proxy `/api/initial`, `/api/heartbeat`, `/api/behavioral_event` through each monitored host (`OFM_SERVER_URL=`). A separate OFM hostname never receives the monitored site's cookies. See `docs/deployment.md`.
+- `extensions/privacy_notice.js` displays an informational fraud-monitoring banner with a GitHub link and **OK** dismissal, isolated in a shadow root. Host-scoped `ofm_notice_acknowledged=1` cookie remembers dismissal for one year (`Path=/; SameSite=Lax`, `Secure` on HTTPS). Collection does not wait for acknowledgment; this is not a consent gate. Cookie failures leave dismissal usable for the current page.
 - Extensions (`extensions/`): `behavior.js` — buffers low-signal (mousemove/scroll/keys/touch, throttled), sends high-signal directly (button_click, form_submit, copy, paste). `drain()` flushed each heartbeat. `CFG.captureFormValues` gates form value capture. Debug hook `window.__OFM__`.
 
 ## Key env vars
