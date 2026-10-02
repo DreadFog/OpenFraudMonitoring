@@ -17,7 +17,10 @@ from services.database import db
 from models import Session, TYPED_EVENT_MODELS
 from models import AuthAttemptEvent
 from services.event_queue import enqueue_event
-from services.domains import add_session_domain, auth_cookie_present, matching_form_config
+from services.domains import (
+    add_session_domain, auth_cookie_present, matching_form_config,
+    configured_domain_for_host, domain_from_url, form_action_matches,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +28,36 @@ behavioral_event_bp = Blueprint("behavioral_event", __name__, url_prefix="/api")
 
 # Allowed event types (must match TYPED_EVENT_MODELS keys)
 ALLOWED_EVENT_TYPES = set(TYPED_EVENT_MODELS.keys())
+
+
+def _redact_event_data(event_type, data, host, url):
+    sanitized = dict(data)
+    if event_type == "form_submit":
+        sanitized.pop("fields", None)
+    elif event_type in {"copy", "paste"}:
+        prefix = "source" if event_type == "copy" else "target"
+        field_names = {
+            str(data.get(f"{prefix}Name") or "").strip().lower(),
+            str(data.get(f"{prefix}Id") or "").strip().lower(),
+        } - {""}
+        for candidate_host in {host, domain_from_url(url)} - {""}:
+            config = configured_domain_for_host(candidate_host)
+            if not config or not config.form_action:
+                continue
+            expected = {
+                str(name).strip().lower() for name in (config.form_field_names or [])
+                if str(name).strip()
+            }
+            action = str(data.get("formAction") or "")
+            action_matches = form_action_matches(config.form_action, action)
+            password_field = str(data.get(f"{prefix}Type") or "").lower() == "password"
+            credential_field = bool(field_names & expected) and (not action or action_matches)
+            unknown_login_field = action_matches and not field_names
+            if password_field or credential_field or unknown_login_field:
+                if "text" in sanitized:
+                    sanitized["text"] = "redacted"
+                break
+    return sanitized
 
 
 def _build_typed_event(Model, session_id, timestamp, url, data, authenticated):
@@ -102,6 +135,7 @@ def behavioral_event():
         return jsonify({"ok": False, "error": "session not found"}), 404
 
     authenticated = auth_cookie_present(request, request.host)
+    data = _redact_event_data(event_type, data, request.host, url)
 
     # Dispatch to the appropriate typed model
     Model = TYPED_EVENT_MODELS[event_type]

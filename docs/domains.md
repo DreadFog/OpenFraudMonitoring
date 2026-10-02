@@ -24,7 +24,7 @@ Administration page → **Monitored domains**. Each entry has:
 | `auth_cookie_name` | Optional. If this cookie is present on a collection request, `session.authenticated` becomes `true` |
 | `form_action` | Login form action. May be a path (`/admin/login`) or an absolute URL |
 | `form_method` | Form method, default `post` |
-| `form_field_names` | Field names that must all be present in the submitted form |
+| `form_field_names` | Field names that must all be present in the submitted form; also identifies clipboard fields whose values must be redacted (include username/email and password names) |
 | `active` | Inactive entries are ignored |
 
 ### Choosing the right cookie
@@ -43,6 +43,18 @@ An `auth_attempt` event is created when **all** of the following match a `form_s
 - Every configured field name is present in the submitted field names (subset match, case-insensitive). Extra fields such as CSRF tokens are allowed.
 
 Matching is evaluated at ingestion time only. Changing a configuration does **not** re-scan existing events; submit the form again to test.
+
+### Credential privacy
+
+Redaction is enforced by the backend **before storage**, regardless of the client's clipboard/form-value capture settings. It uses active monitored-domain entries with a configured login form action. For clipboard protection, an entry can match either the collection request host or the host in the event's page URL, so separate-host collection is covered too. Cookie detection and authentication-attempt matching still use the request host as described above.
+
+- For `copy` and `paste`, captured `text` becomes the literal `"redacted"` when the source/target name or ID matches a configured login field (case-insensitive) and its form action matches the login action. Include every credential field in `form_field_names`, such as `email` and `password`.
+- If the form action is missing, a matching field name or ID is enough. If both name and ID are missing but the login action matches, captured text is redacted conservatively.
+- Inputs identified as `type=password` are protected on the configured host even when the form action differs. No form method or other submitted fields are required for clipboard redaction.
+- DOM IDs/names, form actions, timestamps, authentication state, and original clipboard lengths remain available for analysis. Redaction does not add text when clipboard capture supplied none. Unrelated clipboard fields are unchanged.
+- `form_submit` field values (`data.fields`) are discarded at ingestion, for all forms. Only field names, action, method, and event metadata are stored. Matching submissions continue to create both the form-submit record and the server-generated `auth_attempt` record; neither contains submitted values.
+
+This protects newly received events only. Existing records are **not** scrubbed. Protection relies on the event's reported metadata and a configured login pattern; it does not inspect arbitrary clipboard contents or remove credentials from URLs. Backend redaction also does not prevent transmission of captured values: leave client capture disabled when values should never leave the browser.
 
 ## Import / export
 

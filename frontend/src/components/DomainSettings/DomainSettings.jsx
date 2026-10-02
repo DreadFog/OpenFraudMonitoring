@@ -103,6 +103,7 @@ export default function DomainSettings() {
     <section className="logging-card">
       <h2>Monitored domains</h2>
       <p className="logging-muted">Configure authentication cookies and login-form patterns for each monitored host.</p>
+      <p className="logging-muted">Credential privacy: active login-form configurations replace captured copy/paste values in matching login fields with <code>redacted</code> before storage. Password inputs are also protected. Form-submit values are never stored; field names and authentication attempts are retained. Existing records are unchanged.</p>
       {error && <div className="logging-error">{error}</div>}
       <form onSubmit={submit} className="domain-form">
         <label>Domain<input required placeholder="example.com" value={form.domain} onChange={(e) => update("domain", e.target.value)} /></label>
