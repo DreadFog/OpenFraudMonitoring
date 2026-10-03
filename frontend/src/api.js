@@ -238,8 +238,8 @@ export const api = {
     return res.json();
   },
 
-  getSessionDetail: async (fsid) => {
-    const res = await authFetch(`/api/sessions/${fsid}`);
+  getSessionDetail: async (sessionId) => {
+    const res = await authFetch(`/api/sessions/${sessionId}`);
     if (!res.ok) throw new Error("Failed to fetch session detail");
     return res.json();
   },
@@ -353,8 +353,8 @@ export const api = {
     return res.json();
   },
 
-  deleteSession: async (fsid) => {
-    const res = await authFetch(`/api/sessions/${encodeURIComponent(fsid)}`, { method: "DELETE" });
+  deleteSession: async (sessionId) => {
+    const res = await authFetch(`/api/sessions/${sessionId}`, { method: "DELETE" });
     if (!res.ok) throw new Error("Failed to delete session");
     return res.json();
   },

@@ -96,7 +96,8 @@ class BehavioralEventRedactionTests(unittest.TestCase):
     def test_endpoint_stores_redacted_clipboard_and_preserves_auth_attempt(self):
         app = Flask(__name__)
         app.register_blueprint(behavioral_event_bp)
-        session = SimpleNamespace(id=1, fsid="test-session", domains=[])
+        session = SimpleNamespace(id=1, visit_id="00000000-0000-4000-8000-000000000001",
+                      fsid="test-session", domains=[])
         with patch("routes.behavioral_event.Session") as session_model, \
                 patch("routes.behavioral_event.db") as database, \
                 patch("routes.behavioral_event.auth_cookie_present", return_value=False), \
@@ -105,16 +106,17 @@ class BehavioralEventRedactionTests(unittest.TestCase):
             session_model.query.filter_by.return_value.first.return_value = session
             client = app.test_client()
             response = client.post("/api/behavioral_event", base_url="https://shop.example.com", json={
-                "fsid": session.fsid, "timestamp": 123, "url": "https://shop.example.com/login",
+                "visit_id": session.visit_id, "fsid": session.fsid, "timestamp": 123, "url": "https://shop.example.com/login",
                 "event_type": "paste", "data": {
                     "text": "private-password", "targetName": "password", "formAction": "/login",
                 },
             })
             self.assertEqual(response.status_code, 200)
+            session_model.query.filter_by.assert_called_with(visit_id=session.visit_id)
             self.assertEqual(database.session.add.call_args.args[0].text, "redacted")
             database.session.add.reset_mock()
             response = client.post("/api/behavioral_event", base_url="https://shop.example.com", json={
-                "fsid": session.fsid, "timestamp": 124, "url": "https://shop.example.com/login",
+                "visit_id": session.visit_id, "fsid": session.fsid, "timestamp": 124, "url": "https://shop.example.com/login",
                 "event_type": "form_submit", "data": {
                     "action": "/login", "method": "post", "fieldNames": ["email", "password"],
                     "fields": [{"name": "password", "value": "private-password"}],

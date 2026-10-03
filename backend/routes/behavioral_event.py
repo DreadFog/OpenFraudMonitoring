@@ -3,7 +3,7 @@ Behavioral Event endpoint — receives direct behavioral events (button clicks, 
 
 Expected payload:
   {
-    "fsid": "<session_fingerprint_id>",
+    "visit_id": "<per-tab-visit-uuid>",
     "timestamp": 1234567890,
     "url": "https://...",
     "event_type": "button_click|form_submit|copy|paste",
@@ -17,6 +17,7 @@ from services.database import db
 from models import Session, TYPED_EVENT_MODELS
 from models import AuthAttemptEvent
 from services.event_queue import enqueue_event
+from services.visit_identity import normalize_visit_id
 from services.domains import (
     add_session_domain, auth_cookie_present, matching_form_config,
     configured_domain_for_host, domain_from_url, form_action_matches,
@@ -108,7 +109,7 @@ def behavioral_event():
     """
     payload = request.get_json() or {}
 
-    fsid = payload.get("fsid")
+    visit_id = normalize_visit_id(payload.get("visit_id"))
     timestamp = payload.get("timestamp", 0)
     url = payload.get("url", "")
     event_type = payload.get("event_type", "")
@@ -120,19 +121,12 @@ def behavioral_event():
     if event_type not in ALLOWED_EVENT_TYPES:
         return jsonify({"ok": False, "error": f"Invalid event_type: {event_type}"}), 400
 
-    # Find session by fsid, then IP fallback
-    session_obj = None
-    if fsid:
-        session_obj = Session.query.filter_by(fsid=fsid).first()
-    if not session_obj:
-        forwarded = request.headers.get("X-Forwarded-For", "")
-        client_ip = (forwarded.split(",")[0].strip() if forwarded else "") or request.remote_addr
-        session_obj = Session.query.filter_by(client_ip=client_ip).order_by(
-            Session.last_seen.desc()
-        ).first()
+    if visit_id is None:
+        return jsonify({"ok": False, "error": "visit_id must be a UUID"}), 400
+    session_obj = Session.query.filter_by(visit_id=visit_id).first()
 
     if not session_obj:
-        return jsonify({"ok": False, "error": "session not found"}), 404
+        return jsonify({"ok": False, "error": "visit not found"}), 404
 
     authenticated = auth_cookie_present(request, request.host)
     data = _redact_event_data(event_type, data, request.host, url)
@@ -149,7 +143,7 @@ def behavioral_event():
         config = matching_form_config(request.host, action, method, field_names)
         if config:
             logger.info(
-                "authentication attempt detected: fsid=%s host=%s config_id=%s action=%s method=%s submitted_field_count=%d",
+                "authentication attempt detected: visit_id=%s host=%s config_id=%s action=%s method=%s submitted_field_count=%d",
                 session_obj.fsid[:32], request.host, config.id, action,
                 method.lower(), len(field_names),
             )
@@ -171,8 +165,8 @@ def behavioral_event():
     enqueue_event(session_obj.id, "behavioral_event")
 
     logger.debug(
-        "behavioral_event: fsid=%s type=%s url=%s authenticated=%s",
-        fsid[:32] if fsid else "", event_type, url, authenticated,
+        "behavioral_event: visit_id=%s type=%s url=%s authenticated=%s",
+        visit_id, event_type, url, authenticated,
     )
 
     return jsonify({"ok": True}), 200

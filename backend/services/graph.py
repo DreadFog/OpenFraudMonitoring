@@ -4,7 +4,7 @@ Graph exploration service.
 Builds nodes/edges for the interactive graph view and computes one-hop
 expansions.  Three node families exist:
 
-  - session   : a tracked session (keyed by fsid)
+    - session   : a tracked visit (keyed by database session id)
   - stix      : a STIX observable/SDO (keyed by stix_id)
   - property  : a virtual metadata value node (keyed by field + value)
 
@@ -135,8 +135,8 @@ DEVICE_PROPERTY_FIELDS = {
 # Node / edge id helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
-def session_node_id(fsid: str) -> str:
-    return f"session:{fsid}"
+def session_node_id(session_id: int) -> str:
+    return f"session:{session_id}"
 
 
 def device_node_id(device_id: int) -> str:
@@ -172,11 +172,12 @@ def _resolve_stix(stix_id: str):
 
 def build_session_node(sess: Session) -> dict:
     return {
-        "id": session_node_id(sess.fsid),
+        "id": session_node_id(sess.id),
         "kind": "session",
-        "label": sess.fsid[:16] + ("…" if len(sess.fsid) > 16 else ""),
-        "ref": {"kind": "session", "fsid": sess.fsid},
+        "label": f"Session #{sess.id}",
+        "ref": {"kind": "session", "id": sess.id},
         "data": {
+            "id": sess.id,
             "fsid": sess.fsid,
             "risk_score": sess.risk_score or 0,
             "flags": sess.flags or [],
@@ -487,8 +488,8 @@ def resolve_seeds(seeds: Iterable[dict]) -> dict:
     for seed in seeds or []:
         kind = (seed.get("kind") or "").strip()
         if kind == "session":
-            fsid = seed.get("fsid")
-            sess = Session.query.filter_by(fsid=fsid).first() if fsid else None
+            session_id = seed.get("id")
+            sess = Session.query.get(session_id) if session_id is not None else None
             if sess is None:
                 continue
             sn = build_session_node(sess)
@@ -541,7 +542,7 @@ def get_expansions(ref: dict, known_ids: Iterable[str]) -> list[dict]:
     kind = (ref.get("kind") or "").strip()
 
     if kind == "session":
-        sess = Session.query.filter_by(fsid=ref.get("fsid")).first()
+        sess = Session.query.get(ref.get("id")) if ref.get("id") is not None else None
         if sess is None:
             return []
         options = []
@@ -604,7 +605,7 @@ def get_expansions(ref: dict, known_ids: Iterable[str]) -> list[dict]:
 
         sessions = device.sessions.all()
         if sessions:
-            ids = [session_node_id(s.fsid) for s in sessions]
+            ids = [session_node_id(s.id) for s in sessions]
             options.append({
                 "key": "sessions",
                 "label": "Sessions",
@@ -637,7 +638,7 @@ def get_expansions(ref: dict, known_ids: Iterable[str]) -> list[dict]:
         linked_sessions = _count_sessions_linked_to_stix(obj, stix_type)
         if linked_sessions:
             sess_rows = _sessions_linked_to_stix(obj, stix_type)
-            ids = [session_node_id(s.fsid) for s in sess_rows]
+            ids = [session_node_id(s.id) for s in sess_rows]
             options.append({
                 "key": "linked_sessions",
                 "label": "Linked sessions",
@@ -671,7 +672,7 @@ def get_expansions(ref: dict, known_ids: Iterable[str]) -> list[dict]:
         options = []
 
         if _count_sessions_with_property(field, value):
-            ids = [session_node_id(s.fsid) for s in _sessions_with_property(field, value)]
+            ids = [session_node_id(s.id) for s in _sessions_with_property(field, value)]
             options.append({
                 "key": "sessions",
                 "label": "Sessions with this value",
@@ -697,7 +698,7 @@ def get_expansions(ref: dict, known_ids: Iterable[str]) -> list[dict]:
         if not flag:
             return []
         sess_rows = _sessions_with_flag(flag)
-        ids = [session_node_id(s.fsid) for s in sess_rows]
+        ids = [session_node_id(s.id) for s in sess_rows]
         if not ids:
             return []
         return [{
@@ -739,10 +740,10 @@ def expand(ref: dict, key: str) -> dict:
     kind = (ref.get("kind") or "").strip()
 
     if kind == "session":
-        sess = Session.query.filter_by(fsid=ref.get("fsid")).first()
+        sess = Session.query.get(ref.get("id")) if ref.get("id") is not None else None
         if sess is None:
             return {"nodes": [], "edges": []}
-        sn_id = session_node_id(sess.fsid)
+        sn_id = session_node_id(sess.id)
 
         if key.startswith("role:"):
             role = key.split(":", 1)[1]
@@ -863,10 +864,10 @@ def compute_links(ref: dict, known_ids: Iterable[str]) -> dict:
     kind = (ref.get("kind") or "").strip()
 
     if kind == "session":
-        sess = Session.query.filter_by(fsid=ref.get("fsid")).first()
+        sess = Session.query.get(ref.get("id")) if ref.get("id") is not None else None
         if sess is None:
             return {"edges": []}
-        sn_id = session_node_id(sess.fsid)
+        sn_id = session_node_id(sess.id)
         for obj, stix_type, label in _session_linked_stix(sess):
             other = stix_node_id(obj.stix_id)
             if other in known:
@@ -893,7 +894,7 @@ def compute_links(ref: dict, known_ids: Iterable[str]) -> dict:
             return {"edges": []}
         dn_id = device_node_id(device.id)
         for sess in device.sessions.all():
-            other = session_node_id(sess.fsid)
+            other = session_node_id(sess.id)
             if other in known:
                 add_edge(_meta_edge(other, dn_id, "device"))
         for field, meta in DEVICE_PROPERTY_FIELDS.items():
@@ -910,7 +911,7 @@ def compute_links(ref: dict, known_ids: Iterable[str]) -> dict:
             return {"edges": []}
         obj_node_id = stix_node_id(obj.stix_id)
         for sess in _sessions_linked_to_stix(obj, stix_type):
-            other = session_node_id(sess.fsid)
+            other = session_node_id(sess.id)
             if other in known:
                 label = "user-agent" if stix_type == "user-agent" else "ip"
                 add_edge(_meta_edge(other, obj_node_id, label))
@@ -925,7 +926,7 @@ def compute_links(ref: dict, known_ids: Iterable[str]) -> dict:
         pn_id = property_node_id(field, value)
         label = PROPERTY_FIELDS.get(field, {}).get("label", field)
         for sess in _sessions_with_property(field, value):
-            other = session_node_id(sess.fsid)
+            other = session_node_id(sess.id)
             if other in known:
                 add_edge(_meta_edge(other, pn_id, label))
         if field in DEVICE_PROPERTY_FIELDS:
@@ -939,7 +940,7 @@ def compute_links(ref: dict, known_ids: Iterable[str]) -> dict:
         flag = ref.get("value")
         fn_id = flag_node_id(flag)
         for sess in _sessions_with_flag(flag):
-            other = session_node_id(sess.fsid)
+            other = session_node_id(sess.id)
             if other in known:
                 add_edge(_meta_edge(other, fn_id, "flag"))
 

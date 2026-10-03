@@ -51,9 +51,9 @@ function QuickSearch() {
 
   const items = results ? [
     ...results.sessions.map((s) => ({
-      key: `s:${s.fsid}`, icon: "👤", label: `${s.fsid.slice(0, 24)}…`,
+      key: `s:${s.id}`, icon: "👤", label: `Session #${s.id}`,
       sub: `${s.client_ip || "unknown IP"} · risk ${s.risk_score} · ${relTime(s.last_seen)}`,
-      path: `/session/${encodeURIComponent(s.fsid)}`,
+      path: `/session/${s.id}`,
     })),
     ...results.devices.map((d) => ({
       key: `d:${d.id}`, icon: "💻", label: `Device #${d.id}`,
@@ -332,8 +332,8 @@ export default function Landing() {
               ) : (
                 <ul className="lp-list">
                   {overview.review.map((s) => (
-                    <li key={s.fsid}>
-                      <Link to={`/session/${encodeURIComponent(s.fsid)}`} className="lp-row">
+                    <li key={s.id}>
+                      <Link to={`/session/${s.id}`} className="lp-row">
                         <span className={`lp-risk ${riskClass(s.risk_score)}`}>{s.risk_score}</span>
                         <span className="lp-row-main">
                           <span className="lp-row-title">{s.client_ip || "unknown IP"}</span>

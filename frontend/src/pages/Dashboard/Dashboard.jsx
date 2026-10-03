@@ -99,7 +99,7 @@ export default function Dashboard() {
   const [perPage, setPerPage] = usePersistentState("dashboard.perPage", 10);
   const [totalSessions, setTotalSessions] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [selectedFsids, setSelectedFsids] = useState(() => new Set());
+  const [selectedSessionIds, setSelectedSessionIds] = useState(() => new Set());
   const [groupByDevice, setGroupByDevice] = usePersistentState("dashboard.groupByDevice", false);
   const [expandedGroups, setExpandedGroups] = useState(() => new Set());
   const navigate = useNavigate();
@@ -385,31 +385,31 @@ export default function Dashboard() {
     return sortOrder === "asc" ? " ▲" : " ▼";
   };
 
-  const toggleSelected = (fsid) => {
-    setSelectedFsids((prev) => {
+  const toggleSelected = (sessionId) => {
+    setSelectedSessionIds((prev) => {
       const next = new Set(prev);
-      if (next.has(fsid)) next.delete(fsid);
-      else next.add(fsid);
+      if (next.has(sessionId)) next.delete(sessionId);
+      else next.add(sessionId);
       return next;
     });
   };
 
-  const allPageSelected = sessions.length > 0 && sessions.every((s) => selectedFsids.has(s.full_fsid));
+  const allPageSelected = sessions.length > 0 && sessions.every((s) => selectedSessionIds.has(s.id));
 
   const toggleSelectAllPage = () => {
-    setSelectedFsids((prev) => {
+    setSelectedSessionIds((prev) => {
       const next = new Set(prev);
       if (allPageSelected) {
-        sessions.forEach((s) => next.delete(s.full_fsid));
+        sessions.forEach((s) => next.delete(s.id));
       } else {
-        sessions.forEach((s) => next.add(s.full_fsid));
+        sessions.forEach((s) => next.add(s.id));
       }
       return next;
     });
   };
 
   const exploreSelectedInGraph = () => {
-    const seeds = Array.from(selectedFsids).map((fsid) => sessionSeed(fsid));
+    const seeds = Array.from(selectedSessionIds).map((sessionId) => sessionSeed(sessionId));
     if (seeds.length === 0) return;
     navigate(buildGraphUrl(seeds));
   };
@@ -424,12 +424,12 @@ export default function Dashboard() {
   };
 
   const toggleGroupSelected = (group) => {
-    const fsids = group.sessions.map((s) => s.full_fsid);
-    const allSelected = fsids.every((f) => selectedFsids.has(f));
-    setSelectedFsids((prev) => {
+    const sessionIds = group.sessions.map((s) => s.id);
+    const allSelected = sessionIds.every((id) => selectedSessionIds.has(id));
+    setSelectedSessionIds((prev) => {
       const next = new Set(prev);
-      if (allSelected) fsids.forEach((f) => next.delete(f));
-      else fsids.forEach((f) => next.add(f));
+      if (allSelected) sessionIds.forEach((id) => next.delete(id));
+      else sessionIds.forEach((id) => next.add(id));
       return next;
     });
   };
@@ -437,13 +437,13 @@ export default function Dashboard() {
   // Render a single session as a table row.
   const renderSessionRow = (session, isChild = false) => (
     <tr
-      key={session.full_fsid}
+      key={session.id}
       className={isChild ? "session-child-row" : ""}
-      onClick={() => navigate(`/session/${session.full_fsid}`)}
+      onClick={() => navigate(`/session/${session.id}`)}
       onAuxClick={(e) => {
         if (e.button === 1) {
           e.preventDefault();
-          window.open(`/session/${session.full_fsid}`, "_blank", "noopener");
+          window.open(`/session/${session.id}`, "_blank", "noopener");
         }
       }}
       onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }}
@@ -451,8 +451,8 @@ export default function Dashboard() {
       <td className="select-col" onClick={(e) => e.stopPropagation()}>
         <input
           type="checkbox"
-          checked={selectedFsids.has(session.full_fsid)}
-          onChange={() => toggleSelected(session.full_fsid)}
+          checked={selectedSessionIds.has(session.id)}
+          onChange={() => toggleSelected(session.id)}
         />
       </td>
       <td className="device-id">{isChild ? <span className="child-indent">↳ </span> : null}{session.fsid}</td>
@@ -475,8 +475,8 @@ export default function Dashboard() {
   // Render an aggregated group row (multiple sessions sharing the same device_id).
   const renderGroupRow = (group) => {
     const expanded = expandedGroups.has(group.key);
-    const fsids = group.sessions.map((s) => s.full_fsid);
-    const allSelected = fsids.every((f) => selectedFsids.has(f));
+    const sessionIds = group.sessions.map((s) => s.id);
+    const allSelected = sessionIds.every((id) => selectedSessionIds.has(id));
     const flags = [...new Set(group.sessions.flatMap((s) => s.flags || []))];
     const urls = group.sessions.reduce((n, s) => n + (s.urls_count || 0), 0);
     const heartbeats = group.sessions.reduce((n, s) => n + (s.heartbeats || 0), 0);
@@ -613,13 +613,13 @@ export default function Dashboard() {
             Group by device
           </label>
         </div>
-        {selectedFsids.size > 0 && (
+        {selectedSessionIds.size > 0 && (
           <div className="selection-bar">
-            <span className="selection-count">{selectedFsids.size} selected</span>
+            <span className="selection-count">{selectedSessionIds.size} selected</span>
             <button className="dash-btn" onClick={exploreSelectedInGraph}>
               🕸 Explore in graph
             </button>
-            <button className="dash-btn" onClick={() => setSelectedFsids(new Set())}>
+            <button className="dash-btn" onClick={() => setSelectedSessionIds(new Set())}>
               Clear selection
             </button>
           </div>

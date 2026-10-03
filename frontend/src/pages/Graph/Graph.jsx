@@ -327,7 +327,7 @@ export default function Graph() {
       key: `graph:${searchParams.get("seeds")}`,
       kind: "graph",
       label: `Graph · ${seeds.length} seed${seeds.length > 1 ? "s" : ""}`,
-      sub: seeds.map((s) => s.kind === "session" ? `session ${String(s.fsid).slice(0, 8)}…` : s.kind === "device" ? `device #${s.id}` : `${s.type} ${s.value || ""}`).join(", "),
+      sub: seeds.map((s) => s.kind === "session" ? `session #${s.id}` : s.kind === "device" ? `device #${s.id}` : `${s.type} ${s.value || ""}`).join(", "),
       path: buildGraphUrl(seeds),
     });
     api.graphSeed(seeds)
@@ -392,7 +392,7 @@ export default function Graph() {
 
   const browseNode = useCallback((ref, meta, kind) => {
     if (kind === "session") {
-      window.open(`/session/${meta.fsid}`, "_blank", "noopener");
+      window.open(`/session/${meta.id}`, "_blank", "noopener");
     } else if (kind === "device") {
       window.open(`/device/${meta.id}`, "_blank", "noopener");
     } else if (kind === "stix") {
@@ -901,8 +901,8 @@ function AddEntityDrawer({ onAdd, onClose }) {
   };
 
   const addSession = (s) => {
-    onAdd({ kind: "session", fsid: s.full_fsid });
-    markAdded(`session:${s.full_fsid}`);
+    onAdd({ kind: "session", id: s.id });
+    markAdded(`session:${s.id}`);
   };
   const addDevice = (d) => {
     onAdd({ kind: "device", id: d.id });
@@ -999,10 +999,10 @@ function AddEntityDrawer({ onAdd, onClose }) {
         {!loading && results.length === 0 && <div className="graph-menu-empty">No results.</div>}
 
         {!loading && searchKind === "session" && results.map((s) => {
-          const id = `session:${s.full_fsid}`;
+          const id = `session:${s.id}`;
           const riskClass = s.risk_score >= 60 ? "risk-high" : s.risk_score >= 30 ? "risk-med" : "risk-low";
           return (
-            <div className="graph-drawer-row" key={s.full_fsid}>
+            <div className="graph-drawer-row" key={s.id}>
               <div className="graph-drawer-main">
                 <div className="graph-drawer-idline">
                   <span className="graph-drawer-mono">{s.fsid}</span>

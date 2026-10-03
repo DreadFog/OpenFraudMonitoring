@@ -1,55 +1,58 @@
 """
-Device matching — fuzzy, weighted resolution of a Device identity cluster.
+Device matching — conservative resolution of a Device identity cluster.
 
-Unlike `Session.fsid` (exact match, but volatile: FPScanner bakes the canvas
-fingerprint into the hash that produces `fsid`, so canvas randomization alone
-creates what looks like a brand-new session), a Device is resolved by scoring
-how many *stable* hardware/OS signals agree with a previously-seen device.
+Unlike `Session.fsid` (a repeatable but volatile fingerprint value that may
+appear on multiple visits), a Device requires agreement across three hardware
+evidence groups.
 
 Resolution order (highest confidence first):
-  1. Client-side device UUID cookie — exact match, confidence 1.0.
-  2. Weighted field-similarity score against candidates sharing a coarse
-     "bucket" (platform + screen resolution), boosted slightly by recent
-     IP/subnet proximity. Above `DEVICE_MATCH_THRESHOLD` → link.
-  3. No match → create a new Device.
+  1. Client-side device UUID — retain the original association confidence.
+  2. Graphics/model, display, and capacity agree with exactly one immutable
+      creation profile, with no credible hardware contradictions → link.
+  3. Missing, conflicting, or ambiguous evidence → create a new Device.
 
 See docs/devices.md for the full rationale and field tiering.
 """
 
-import ipaddress
-
-from flask import current_app
+import logging
+import math
+import re
+from types import SimpleNamespace
 
 from services.database import db
 from models.device import Device, DeviceCookie, MAX_RECENT_IPS
 
+logger = logging.getLogger(__name__)
+
 # ── Field tiers ──
-# (device attribute, denormalized Fingerprint column, weight)
-# Tier A — hardware-bound, weighted higher (rarely changes for a real device).
+# (device attribute, denormalized Fingerprint column)
+# Tier A — hardware-bound identity fields.
 _TIER_A_FIELDS = [
-    ("platform", "device_platform", 3),
-    ("screen_width", "device_screen_resolution_width", 2),
-    ("screen_height", "device_screen_resolution_height", 2),
-    ("pixel_depth", "device_screen_resolution_pixel_depth", 1),
-    ("color_depth", "device_screen_resolution_color_depth", 1),
-    ("speakers", "device_multimedia_devices_speakers", 1),
-    ("microphones", "device_multimedia_devices_microphones", 1),
-    ("webcams", "device_multimedia_devices_webcams", 1),
-    ("webgl_vendor", "graphics_web_gl_vendor", 2),
-    ("webgl_renderer", "graphics_web_gl_renderer", 3),
-    ("hev_architecture", "browser_high_entropy_values_architecture", 2),
-    ("hev_bitness", "browser_high_entropy_values_bitness", 2),
-    ("hev_model", "browser_high_entropy_values_model", 2),
+    ("platform", "device_platform"),
+    ("screen_width", "device_screen_resolution_width"),
+    ("screen_height", "device_screen_resolution_height"),
+    ("pixel_depth", "device_screen_resolution_pixel_depth"),
+    ("color_depth", "device_screen_resolution_color_depth"),
+    ("cpu_count", "device_cpu_count"),
+    ("memory", "device_memory"),
+    ("speakers", "device_multimedia_devices_speakers"),
+    ("microphones", "device_multimedia_devices_microphones"),
+    ("webcams", "device_multimedia_devices_webcams"),
+    ("webgl_vendor", "graphics_web_gl_vendor"),
+    ("webgl_renderer", "graphics_web_gl_renderer"),
+    ("hev_architecture", "browser_high_entropy_values_architecture"),
+    ("hev_bitness", "browser_high_entropy_values_bitness"),
+    ("hev_model", "browser_high_entropy_values_model"),
 ]
 
-# Tier B — OS/browser-bound, low weight; mostly useful as tie-breakers.
+# Tier B — OS/browser-bound supporting fields.
 _TIER_B_FIELDS = [
-    ("hev_platform", "browser_high_entropy_values_platform", 1),
-    ("hev_platform_version", "browser_high_entropy_values_platform_version", 1),
-    ("timezone", "locale_internationalization_timezone", 1),
-    ("language", "locale_languages_language", 1),
-    ("audio_codec_hash", "codecs_audio_can_play_type_hash", 1),
-    ("video_codec_hash", "codecs_video_can_play_type_hash", 1),
+    ("hev_platform", "browser_high_entropy_values_platform"),
+    ("hev_platform_version", "browser_high_entropy_values_platform_version"),
+    ("timezone", "locale_internationalization_timezone"),
+    ("language", "locale_languages_language"),
+    ("audio_codec_hash", "codecs_audio_can_play_type_hash"),
+    ("video_codec_hash", "codecs_video_can_play_type_hash"),
 ]
 
 CANONICAL_FIELDS = _TIER_A_FIELDS + _TIER_B_FIELDS
@@ -68,19 +71,6 @@ _WORKSTATION_PLATFORMS = {
 # drift with window size/zoom, so they're excluded for Firefox — see
 # docs/devices.md.
 _RFP_VOLATILE_FIELDS = {"screen_width", "screen_height"}
-
-# IP/subnet proximity contributes a small, capped boost — it can nudge a
-# borderline match but can never single-handedly cause one.
-IP_PROXIMITY_BOOST = 0.05
-
-# When the bucket prefilter finds nothing (e.g. the same device seen through a
-# different browser, landing in a different bucket scheme), fall back to a
-# bounded platform-only scan instead of giving up and creating a duplicate.
-FALLBACK_SCAN_LIMIT = 200
-
-# Avoid high-confidence matches from very sparse readings (e.g. platform only).
-MIN_MATCH_EVIDENCE_WEIGHT = 8
-
 
 def _is_firefox(denorm):
     ua = str(denorm.get("browser_user_agent") or "")
@@ -123,7 +113,7 @@ def _norm(value):
 
 
 def make_bucket(denorm):
-    """Coarse prefilter key so we don't score every Device row on each request."""
+    """Build the legacy device-bucket summary; matching does not use it."""
     platform = _norm(denorm.get("device_platform")) or "unknown"
     if _is_firefox(denorm):
         # Screen dims are RFP-spoofed and drift with window size — fall back
@@ -133,26 +123,6 @@ def make_bucket(denorm):
     width = int(denorm.get("device_screen_resolution_width") or 0)
     height = int(denorm.get("device_screen_resolution_height") or 0)
     return f"{platform}|{width}x{height}"
-
-
-def _subnet_key(ip):
-    """Return a /24 for IPv4 (proximity-tolerant) or the exact address for IPv6."""
-    try:
-        addr = ipaddress.ip_address(ip)
-    except ValueError:
-        return None
-    if addr.version == 4:
-        return str(ipaddress.ip_network(f"{ip}/24", strict=False))
-    return str(addr)
-
-
-def _has_ip_proximity(device, client_ip):
-    if not client_ip:
-        return False
-    key = _subnet_key(client_ip)
-    if not key:
-        return False
-    return any(_subnet_key(ip) == key for ip in (device.recent_ips or []))
 
 
 def _is_recorded(value):
@@ -166,40 +136,130 @@ def _is_recorded(value):
     return value not in (None, "", 0)
 
 
+_DISPLAY_KEYS = (
+    "device_screen_resolution_width", "device_screen_resolution_height",
+    "device_screen_resolution_pixel_depth", "device_screen_resolution_color_depth",
+)
+_CAPACITY_KEYS = ("device_cpu_count", "device_memory")
+FUZZY_MATCH_CONFIDENCE = 0.95
+
+
+def _identifier(value):
+    normalized = " ".join(str(value or "").split()).casefold()
+    if normalized in {"", "error", "init", "na", "skipped", "unknown", "generic"}:
+        return ""
+    return normalized
+
+
+def _renderer(value):
+    normalized = _identifier(value)
+    if any(marker in normalized for marker in (
+        "swiftshader", "llvmpipe", "softpipe", "software", "lavapipe",
+    )):
+        return ""
+    hardware_name = normalized.replace("(tm)", "").replace("(r)", "")
+    hardware_name = " ".join(hardware_name.split())
+    if not re.search(
+        r"(?:geforce\s+(?:rtx|gtx|gt|mx)\s*\d|quadro\s+(?:rtx\s*)?[pkm]?\d|"
+        r"radeon\s+(?:rx|hd|pro|vega|r[579])\s*\w*\d|adreno\s+\d|"
+        r"mali[-\s]+[gt]\d|powervr\s+\w*\d|apple\s+m\d|"
+        r"(?:hd|uhd|iris(?:\s+(?:pro|plus))?)\s+graphics\s+\d)",
+        hardware_name,
+    ):
+        return ""
+    return normalized
+
+
+def _model(value):
+    normalized = _identifier(value)
+    return normalized if re.search(r"\d", normalized) else ""
+
+
+def _positive_number(value):
+    if isinstance(value, bool):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) and number > 0 else None
+
+
+def _platform_family(value):
+    platform = _identifier(value)
+    if platform.startswith("win"):
+        return "windows"
+    if platform.startswith("mac"):
+        return "macos"
+    if platform.startswith("linux"):
+        return "linux"
+    return platform
+
+
+def assess_match(device, denorm):
+    """Assess three required groups against one immutable creation profile."""
+    profile = getattr(device, "match_profile", None) or {}
+    matched, missing, conflicts = [], [], []
+    if not profile:
+        return {"eligible": False, "matched_groups": [],
+                "missing_groups": ["graphics_model", "display", "capacity"],
+                "conflicts": [], "reason": "no_trusted_profile"}
+
+    identifiers_match = False
+    for key, normalize in (
+        ("graphics_web_gl_renderer", _renderer),
+        ("browser_high_entropy_values_model", _model),
+    ):
+        prior, incoming = normalize(profile.get(key)), normalize(denorm.get(key))
+        if prior and incoming:
+            if prior == incoming:
+                identifiers_match = True
+            else:
+                conflicts.append(key)
+    (matched if identifiers_match else missing).append("graphics_model")
+
+    uncertain = _is_firefox(profile) or _is_firefox(denorm)
+    for group, keys in (("display", _DISPLAY_KEYS), ("capacity", _CAPACITY_KEYS)):
+        prior = tuple(_positive_number(profile.get(key)) for key in keys)
+        incoming = tuple(_positive_number(denorm.get(key)) for key in keys)
+        if uncertain or None in prior or None in incoming:
+            missing.append(group)
+        elif prior == incoming:
+            matched.append(group)
+        else:
+            conflicts.append(group)
+
+    for key, normalize in (
+        ("device_platform", _platform_family),
+        ("browser_high_entropy_values_platform", _identifier),
+        ("browser_high_entropy_values_architecture", _identifier),
+        ("browser_high_entropy_values_bitness", _identifier),
+    ):
+        prior, incoming = normalize(profile.get(key)), normalize(denorm.get(key))
+        if prior and incoming and prior != incoming:
+            conflicts.append(key)
+    for reading in (profile, denorm):
+        platform = _identifier(reading.get("device_platform"))
+        architecture = _identifier(reading.get("browser_high_entropy_values_architecture"))
+        if (("arm" in platform or "aarch64" in platform) and architecture.startswith("x86")) or (
+            "x86" in platform and architecture.startswith("arm")
+        ):
+            conflicts.append("inconsistent_platform_architecture")
+            break
+    return {"eligible": len(matched) == 3 and not conflicts,
+            "matched_groups": matched, "missing_groups": missing,
+            "conflicts": conflicts}
+
+
 def score_match(device, denorm, client_ip=None):
-    """Weighted field-agreement score in [0, 1].
-
-    Only fields recorded on both sides are scored. Missing browser-specific
-    signals (e.g. Firefox omitting UA-CH/WebGL details) are absence of evidence,
-    not mismatches.
-    """
-    skip_fields = _volatile_fields_for(denorm)
-    matched_weight = 0.0
-    total_weight = 0.0
-    for attr, key, weight in CANONICAL_FIELDS:
-        if attr in skip_fields:
-            continue
-        raw_value = getattr(device, attr, None)
-        incoming_value = denorm.get(key)
-        if not _is_recorded(raw_value) or not _is_recorded(incoming_value):
-            continue
-        total_weight += weight
-        if _norm(raw_value) == _norm(incoming_value):
-            matched_weight += weight
-
-    if total_weight < MIN_MATCH_EVIDENCE_WEIGHT:
-        return 0.0
-
-    score = matched_weight / total_weight
-    if _has_ip_proximity(device, client_ip):
-        score = min(1.0, score + IP_PROXIMITY_BOOST)
-    return score
+    """Compatibility score; IP and generic agreement cannot establish identity."""
+    return FUZZY_MATCH_CONFIDENCE if assess_match(device, denorm)["eligible"] else 0.0
 
 
 def _apply_canonical_fields(device, denorm):
     """Most-recent-write-wins: only overwrite with non-empty, trustworthy incoming values."""
     skip_fields = _volatile_fields_for(denorm)
-    for attr, key, _weight in CANONICAL_FIELDS:
+    for attr, key in CANONICAL_FIELDS:
         if attr in skip_fields:
             continue
         value = denorm.get(key)
@@ -217,24 +277,26 @@ def _record_ip(device, client_ip):
     device.recent_ips = ips[-MAX_RECENT_IPS:]
 
 
-def _record_cookie(device, cookie_id, timestamp):
+def _record_cookie(device, cookie_id, timestamp, confidence, method, evidence):
     if not cookie_id:
         return
     link = DeviceCookie.query.filter_by(cookie_id=cookie_id).first()
     if link is None:
-        link = DeviceCookie(device_id=device.id, cookie_id=cookie_id, first_seen=timestamp)
+        link = DeviceCookie(
+            device_id=device.id, cookie_id=cookie_id, first_seen=timestamp,
+            match_confidence=confidence, match_method=method, match_evidence=evidence,
+        )
         db.session.add(link)
-    link.device_id = device.id
     link.last_seen = timestamp
 
 
 def _best_of(candidates, denorm, client_ip):
-    best, best_score = None, 0.0
+    eligible = []
     for candidate in candidates:
         score = score_match(candidate, denorm, client_ip)
-        if score > best_score:
-            best, best_score = candidate, score
-    return best, best_score
+        if score:
+            eligible.append((candidate, score))
+    return eligible[0] if len(eligible) == 1 else (None, 0.0)
 
 
 def resolve_device(denorm, client_ip=None, cookie_id=None, timestamp=0):
@@ -244,48 +306,56 @@ def resolve_device(denorm, client_ip=None, cookie_id=None, timestamp=0):
     """
     device = None
     confidence = 1.0
+    method = "created"
+    evidence = {}
 
     if cookie_id:
         cookie_link = DeviceCookie.query.filter_by(cookie_id=cookie_id).first()
         if cookie_link is not None:
             device = cookie_link.device
+            confidence = cookie_link.match_confidence
+            if confidence is None:
+                confidence = device.confidence
+            method = "uuid"
         else:
             device = Device.query.filter_by(cookie_id=cookie_id).first()
+            if device is not None:
+                confidence = device.confidence
+                method = "uuid"
 
     if device is None:
-        bucket = make_bucket(denorm)
-        candidates = Device.query.filter_by(device_bucket=bucket).all()
-        best, best_score = _best_of(candidates, denorm, client_ip)
-
-        if best is None:
-            # No candidates in this bucket at all — possibly the same device
-            # seen through a different browser (different bucket scheme, e.g.
-            # Firefox RFP vs. a real resolution). Broaden the search instead
-            # of immediately creating a duplicate Device.
-            platform = _norm(denorm.get("device_platform"))
-            if platform:
-                fallback_candidates = (
-                    Device.query.filter_by(platform=platform)
-                    .order_by(Device.last_seen.desc())
-                    .limit(FALLBACK_SCAN_LIMIT)
-                    .all()
-                )
-                best, best_score = _best_of(fallback_candidates, denorm, client_ip)
-
-        threshold = current_app.config.get("DEVICE_MATCH_THRESHOLD", 0.75)
-        if best is not None and best_score >= threshold:
-            device, confidence = best, best_score
+        incoming_profile = SimpleNamespace(match_profile=denorm)
+        if assess_match(incoming_profile, denorm)["eligible"]:
+            filters = {attr: denorm[key] for attr, key in CANONICAL_FIELDS
+                       if key in _DISPLAY_KEYS + _CAPACITY_KEYS}
+            candidates = Device.query.filter_by(**filters).all()
+            device, confidence = _best_of(candidates, denorm, client_ip)
+            if device is not None:
+                method = "fuzzy"
+                evidence = assess_match(device, denorm)
 
     if device is None:
         device = Device(device_bucket=make_bucket(denorm), first_seen=timestamp)
         confidence = 1.0
+        device.match_profile = {
+            key: denorm.get(key) for _attr, key in CANONICAL_FIELDS
+        }
+        device.match_profile["browser_user_agent"] = denorm.get("browser_user_agent", "")
+        _apply_canonical_fields(device, denorm)
+        db.session.add(device)
+        db.session.flush()
+
+    if method == "uuid":
+        evidence = assess_match(device, denorm)
+        if evidence["conflicts"]:
+            logger.warning("Device %s UUID reading conflicts with creation profile: %s",
+                           device.id, evidence["conflicts"])
 
     if cookie_id and not device.cookie_id:
         device.cookie_id = cookie_id
 
-    _apply_canonical_fields(device, denorm)
     _record_ip(device, client_ip)
-    _record_cookie(device, cookie_id, timestamp)
+    _record_cookie(device, cookie_id, timestamp, confidence, method, evidence)
     device.last_seen = timestamp
     device.confidence = confidence
 

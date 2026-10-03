@@ -55,15 +55,16 @@ All dashboard and admin endpoints require authentication; ingestion endpoints (`
 A browser loads `ofm.js`. On page load, the client:
 1. Runs FPScanner to collect 35 signal categories and 21 bot detection rules
 2. FPScanner generates a deterministic `fsid` (JA4-inspired fingerprint ID)
-3. The encrypted fingerprint is sent to `POST /api/initial`
+3. The client creates/reuses a random `visit_id` in tab-scoped `sessionStorage`
+4. Fingerprint and `visit_id` are sent to `POST /api/initial`
 
-Every 30 seconds, a heartbeat with low-signal behavioral data (mouse, clicks, keys, scrolls) is sent to `POST /api/heartbeat`. High-signal events (button clicks, form submits, copy/paste) are sent immediately to `POST /api/behavioral_event`.
+Every 30 seconds, a heartbeat with low-signal behavioral data (mouse, clicks, keys, scrolls) is sent to `POST /api/heartbeat`; high-signal events (button clicks, form submits, copy/paste) go immediately to `POST /api/behavioral_event`. Both carry the same `visit_id`.
 
 ### 2. Ingestion (Backend)
 
 On `/api/initial`:
 - Decrypt the FPScanner encrypted payload (XOR + Base64)
-- Find or create a `Session` by `fsid`
+- Find or create a `Session` by `visit_id`; identical `fsid` values may belong to separate visits
 - Store the raw fingerprint as JSONB + denormalized columns for filtering
 - Create STIX observables for the client IP and user-agent (deduplicating by value)
 - Link the session to its IP and user-agent STIX observables
@@ -71,7 +72,7 @@ On `/api/initial`:
 - Auto-trigger any connectors in `auto` or `both` mode
 
 On `/api/heartbeat`:
-- Look up the session via the browser session ID
+- Look up the session via its tab-scoped `visit_id` (no fsid or IP fallback)
 - Store a `Heartbeat` row with denormalized behavior counts + raw JSONB
 - Push a Redis event
 
@@ -114,7 +115,8 @@ The Intelligence page allows browsing all STIX entity types, searching by value,
 
 ```
 sessions
-  ├── id, fsid, risk_score, flags (JSONB), client_ip
+  ├── id (internal row ID), visit_id (unique UUID), fsid (non-unique fingerprint ID)
+  ├── risk_score, flags (JSONB), client_ip
   ├── authenticated (bool), domains (JSONB)   ← monitored-domain auth cookie + URL hosts
   ├── ip_observable_type, ip_observable_id    ← FK to STIX IP table
   ├── user_agent_observable_id                ← FK to STIX user-agent table
@@ -325,8 +327,8 @@ All `/api/*` endpoints except the ingestion ones require an `Authorization: Bear
 | POST | `/api/heartbeat` | Receive behavioral update (public) |
 | POST | `/api/behavioral_event` | Receive a high-signal behavioral event (public) |
 | GET | `/api/sessions` | List sessions (supports `?filters=[...]`) |
-| GET | `/api/sessions/<fsid>` | Session detail |
-| DELETE | `/api/sessions/<fsid>` | Delete session and all child data |
+| GET | `/api/sessions/<session_id>` | Visit detail by internal numeric row ID |
+| DELETE | `/api/sessions/<session_id>` | Delete visit and all child data |
 | GET | `/api/stats` | Aggregate statistics |
 | GET | `/api/schema` | Filterable field definitions |
 | GET | `/api/suggest?field=x&q=y` | Autocomplete values for a field |

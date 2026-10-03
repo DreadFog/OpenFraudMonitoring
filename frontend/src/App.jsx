@@ -86,7 +86,7 @@ function App() {
             <Route path="/admin" element={<ProtectedRoute><Administration /></ProtectedRoute>} />
             <Route path="/admin/:section" element={<ProtectedRoute><Administration /></ProtectedRoute>} />
             <Route path="/rules" element={<AdminRoute><RulesPage /></AdminRoute>} />
-            <Route path="/session/:fsid" element={<ProtectedRoute><SessionDetail /></ProtectedRoute>} />
+            <Route path="/session/:sessionId" element={<ProtectedRoute><SessionDetail /></ProtectedRoute>} />
             <Route path="/devices" element={<ProtectedRoute><Devices /></ProtectedRoute>} />
             <Route path="/device/:id" element={<ProtectedRoute><DeviceDetail /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

@@ -103,6 +103,8 @@ export default function DeviceDetail() {
             <Field label="Screen Resolution" value={data.screen_width && data.screen_height ? `${data.screen_width} × ${data.screen_height}` : null} />
             <Field label="Pixel Depth" value={data.pixel_depth} />
             <Field label="Color Depth" value={data.color_depth} />
+            <Field label="CPU Cores" value={data.cpu_count > 0 ? data.cpu_count : "unknown"} />
+            <Field label="Memory" value={data.memory > 0 ? `${data.memory} GB` : "unknown"} />
             <Field label="Speakers" value={data.speakers} />
             <Field label="Microphones" value={data.microphones} />
             <Field label="Webcams" value={data.webcams} />
@@ -119,6 +121,17 @@ export default function DeviceDetail() {
             <Field label="Timezone" value={data.timezone} />
             <Field label="Language" value={data.language} />
           </Section>
+
+          <Section title="Matching Profile">
+            {data.match_profile && Object.keys(data.match_profile).length > 0 ? (
+              <details className="device-match-profile">
+                <summary>Creation snapshot</summary>
+                <pre>{JSON.stringify(data.match_profile, null, 2)}</pre>
+              </details>
+            ) : (
+              <Field label="Creation snapshot" value="No snapshot" />
+            )}
+          </Section>
         </div>
 
         <div className="sd-col-right">
@@ -134,7 +147,7 @@ export default function DeviceDetail() {
               </thead>
               <tbody>
                 {data.sessions.map((s) => (
-                  <tr key={s.fsid} onClick={() => navigate(`/session/${s.fsid}`)}>
+                  <tr key={s.id} onClick={() => navigate(`/session/${s.id}`)}>
                     <td className="device-id">{s.fsid.length > 32 ? `${s.fsid.slice(0, 32)}...` : s.fsid}</td>
                     <td>{s.client_ip} <IpIntelPopover ip={s.client_ip} /></td>
                     <td><span className={`risk-badge ${s.risk_score >= 60 ? "risk-high" : s.risk_score >= 30 ? "risk-med" : "risk-low"}`}>{s.risk_score}</span></td>

@@ -10,19 +10,9 @@
  *   collect – async, returns { uuid } sent as extensions.device_id
  */
 
-const STORAGE_KEY = "ofm_device_id";
+import { generateUuid } from "../uuid.js";
 
-function generateUuid() {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  // Fallback for environments without crypto.randomUUID
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
+const STORAGE_KEY = "ofm_device_id";
 
 function getOrCreateUuid() {
   try {

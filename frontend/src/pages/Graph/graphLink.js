@@ -10,8 +10,8 @@ export function buildGraphUrl(seeds) {
   return `/graph?seeds=${encoded}`;
 }
 
-export function sessionSeed(fsid) {
-  return { kind: "session", fsid };
+export function sessionSeed(id) {
+  return { kind: "session", id };
 }
 
 export function deviceSeed(id) {

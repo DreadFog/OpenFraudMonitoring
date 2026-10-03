@@ -7,11 +7,10 @@ MAX_RECENT_IPS = 20
 
 
 class Device(db.Model):
-    """A device identity cluster, resolved via fuzzy matching across sessions.
+    """A device identity cluster resolved via conservative hardware matching.
 
-    Unlike `Session.fsid` (exact, volatile — see fpscanner canvas noise), a
-    Device groups sessions whose hardware/OS signals score above a match
-    threshold. Canonical fields are updated most-recent-write-wins.
+    New identities merge only when three hardware groups agree with exactly
+    one immutable creation profile. Canonical fields retain that reading.
     """
     __tablename__ = "devices"
 
@@ -27,6 +26,8 @@ class Device(db.Model):
     screen_height = db.Column(db.Float, default=0)
     pixel_depth = db.Column(db.Float, default=0)
     color_depth = db.Column(db.Float, default=0)
+    cpu_count = db.Column(db.Float, default=0)
+    memory = db.Column(db.Float, default=0)
     speakers = db.Column(db.Float, default=0)
     microphones = db.Column(db.Float, default=0)
     webcams = db.Column(db.Float, default=0)
@@ -51,6 +52,7 @@ class Device(db.Model):
     # ── Matching bookkeeping ──
     recent_ips = db.Column(JSONB, default=list)
     confidence = db.Column(db.Float, default=1.0)
+    match_profile = db.Column(JSONB, default=dict)
 
     first_seen = db.Column(db.Float, default=0)
     last_seen = db.Column(db.Float, default=0)
@@ -67,6 +69,9 @@ class DeviceCookie(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     device_id = db.Column(db.Integer, db.ForeignKey("devices.id"), nullable=False, index=True)
     cookie_id = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    match_method = db.Column(db.String(16), nullable=False, default="legacy")
+    match_confidence = db.Column(db.Float, nullable=True)
+    match_evidence = db.Column(JSONB, default=dict)
     first_seen = db.Column(db.Float, default=0)
     last_seen = db.Column(db.Float, default=0)
     created_at = db.Column(db.DateTime, server_default=func.now())

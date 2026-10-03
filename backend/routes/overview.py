@@ -99,6 +99,8 @@ def overview():
         "previous": _window_counts(now - 2 * DAY_MS, now - DAY_MS),
         "review": [
             {
+                "id": s.id,
+                "visit_id": s.visit_id,
                 "fsid": s.fsid,
                 "risk_score": s.risk_score,
                 "flags": s.flags or [],
@@ -141,7 +143,8 @@ def search():
 
     return jsonify({
         "sessions": [
-            {"fsid": s.fsid, "client_ip": s.client_ip, "risk_score": s.risk_score, "last_seen": s.last_seen}
+            {"id": s.id, "visit_id": s.visit_id, "fsid": s.fsid,
+             "client_ip": s.client_ip, "risk_score": s.risk_score, "last_seen": s.last_seen}
             for s in sessions
         ],
         "devices": [{"id": d.id, "platform": d.platform, "device_type": d.device_type} for d in devices],

@@ -38,6 +38,19 @@ def _create_all_safely():
 # new columns to existing tables — we apply the small set of additive changes
 # here.  Each statement is safe to run repeatedly.
 _COLUMN_UPGRADES = [
+    "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS visit_id VARCHAR(36)",
+    "UPDATE sessions SET visit_id = gen_random_uuid()::text WHERE visit_id IS NULL",
+    "ALTER TABLE sessions ALTER COLUMN visit_id SET NOT NULL",
+    "ALTER TABLE sessions DROP CONSTRAINT IF EXISTS sessions_fsid_key",
+    "DROP INDEX IF EXISTS ix_sessions_fsid",
+    "CREATE INDEX IF NOT EXISTS ix_sessions_fsid ON sessions (fsid)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS ix_sessions_visit_id ON sessions (visit_id)",
+    "ALTER TABLE devices ADD COLUMN IF NOT EXISTS cpu_count DOUBLE PRECISION DEFAULT 0",
+    "ALTER TABLE devices ADD COLUMN IF NOT EXISTS memory DOUBLE PRECISION DEFAULT 0",
+    "ALTER TABLE devices ADD COLUMN IF NOT EXISTS match_profile JSONB DEFAULT '{}'::jsonb",
+    "ALTER TABLE device_cookies ADD COLUMN IF NOT EXISTS match_method VARCHAR(16) NOT NULL DEFAULT 'legacy'",
+    "ALTER TABLE device_cookies ADD COLUMN IF NOT EXISTS match_confidence DOUBLE PRECISION",
+    "ALTER TABLE device_cookies ADD COLUMN IF NOT EXISTS match_evidence JSONB DEFAULT '{}'::jsonb",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS settings JSONB NOT NULL DEFAULT '{}'::jsonb",
     "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS device_id INTEGER REFERENCES devices(id)",
     "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS authenticated BOOLEAN NOT NULL DEFAULT false",

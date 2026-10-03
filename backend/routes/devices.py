@@ -110,6 +110,9 @@ def get_device_detail(device_id):
         "screen_height": device.screen_height,
         "pixel_depth": device.pixel_depth,
         "color_depth": device.color_depth,
+        "cpu_count": device.cpu_count,
+        "memory": device.memory,
+        "match_profile": device.match_profile or {},
         "speakers": device.speakers,
         "microphones": device.microphones,
         "webcams": device.webcams,
@@ -127,6 +130,8 @@ def get_device_detail(device_id):
         "last_seen": device.last_seen,
         "sessions": [
             {
+                "id": s.id,
+                "visit_id": s.visit_id,
                 "fsid": s.fsid,
                 "risk_score": s.risk_score,
                 "client_ip": s.client_ip,

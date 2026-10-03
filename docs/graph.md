@@ -14,7 +14,7 @@ from the existing database (sessions, STIX tables, STIX relationships).
 
 | Kind | Represents | Node id | Default shape |
 |---|---|---|---|
-| `session` | A tracked session (keyed by `fsid`) | `session:<fsid>` | circle with risk ring |
+| `session` | A tracked visit (keyed by database session ID) | `session:<session_id>` | circle with risk ring |
 | `stix` | A STIX observable/SDO | `stix:<stix_id>` | diamond |
 | `property` | A virtual metadata value (e.g. Platform: Win32) | `property:<field>:<value>` | rounded rectangle |
 | `flag` | A triggered rule / risk flag | `flag:<flag>` | warning triangle (⚠) |
@@ -53,7 +53,7 @@ route carrying URL-encoded seeds:
 Seed objects are either:
 
 ```json
-{ "kind": "session", "fsid": "<fsid>" }
+{ "kind": "session", "id": 123 }
 { "kind": "stix", "type": "ipv4-addr", "value": "1.2.3.4" }
 { "kind": "stix", "stix_id": "autonomous-system--<uuid>" }
 ```
@@ -184,7 +184,7 @@ POST /api/graph/expand      { "ref": {...}, "key": "..." }   → { nodes, edges 
 POST /api/graph/links       { "ref": {...}, "known_ids": [] } → { edges }
 ```
 
-A `ref` identifies a node: `{"kind":"session","fsid":...}`,
+A `ref` identifies a node: `{"kind":"session","id":123}`,
 `{"kind":"stix","stix_id":...}`, `{"kind":"property","field":...,"value":...}`,
 or `{"kind":"flag","value":...}`.
 

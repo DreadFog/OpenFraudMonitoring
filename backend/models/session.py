@@ -1,13 +1,16 @@
 from services.database import db
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy import func
+from uuid import uuid4
 
 
 class Session(db.Model):
     __tablename__ = "sessions"
 
     id = db.Column(db.Integer, primary_key=True)
-    fsid = db.Column(db.String(512), unique=True, nullable=False, index=True)
+    visit_id = db.Column(db.String(36), unique=True, nullable=False, index=True,
+                         default=lambda: str(uuid4()))
+    fsid = db.Column(db.String(512), nullable=False, index=True)
     risk_score = db.Column(db.Integer, default=0)
     flags = db.Column(JSONB, default=list)
     client_ip = db.Column(db.String(45), default="")
@@ -36,6 +39,8 @@ class Session(db.Model):
     def to_dict(self):
         return {
             "fsid": self.fsid,
+            "id": self.id,
+            "visit_id": self.visit_id,
             "risk_score": self.risk_score,
             "flags": self.flags or [],
             "client_ip": self.client_ip,

@@ -3,7 +3,7 @@
  *
  * Flow:
  *   1. Init all extensions (attach event listeners, etc.)
- *   2. Collect FPScanner fingerprint (encrypted)
+ *   2. Collect FPScanner fingerprint and encrypt that snapshot
  *   3. Run each extension's collect() in parallel
  *   4. Send combined payload to /api/initial
  *   5. Start heartbeat loop (drains extension buffers periodically)
@@ -13,9 +13,24 @@ import FingerprintScanner from "fpscanner";
 import { CFG } from "./config.js";
 import { send } from "./send.js";
 import extensions from "./extensions/index.js";
+import { generateUuid } from "./uuid.js";
 
-// Cached fsid for heartbeat correlation (set after first collect)
-let _fsid = null;
+const VISIT_STORAGE_KEY = "ofm_visit_id";
+
+function getVisitId() {
+  try {
+    const existing = sessionStorage.getItem(VISIT_STORAGE_KEY);
+    if (existing) return existing;
+    const visitId = generateUuid();
+    sessionStorage.setItem(VISIT_STORAGE_KEY, visitId);
+    return visitId;
+  } catch (_) {
+    return generateUuid();
+  }
+}
+
+// sessionStorage survives reloads in this tab and is cleared when the tab closes.
+const _visitId = getVisitId();
 
 // ── Global hooks for debugging / demo pages (debug builds only) ──
 if (__OFM_DEBUG__) {
@@ -68,29 +83,29 @@ function drainExtensions() {
 
 async function collect() {
   const scanner = new FingerprintScanner();
+  const debugFingerprintHook = __OFM_DEBUG__ && typeof window !== "undefined" &&
+    window.__OFM__ && typeof window.__OFM__.onFingerprint === "function";
 
-  // Run FPScanner + extensions in parallel
-  // Collect unencrypted to extract fsid for heartbeat correlation,
-  // then encrypt the same fingerprint for transmission
-  const [fp, extensionData] = await Promise.all([
-    scanner.collectFingerprint({ encrypt: false }),
+  const [fingerprint, extensionData] = await Promise.all([
+    scanner.collectFingerprint({ encrypt: !debugFingerprintHook }),
     collectExtensions(),
   ]);
 
-  _fsid = fp.fsid;
-
-  // Re-encrypt for transmission (fast — just XOR + base64)
-  const encrypted = await scanner.collectFingerprint({ encrypt: true });
+  const fp = debugFingerprintHook ? fingerprint : null;
+  const encrypted = debugFingerprintHook
+    ? await scanner.collectFingerprint({ encrypt: true })
+    : fingerprint;
 
   const payload = {
     fingerprint: encrypted,     // FPScanner encrypted payload
+    visit_id: _visitId,
     extensions: extensionData,  // { ip: {...}, ... }
     timestamp: Date.now(),
     url: location.href,
   };
 
   // Expose unencrypted payload for demo/debug (debug builds only)
-  if (__OFM_DEBUG__ && window.__OFM__ && typeof window.__OFM__.onFingerprint === "function") {
+  if (debugFingerprintHook) {
     try { window.__OFM__.onFingerprint({ ...fp, _extensions: extensionData }); } catch (_) {}
   }
 
@@ -102,7 +117,7 @@ async function collect() {
 function startHeartbeat() {
   function beat() {
     const snapshot = {
-      fsid: _fsid,
+      visit_id: _visitId,
       timestamp: Date.now(),
       url: location.href,
       extensions: drainExtensions(),  // { behavior: { mouseMoves: [...], ... } }
@@ -124,14 +139,11 @@ function startHeartbeat() {
 
 function init() {
   initExtensions();
-  collect().then(() => {
-    // Propagate fsid to behavior extension for direct event sends
-    const behaviorExt = extensions.find(ext => ext.name === "behavior");
-    if (behaviorExt && typeof behaviorExt.setFsid === "function") {
-      behaviorExt.setFsid(_fsid);
-    }
-    startHeartbeat();
-  });
+  const behaviorExt = extensions.find(ext => ext.name === "behavior");
+  if (behaviorExt && typeof behaviorExt.setVisitId === "function") {
+    behaviorExt.setVisitId(_visitId);
+  }
+  collect().then(startHeartbeat);
 }
 
 if (document.readyState === "loading") {

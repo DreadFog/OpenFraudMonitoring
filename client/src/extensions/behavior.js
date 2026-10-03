@@ -5,7 +5,7 @@
  * Extension interface:
  *   name    – unique identifier
  *   init    – called once at startup to attach event listeners
- *   setFsid – called after collect() resolves to set the session fsid for direct events
+ *   setVisitId – sets the visit row used by direct events
  *   drain   – called every heartbeat cycle; returns accumulated low-signal events
  */
 
@@ -26,7 +26,7 @@ const buf = {
   scrolls:          [],
   _lastMouse:       0,
   _lastScroll:      0,
-  _fsid:            null,
+  _visitId:         null,
 };
 
 function now() {
@@ -35,7 +35,7 @@ function now() {
 
 function sendDirect(eventType, data) {
   const payload = {
-    fsid: buf._fsid,
+    visit_id: buf._visitId,
     timestamp: now(),
     url: location.href,
     event_type: eventType,
@@ -52,8 +52,8 @@ function sendDirect(eventType, data) {
 export default {
   name: "behavior",
 
-  setFsid(fsid) {
-    buf._fsid = fsid;
+  setVisitId(visitId) {
+    buf._visitId = visitId;
   },
 
   init() {

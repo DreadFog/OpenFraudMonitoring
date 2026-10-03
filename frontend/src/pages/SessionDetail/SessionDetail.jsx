@@ -335,7 +335,7 @@ function SessionTimeline({ heartbeats, events }) {
 }
 
 export default function SessionDetail() {
-  const { fsid } = useParams();
+  const { sessionId } = useParams();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
@@ -344,21 +344,21 @@ export default function SessionDetail() {
   const [, recordRecent] = useRecentItems();
 
   useEffect(() => {
-    if (!data?.fsid) return;
+    if (!data?.id) return;
     recordRecent({
-      key: `session:${data.fsid}`,
+      key: `session:${data.id}`,
       kind: "session",
-      label: `Session ${data.fsid.slice(0, 12)}…`,
+      label: `Session #${data.id}`,
       sub: `${data.client_ip || "unknown IP"} · risk ${data.risk_score}`,
-      path: `/session/${encodeURIComponent(data.fsid)}`,
+      path: `/session/${data.id}`,
     });
-  }, [data?.fsid]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDelete = async () => {
     if (!window.confirm("Delete this session and all its data? This cannot be undone.")) return;
     setDeleting(true);
     try {
-      await api.deleteSession(fsid);
+      await api.deleteSession(sessionId);
       navigate("/");
     } catch (e) {
       alert("Failed to delete session.");
@@ -367,7 +367,7 @@ export default function SessionDetail() {
   };
 
   useEffect(() => {
-    api.getSessionDetail(fsid)
+    api.getSessionDetail(sessionId)
       .then(setData)
       .catch(() => setError("Failed to load session."));
     api.getRules()
@@ -379,7 +379,7 @@ export default function SessionDetail() {
         setRuleDescriptions(map);
       })
       .catch(() => {});
-  }, [fsid]);
+  }, [sessionId]);
 
   if (error) {
     return (
@@ -432,7 +432,7 @@ export default function SessionDetail() {
         <button className="back-btn" onClick={() => navigate("/")}>← Back</button>
         <h1>Session Detail</h1>
         <span className={`risk-badge ${riskClass}`}>{data.risk_score}</span>
-        <button className="graph-explore-btn" onClick={() => navigate(buildGraphUrl([sessionSeed(data.fsid)]))}>
+        <button className="graph-explore-btn" onClick={() => navigate(buildGraphUrl([sessionSeed(data.id)]))}>
           🕸 Explore in graph
         </button>
         {data.device_id && (

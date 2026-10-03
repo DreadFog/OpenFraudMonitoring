@@ -728,9 +728,9 @@ export default function Intelligence() {
                   <tbody>
                     {sessions.map((s) => (
                       <tr
-                        key={s.fsid}
+                        key={s.id}
                         className="intel-session-row"
-                        onClick={() => navigate(`/session/${encodeURIComponent(s.fsid)}`)}
+                        onClick={() => navigate(`/session/${s.id}`)}
                       >
                         <td className="intel-session-id">{s.fsid}</td>
                         <td>

@@ -12,6 +12,23 @@
   margin-top: 4px;
 }
 
+.device-match-profile {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.device-match-profile summary {
+  cursor: pointer;
+}
+
+.device-match-profile pre {
+  max-height: 240px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+
 .confidence-badge {
   display: inline-block;
   padding: 2px 10px;

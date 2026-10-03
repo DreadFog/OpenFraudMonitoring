@@ -3,6 +3,7 @@ Collect endpoint — receives FPScanner fingerprints + OFM extension data.
 
 Expected payload:
   {
+        "visit_id": "<per-tab-visit-uuid>",
     "fingerprint": "<encrypted_base64>",   // FPScanner encrypted fingerprint
     "extensions": { "ip": {...}, ... },     // OFM extension data (optional)
     "timestamp": 1234567890,
@@ -20,6 +21,7 @@ from services.event_queue import enqueue_event, get_redis
 from services.stix_store import get_or_create_ip, get_or_create_user_agent
 from services.mq import publish_intel_request
 from services.device_matching import resolve_device
+from services.visit_identity import get_or_create_visit, normalize_visit_id
 from services.domains import add_session_domain, auth_cookie_present
 from utils.crypto import decrypt_fingerprint
 
@@ -67,6 +69,9 @@ def collect():
     extensions = body.get("extensions", {})
 
     fsid = fp.get("fsid", "unknown")
+    visit_id = normalize_visit_id(body.get("visit_id"))
+    if visit_id is None:
+        return jsonify({"error": "visit_id must be a UUID"}), 400
     url = fp.get("url", "") or body.get("url", "")
     timestamp = fp.get("time", 0)
     nonce = fp.get("nonce", "")
@@ -86,12 +91,8 @@ def collect():
                 "session_id": None,
             }), 200
 
-    # Find or create session keyed by fsid
-    session_obj = Session.query.filter_by(fsid=fsid).first()
-    if not session_obj:
-        session_obj = Session(fsid=fsid, first_seen=timestamp)
-        db.session.add(session_obj)
-        db.session.flush()
+    # A visit is distinct from its repeatable fingerprint identifier.
+    session_obj = get_or_create_visit(visit_id, fsid, timestamp)
 
     session_obj.last_seen = timestamp
     session_obj.client_ip = client_ip
@@ -196,5 +197,6 @@ def collect():
     return jsonify({
         "ok": True,
         "fsid": fsid,
+        "visit_id": visit_id,
         "session_id": session_obj.id,
     }), 200

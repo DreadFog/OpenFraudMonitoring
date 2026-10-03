@@ -130,8 +130,9 @@ def get_sessions():
         fsid = sess.fsid
 
         sessions_list.append({
+            "id": sess.id,
+            "visit_id": sess.visit_id,
             "fsid": fsid[:32] + "..." if len(fsid) > 32 else fsid,
-            "full_fsid": fsid,
             "client_ip": sess.client_ip or "unknown",
             "risk_score": sess.risk_score,
             "flags": (sess.flags or [])[:5],
@@ -160,13 +161,13 @@ def get_sessions():
     }), 200
 
 
-@sessions_bp.route("/sessions/<fsid>", methods=["GET"])
+@sessions_bp.route("/sessions/<int:session_id>", methods=["GET"])
 @require_auth
-def get_session_detail(fsid):
+def get_session_detail(session_id):
     """
     Get detailed session information
     """
-    sess = Session.query.filter_by(fsid=fsid).first()
+    sess = Session.query.get(session_id)
     if not sess:
         return jsonify({"error": "session not found"}), 404
 
@@ -194,7 +195,9 @@ def get_session_detail(fsid):
         behavioral_events = [_censor_event(e) for e in behavioral_events]
 
     return jsonify({
-        "fsid": fsid,
+        "id": sess.id,
+        "visit_id": sess.visit_id,
+        "fsid": sess.fsid,
         "client_ip": sess.client_ip,
         "risk_score": sess.risk_score,
         "flags": sess.flags or [],
@@ -214,15 +217,15 @@ def get_session_detail(fsid):
     }), 200
 
 
-@sessions_bp.route("/sessions/<fsid>", methods=["DELETE"])
+@sessions_bp.route("/sessions/<int:session_id>", methods=["DELETE"])
 @require_auth
 @require_role("user", "admin")
-def delete_session(fsid):
+def delete_session(session_id):
     """
     Delete a session and all related records.
     """
     from services.database import db
-    sess = Session.query.filter_by(fsid=fsid).first()
+    sess = Session.query.get(session_id)
     if not sess:
         return jsonify({"error": "session not found"}), 404
 
@@ -242,4 +245,4 @@ def delete_session(fsid):
 
     db.session.delete(sess)
     db.session.commit()
-    return jsonify({"deleted": fsid}), 200
+    return jsonify({"deleted": session_id}), 200

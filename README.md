@@ -44,7 +44,7 @@ Add the fingerprint collection script to any page:
 The script automatically:
 1. Collects a full device fingerprint on page load
 2. Sends behavioral heartbeats every 30 seconds
-3. Generates a deterministic device ID (`fsid`) that persists across sessions
+3. Generates a deterministic fingerprint ID (`fsid`) and a separate per-tab visit ID
 4. Shows a fraud-monitoring notice linking to the OpenFraudMonitoring repository. Visitors can dismiss it with **OK**; a host-scoped `ofm_notice_acknowledged` cookie remembers the acknowledgment for one year. This is an informational notice, not a consent gate: collection continues independently of acknowledgment.
 
 See [Deployment](docs/deployment.md) for same-origin, reverse-proxied, and separate-host setups. Cookie-based authentication detection requires the script and collection API to be reachable through the monitored domain.
@@ -113,6 +113,7 @@ All variables are in [`.env.example`](.env.example). Key ones:
 - [Rules](docs/rules.md) — how to create and manage detection rules
 - [Filters](docs/filters.md) — how filtering works, schema fields, code mapping
 - [Graph Explorer](docs/graph.md) — interactive graph view: nodes, expansions, bulk expand, settings
+- [v1.2 to v1.3 Migration Helper](migration_helpers/v1_2_to_v1_3/README.md) — dry-run and apply the conservative device rebuild and ambiguous-session prune
 
 ## License
 
