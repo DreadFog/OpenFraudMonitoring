@@ -48,7 +48,7 @@ export default function WidgetCard({ widget, data, editMode, onEdit, onRemove, o
     if (widget.type === "stat") return <StatWidget data={data} widget={widget} />;
 
     const groups = data.groups || [];
-    if (widget.type === "pie") return <PieWidget groups={groups} />;
+    if (widget.type === "pie") return <PieWidget groups={groups} onValueClick={onValueClick} selectedValue={selectedValue} requiresFilterValue={field === "ip_as"} />;
     if (widget.type === "histogram" || widget.type === "weighted_list") return <HistogramWidget groups={groups} onValueClick={onValueClick} selectedValue={selectedValue} isBoolean={fieldDef?.type === "boolean"} requiresFilterValue={field === "ip_as"} onApply={applyFilter} onCancel={() => setSelectedValue(null)} />;
     if (widget.type === "vertical_histogram") return <VerticalHistogramWidget groups={groups} onValueClick={onValueClick} />;
     if (widget.type === "map") return <MapWidget data={data} mapConfig={widget.mapConfig} onValueClick={onValueClick} />;
