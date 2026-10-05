@@ -23,6 +23,7 @@ from services.mq import publish_intel_request
 from services.device_matching import resolve_device
 from services.visit_identity import get_or_create_visit, normalize_visit_id
 from services.domains import add_session_domain, auth_cookie_present
+from services.latency import capture_latency
 from utils.crypto import decrypt_fingerprint
 
 logger = logging.getLogger(__name__)
@@ -93,6 +94,7 @@ def collect():
 
     # A visit is distinct from its repeatable fingerprint identifier.
     session_obj = get_or_create_visit(visit_id, fsid, timestamp)
+    latency_sample = capture_latency(session_obj, extensions)
 
     session_obj.last_seen = timestamp
     session_obj.client_ip = client_ip
@@ -127,7 +129,7 @@ def collect():
     # Build the full stored object: FPScanner fingerprint + extensions
     stored_data = fp
     if extensions:
-        stored_data["_extensions"] = extensions
+        stored_data["_extensions"] = {**extensions, "latency": latency_sample}
 
     # ── Debug logging: dump key signal values to diagnose missing data ──
     _signals = fp.get("signals", {})

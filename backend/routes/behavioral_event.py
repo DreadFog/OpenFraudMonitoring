@@ -18,6 +18,7 @@ from models import Session, TYPED_EVENT_MODELS
 from models import AuthAttemptEvent
 from services.event_queue import enqueue_event
 from services.visit_identity import normalize_visit_id
+from services.latency import capture_latency
 from services.domains import (
     add_session_domain, auth_cookie_present, matching_form_config,
     configured_domain_for_host, domain_from_url, form_action_matches,
@@ -129,6 +130,7 @@ def behavioral_event():
         return jsonify({"ok": False, "error": "visit not found"}), 404
 
     authenticated = auth_cookie_present(request, request.host)
+    capture_latency(session_obj, payload.get("extensions"))
     data = _redact_event_data(event_type, data, request.host, url)
 
     # Dispatch to the appropriate typed model

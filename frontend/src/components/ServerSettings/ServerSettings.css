@@ -1,0 +1,56 @@
+.server-settings-form {
+  max-width: 640px;
+  margin-top: 16px;
+}
+
+.server-settings-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  border: 0;
+  padding: 0;
+  margin: 0 0 16px;
+  min-width: 0;
+}
+
+.server-settings-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--text);
+  font-size: 14px;
+  min-width: 0;
+}
+
+.server-location-name {
+  grid-column: 1 / -1;
+}
+
+.server-settings-fields input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 8px 12px;
+  font: inherit;
+}
+
+.server-settings-fields input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.server-settings-status {
+  align-self: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+@media (max-width: 560px) {
+  .server-settings-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

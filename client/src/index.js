@@ -109,7 +109,7 @@ async function collect() {
     try { window.__OFM__.onFingerprint({ ...fp, _extensions: extensionData }); } catch (_) {}
   }
 
-  send(CFG.collectEndpoint, payload);
+  await send(CFG.collectEndpoint, payload);
 }
 
 // ── Heartbeat ──

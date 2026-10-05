@@ -212,6 +212,7 @@ def get_session_detail(session_id):
         "behavioral_events_count": behavioral_events_count,
         "fingerprints_count": fingerprints_count,
         "latest_fingerprint": latest_fingerprint,
+        "latency": sess.latency,
         "heartbeats": [hb.to_summary() for hb in recent_heartbeats],
         "behavioral_events": behavioral_events,
     }), 200

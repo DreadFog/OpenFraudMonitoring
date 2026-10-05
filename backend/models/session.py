@@ -1,6 +1,7 @@
 from services.database import db
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy import func
+from sqlalchemy.ext.hybrid import hybrid_property
 from uuid import uuid4
 
 
@@ -26,6 +27,7 @@ class Session(db.Model):
     device_id = db.Column(db.Integer, db.ForeignKey("devices.id"), nullable=True, index=True)
     first_seen = db.Column(db.Float, default=0)
     last_seen = db.Column(db.Float, default=0)
+    latency = db.Column(JSONB, nullable=True)
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, server_default=func.now(), onupdate=func.now())
 
@@ -41,6 +43,14 @@ class Session(db.Model):
     button_click_events = db.relationship("ButtonClickEvent", back_populates="session", lazy="dynamic", cascade="all, delete-orphan")
     auth_attempt_events = db.relationship("AuthAttemptEvent", back_populates="session", lazy="dynamic", cascade="all, delete-orphan")
 
+    @hybrid_property
+    def latency_ms(self):
+        return self.latency.get("round_trip_ms") if isinstance(self.latency, dict) else None
+
+    @latency_ms.expression
+    def latency_ms(cls):
+        return cls.latency["round_trip_ms"].as_float()
+
     def to_dict(self):
         return {
             "fsid": self.fsid,
@@ -53,5 +63,6 @@ class Session(db.Model):
             "domains": self.domains or [],
             "first_seen": self.first_seen,
             "last_seen": self.last_seen,
+            "latency": self.latency,
             "device_id": self.device_id,
         }

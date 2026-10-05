@@ -131,6 +131,15 @@ Dense technical reference for LLMs. Self-hosted browser fingerprinting, behavior
 - Widget types: stat, pie chart, histogram, weighted list — each with own filter conditions.
 - Device overview (`/device/:id`) displays the new `cpu_count` and `memory` (GB) under Hardware, plus expandable `match_profile` in Matching Profile; legacy fields show unknown / No snapshot. The detail API returns these fields; the device list remains unchanged.
 
+## Latency fingerprinting groundwork
+
+- Numeric filter `latency_ms` (Session Metadata, label `Session Latency (ms)`) reads the latest `Session.latency.round_trip_ms` via a hybrid JSON-to-float SQL expression. Supports eq/neq/gt/gte/lt/lte in session filters, rules, and widgets; missing samples are SQL NULL, not zero. No extra column migration. PostgreSQL filter regression test uses disposable `LATENCY_TEST_DATABASE_URL`.
+- Administration `/admin/server` (`ServerSettings`) configures `server.location` (`{name,latitude,longitude}`; optional paired coordinates) and `server.timezone` (IANA name, default UTC) through global settings. This does not change the host OS timezone.
+- `client/src/extensions/latency.js` keeps the latest successful HTTP round trip to response headers. `send.js` includes it as `extensions.latency` in the next payload (including direct behavior events), using monotonic `performance.now()` timing. Initial collection awaits its response before the first heartbeat. Hidden pages prefer beacon; rejected beacons fall back to fetch; fetch has a 15-second abort timeout. Failed/aborted/non-2xx requests and beacons never fabricate samples.
+- Sample keys: `round_trip_ms`, `measured_at` (client epoch ms), `request_path` (no query), `client_timezone`, `client_utc_offset_minutes` (positive east). `services/latency.py` validates untrusted samples and attaches trusted server configuration at receipt, `received_at`, `source=client_reported`, and `measurement=fetch_response_headers`.
+- Latest sample in nullable JSONB `Session.latency` (detail API); per-heartbeat sample in `Heartbeat.latency` (summary API); normalized initial extension in fingerprint `_extensions.latency`; behavior events refresh session sample. `_COLUMN_UPGRADES` adds both JSONB columns for existing DBs. Retention deletes samples with their sessions/heartbeats.
+- No matching connector, timezone mismatch detection, or risk scoring is implemented. Round trip includes network and server work and is not proof of location. Tests: `client/test/latency.test.cjs` via `npm test`; `backend/tests/test_latency.py` via unittest.
+
 ## Data retention
 
 - Global setting `data.retention_months` defaults to 6 positive whole calendar months; admin control at `/admin/retention` (`RetentionSettings`).

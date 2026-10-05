@@ -49,6 +49,7 @@ SCHEMA_FIELDS = [
     # Session-level fields (always present)
     {"name": "client_ip", "label": "Client IP", "type": "string", "model": "Session", "column": "client_ip", "category": "Session Metadata"},
     {"name": "risk_score", "label": "Risk Score", "type": "number", "model": "Session", "column": "risk_score", "category": "Session Metadata"},
+    {"name": "latency_ms", "label": "Session Latency (ms)", "type": "number", "model": "Session", "column": "latency_ms", "category": "Session Metadata"},
     {"name": "fsid", "label": "Fingerprint ID (fsid)", "type": "string", "model": "Session", "column": "fsid", "category": "Session Metadata"},
     {"name": "device_id", "label": "Device ID", "type": "number", "model": "Session", "column": "device_id", "category": "Session Metadata"},
     {"name": "authenticated", "label": "Authenticated", "type": "boolean", "model": "Session", "column": "authenticated", "category": "Session Metadata"},

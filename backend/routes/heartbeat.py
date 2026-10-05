@@ -19,6 +19,7 @@ from utils import extract_behavior_summary
 from services.event_queue import enqueue_event
 from services.domains import add_session_domain, auth_cookie_present
 from services.visit_identity import normalize_visit_id
+from services.latency import capture_latency
 import logging
 
 logger = logging.getLogger(__name__)
@@ -60,6 +61,7 @@ def heartbeat():
         touches=behavior_summary["touches"],
         scrolls=behavior_summary["scrolls"],
         raw_behavior=behavior,
+        latency=capture_latency(session_obj, extensions),
         authenticated=auth_cookie_present(request, request.host),
     )
     db.session.add(hb_record)

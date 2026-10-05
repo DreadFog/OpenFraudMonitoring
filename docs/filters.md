@@ -24,6 +24,34 @@ GET /api/sessions?filters=[{"field":"client_ip","op":"eq","value":"192.168.1.1"}
 
 Multiple conditions are combined with AND logic.
 
+## Session Latency
+
+Select **Session Latency (ms)** under **Session Metadata** to filter on the
+latest client-reported HTTP round-trip measurement stored on each session.
+The numeric field is `latency_ms` and supports `eq`, `neq`, `gt`, `gte`, `lt`,
+and `lte`, including decimal millisecond values. It is available in the shared
+filter builders for session lists, rules, and widgets.
+
+For example, match sessions whose latest latency is greater than 100 ms:
+
+```json
+{"field": "latency_ms", "op": "gt", "value": 100}
+```
+
+Sessions without a measurement do not match numeric comparisons, including
+`neq`; missing latency is not treated as zero. Updating a session's sample
+changes its filter value; this field does not search historical heartbeat
+samples or compute an average. The timing includes both network and server
+delay and is not a verified location or timezone signal.
+
+No new database column migration is needed for the filter itself: it reads
+`sessions.latency.round_trip_ms` as a numeric SQL expression. Rebuild the backend
+and worker, then refresh the dashboard to load the updated schema.
+
+The PostgreSQL regression test in `backend/tests/test_latency.py` requires
+`LATENCY_TEST_DATABASE_URL` pointing only to a disposable database; it creates
+and drops the database schema.
+
 ## Schema Endpoint
 
 ```

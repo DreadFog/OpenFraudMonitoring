@@ -10,6 +10,75 @@ The **OK** button dismisses the notice and sets `ofm_notice_acknowledged=1` on t
 
 The banner is informational: **OK is not a consent gate**, and fingerprint/behavior collection is not delayed or disabled by the notice. Site operators remain responsible for any required consent mechanism and privacy disclosures. Rebuild the client/backend image and refresh cached copies of `ofm.js` to deploy the notice.
 
+## Server location and latency measurements
+
+Administrators configure **Administration > Server** (`/admin/server`). The
+location has a descriptive name and optional latitude/longitude; coordinates
+must be provided together and be within -90..90 and -180..180 respectively.
+The timezone is a validated IANA identifier, such as `Europe/Paris`; the default
+is `UTC`. These are global settings (`server.location`, `server.timezone`), not
+changes to the operating system's timezone. Location is intentionally unset by
+default; no geolocation lookup is performed.
+
+The client `latency` extension measures successful collection requests using
+`performance.now()` around fetch, stopping when response headers are received.
+This is an HTTP round trip: it includes network delay, upload, server/proxy
+processing, and possibly connection setup. It is not isolated server processing
+time, one-way latency, or a reliable geographic distance measurement.
+
+The latest successful measurement is included as `extensions.latency` in the
+**next** initial, heartbeat, or direct behavioral request. The first request has
+no prior sample (`null`). Initial collection waits for its response before the
+first heartbeat, so that heartbeat can carry the initial timing. Normal requests
+use fetch with credentials and a 15-second timeout. Hidden-page delivery uses
+`sendBeacon` when available, falling back to fetch if the beacon is rejected.
+Beacon-only, failed, aborted, and non-successful requests do not create timings;
+the last successful sample remains available. No extra probe request is sent.
+
+Example client sample:
+
+```json
+{
+    "round_trip_ms": 42.125,
+    "measured_at": 1791200000000,
+    "request_path": "/api/initial",
+    "client_timezone": "Europe/Paris",
+    "client_utc_offset_minutes": 120
+}
+```
+
+`measured_at` is the client's Unix timestamp in milliseconds; the UTC offset is
+positive east of UTC. Query strings are omitted from `request_path`. The browser
+timezone is an advertised JavaScript value, not a verified location or a custom
+HTTP header. Samples are untrusted: the backend ignores malformed values and
+marks accepted samples `source: "client_reported"`, adding `received_at`,
+`measurement: "fetch_response_headers"`, and the server configuration at
+ingestion time. Client-supplied server metadata is not trusted.
+
+The latest sample is stored on the session and exposed by its detail API.
+Heartbeats retain per-request samples in their `latency` field and summaries;
+initial fingerprints retain the normalized sample under `_extensions.latency`.
+Behavioral requests update the session's latest sample. Session retention removes
+these samples along with their owning records.
+
+The timezone/latency matching connector, mismatch detection, and risk scoring are
+**not implemented**. VPNs, proxies, network congestion, and server load can all
+affect timing independently of the advertised timezone.
+
+Deploy the client, backend, frontend, and worker images together:
+
+```bash
+docker compose up -d --build backend frontend worker
+```
+
+Backend/worker startup adds nullable JSONB `latency` columns to existing session
+and heartbeat tables through the existing idempotent schema-upgrade mechanism.
+Ensure monitored sites refresh cached copies of `ofm.js`.
+
+Client transport regression tests run with `npm test` in the `client` directory
+(Node 18+). Backend configuration/ingestion checks are in
+`backend/tests/test_latency.py`.
+
 ## Data retention
 
 Administrators configure **Administration > Data retention** (`/admin/retention`).

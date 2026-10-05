@@ -38,6 +38,8 @@ def _create_all_safely():
 # new columns to existing tables — we apply the small set of additive changes
 # here.  Each statement is safe to run repeatedly.
 _COLUMN_UPGRADES = [
+    "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS latency JSONB",
+    "ALTER TABLE heartbeats ADD COLUMN IF NOT EXISTS latency JSONB",
     "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS visit_id VARCHAR(36)",
     "UPDATE sessions SET visit_id = gen_random_uuid()::text WHERE visit_id IS NULL",
     "ALTER TABLE sessions ALTER COLUMN visit_id SET NOT NULL",

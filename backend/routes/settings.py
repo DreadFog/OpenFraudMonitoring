@@ -23,6 +23,10 @@ from services.settings import (
     CONTENT_WIDTH_PERCENT_KEY,
     DATA_RETENTION_MONTHS_KEY,
     validate_retention_months,
+    SERVER_LOCATION_KEY,
+    SERVER_TIMEZONE_KEY,
+    validate_server_location,
+    validate_server_timezone,
 )
 
 logger = logging.getLogger(__name__)
@@ -58,6 +62,8 @@ _ALLOWED_GLOBAL_KEYS = {
     DASHBOARD_DEFAULT_TIME_RANGE_KEY: lambda v: v if v in ("24h", "7d", "1m") else None,
     CONTENT_WIDTH_PERCENT_KEY: lambda v: int(v) if 25 <= int(v) <= 100 else None,
     DATA_RETENTION_MONTHS_KEY: validate_retention_months,
+    SERVER_LOCATION_KEY: validate_server_location,
+    SERVER_TIMEZONE_KEY: validate_server_timezone,
 }
 
 
@@ -80,7 +86,9 @@ def update_globals():
             value = None
         if value is None:
             return jsonify({"error": f"invalid value for {key}"}), 400
-        set_global_setting(key, value)
         updated[key] = value
+
+    for key, value in updated.items():
+        set_global_setting(key, value)
 
     return jsonify({"ok": True, "updated": updated, "settings": get_global_settings()}), 200
