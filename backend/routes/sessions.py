@@ -229,20 +229,6 @@ def delete_session(session_id):
     if not sess:
         return jsonify({"error": "session not found"}), 404
 
-    # Explicitly delete children (lazy="dynamic" prevents ORM cascade)
-    Fingerprint.query.filter_by(session_id=sess.id).delete()
-    Heartbeat.query.filter_by(session_id=sess.id).delete()
-    from models.behavioral_event import CopyEvent, PasteEvent, FormSubmitEvent, ButtonClickEvent
-    CopyEvent.query.filter_by(session_id=sess.id).delete()
-    PasteEvent.query.filter_by(session_id=sess.id).delete()
-    FormSubmitEvent.query.filter_by(session_id=sess.id).delete()
-    ButtonClickEvent.query.filter_by(session_id=sess.id).delete()
-    from models.behavioral_event import AuthAttemptEvent
-    AuthAttemptEvent.query.filter_by(session_id=sess.id).delete()
-    SessionURL.query.filter_by(session_id=sess.id).delete()
-    BrowserSession.query.filter_by(session_id=sess.id).delete()
-    RuleMatch.query.filter_by(session_id=sess.id).delete()
-
     db.session.delete(sess)
     db.session.commit()
     return jsonify({"deleted": session_id}), 200

@@ -40,7 +40,7 @@ class CopyEvent(db.Model):
     form_action = db.Column(db.String(2048), default="")
     authenticated = db.Column(db.Boolean, nullable=False, default=False)
 
-    session = db.relationship("Session")
+    session = db.relationship("Session", back_populates="copy_events")
 
     EVENT_TYPE = "copy"
 
@@ -84,7 +84,7 @@ class PasteEvent(db.Model):
     form_action = db.Column(db.String(2048), default="")
     authenticated = db.Column(db.Boolean, nullable=False, default=False)
 
-    session = db.relationship("Session")
+    session = db.relationship("Session", back_populates="paste_events")
 
     EVENT_TYPE = "paste"
 
@@ -125,7 +125,7 @@ class FormSubmitEvent(db.Model):
     field_names = db.Column(JSONB, default=list)
     authenticated = db.Column(db.Boolean, nullable=False, default=False)
 
-    session = db.relationship("Session")
+    session = db.relationship("Session", back_populates="form_submit_events")
 
     EVENT_TYPE = "form_submit"
 
@@ -157,7 +157,7 @@ class ButtonClickEvent(db.Model):
     text = db.Column(db.String(512), default="")
     authenticated = db.Column(db.Boolean, nullable=False, default=False)
 
-    session = db.relationship("Session")
+    session = db.relationship("Session", back_populates="button_click_events")
 
     EVENT_TYPE = "button_click"
 
@@ -189,7 +189,7 @@ class AuthAttemptEvent(db.Model):
     matched_field_names = db.Column(JSONB, default=list)
     authenticated = db.Column(db.Boolean, nullable=False, default=False)
 
-    session = db.relationship("Session")
+    session = db.relationship("Session", back_populates="auth_attempt_events")
     domain_config = db.relationship("DomainConfig")
 
     EVENT_TYPE = "auth_attempt"

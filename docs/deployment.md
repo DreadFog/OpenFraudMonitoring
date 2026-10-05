@@ -10,6 +10,57 @@ The **OK** button dismisses the notice and sets `ofm_notice_acknowledged=1` on t
 
 The banner is informational: **OK is not a consent gate**, and fingerprint/behavior collection is not delayed or disabled by the notice. Site operators remain responsible for any required consent mechanism and privacy disclosures. Rebuild the client/backend image and refresh cached copies of `ofm.js` to deploy the notice.
 
+## Data retention
+
+Administrators configure **Administration > Data retention** (`/admin/retention`).
+The default is **6 calendar months** of inactivity; the setting accepts positive
+whole numbers of months and is stored as the global key `data.retention_months`.
+
+The worker runs cleanup on startup and once per hour, reading the current setting
+each time. A session expires when its `last_seen` is strictly before the UTC
+cutoff. Calendar-month subtraction clamps month-end dates to the last valid day
+of the target month. Activity timestamps are stored in JavaScript milliseconds.
+
+Deleting a session cascades through fingerprints, heartbeats, URLs, browser
+session records, rule matches, and every typed behavioral-event table. Devices
+and their cookie aliases are deleted when no retained sessions remain. A retained
+device's `last_seen` is recomputed from its associated sessions; its recent IP
+list is rebuilt from retained sessions so expired IP values are not left there.
+
+IPv4, IPv6, user-agent observables, and related intelligence remain while needed
+by retained sessions. Expired sessions' exclusive observables and enrichment are
+removed, including relationships to deleted entities; sharing an autonomous
+system or country does not keep an inactive IP alive. Standalone intelligence
+without session references uses its last refresh time (or creation time if never
+refreshed) for expiry. Configuration, rules, dashboards, and user accounts are
+not subject to visit-data retention.
+
+**Deletion is permanent.** Deploying the updated worker starts the first sweep
+immediately. To change the default before that sweep, deploy the backend and
+frontend first, save the desired policy, then deploy the worker. Shortening the
+policy applies to existing data at the next sweep; increasing it cannot restore
+deleted data. Backups and external connector/queue storage need their own
+retention policies. No database column migration is needed for this feature.
+
+Rebuild and deploy the changed services:
+
+```bash
+docker compose up -d --build backend frontend worker
+```
+
+### Retention regression tests
+
+Tests requiring PostgreSQL are enabled by `RETENTION_TEST_DATABASE_URL`. Point
+this variable only at a disposable database: the integration tests create and
+drop the entire schema. Without it, the calendar and validator unit tests run,
+and database integration tests are skipped.
+
+```bash
+cd backend
+RETENTION_TEST_DATABASE_URL=postgresql://test:test@localhost/ofm_test \
+    python -m unittest discover -s tests -p test_retention.py -v
+```
+
 ## Shared Docker network for a reverse proxy
 
 The Compose file uses an external Docker network named `internal_network`. Its purpose is to let a reverse proxy such as Caddy, managed by a separate Compose project, communicate with the OFM containers without publishing the frontend port on the host.

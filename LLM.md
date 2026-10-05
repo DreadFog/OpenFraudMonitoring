@@ -131,6 +131,14 @@ Dense technical reference for LLMs. Self-hosted browser fingerprinting, behavior
 - Widget types: stat, pie chart, histogram, weighted list — each with own filter conditions.
 - Device overview (`/device/:id`) displays the new `cpu_count` and `memory` (GB) under Hardware, plus expandable `match_profile` in Matching Profile; legacy fields show unknown / No snapshot. The detail API returns these fields; the device list remains unchanged.
 
+## Data retention
+
+- Global setting `data.retention_months` defaults to 6 positive whole calendar months; admin control at `/admin/retention` (`RetentionSettings`).
+- `services/retention.py::purge_inactive_data` runs on worker startup and hourly. Sessions expire by `last_seen` in milliseconds, strictly before the UTC calendar-month cutoff (month-end clamped).
+- ORM session deletion cascades to fingerprints, heartbeats, URLs, browser sessions, rule matches, and all five typed behavioral-event tables. Use `db.session.delete(session)`, not bulk session deletion, to preserve these cascades.
+- Devices with no retained visits and their cookie aliases are deleted. Surviving devices get session-derived `last_seen` and recent IP lists. Shared STIX observables/enrichment remain while retained visits need them; enrichment traversal does not cross into unrelated IP/UA leaves. Exclusive expired-visit entities and their relationships are removed; standalone intelligence expires by refresh/creation date.
+- PostgreSQL advisory transaction lock prevents overlapping worker sweeps; failures roll back the sweep. Integration tests in `backend/tests/test_retention.py` require `RETENTION_TEST_DATABASE_URL` pointing only to a disposable PostgreSQL database (tests drop its schema).
+
 ## Graph explorer (`frontend/src/pages/Graph/`, `backend/services/graph.py`)
 
 Full docs: `docs/graph.md`. Route `/graph?seeds=<url-encoded JSON array>` (Cytoscape.js). Graph assembled on-demand from DB; layout + metadata edges never persisted.

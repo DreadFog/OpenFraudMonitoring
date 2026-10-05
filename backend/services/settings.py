@@ -24,13 +24,21 @@ GRAPH_EXPAND_WARN_THRESHOLD_KEY = "graph.expand_warn_threshold"
 CLIPBOARD_CENSOR_KEY = "clipboard_censor"
 DASHBOARD_DEFAULT_TIME_RANGE_KEY = "dashboard.default_time_range"
 CONTENT_WIDTH_PERCENT_KEY = "layout.content_width_percent"
+DATA_RETENTION_MONTHS_KEY = "data.retention_months"
 
 GLOBAL_DEFAULTS = {
     GRAPH_EXPAND_WARN_THRESHOLD_KEY: 1000,
     CLIPBOARD_CENSOR_KEY: True,
     DASHBOARD_DEFAULT_TIME_RANGE_KEY: "24h",
     CONTENT_WIDTH_PERCENT_KEY: 100,
+    DATA_RETENTION_MONTHS_KEY: 6,
 }
+
+
+def validate_retention_months(value):
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        return None
+    return value
 
 
 def get_global_setting(key: str):

@@ -206,7 +206,21 @@ def process_intel_responses():
     consume_responses(_intel_response_handler)
 
 
+def process_data_retention():
+    """Sweep on worker startup and hourly, reloading the retention setting."""
+    from services.retention import purge_inactive_data
+    while True:
+        try:
+            with app.app_context():
+                counts = purge_inactive_data()
+                logger.info("Data retention sweep: %s", counts)
+        except Exception:
+            logger.exception("Data retention sweep failed")
+        time.sleep(3600)
+
+
 if __name__ == "__main__":
     threading.Thread(target=process_periodic_rules, daemon=True).start()
     threading.Thread(target=process_intel_responses, daemon=True).start()
+    threading.Thread(target=process_data_retention, daemon=True).start()
     process_realtime_events()

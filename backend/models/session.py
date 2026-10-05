@@ -35,6 +35,11 @@ class Session(db.Model):
     urls = db.relationship("SessionURL", back_populates="session", lazy="dynamic", cascade="all, delete-orphan")
     browser_sessions = db.relationship("BrowserSession", back_populates="session", lazy="dynamic", cascade="all, delete-orphan")
     rule_matches = db.relationship("RuleMatch", lazy="dynamic", cascade="all, delete-orphan")
+    copy_events = db.relationship("CopyEvent", back_populates="session", lazy="dynamic", cascade="all, delete-orphan")
+    paste_events = db.relationship("PasteEvent", back_populates="session", lazy="dynamic", cascade="all, delete-orphan")
+    form_submit_events = db.relationship("FormSubmitEvent", back_populates="session", lazy="dynamic", cascade="all, delete-orphan")
+    button_click_events = db.relationship("ButtonClickEvent", back_populates="session", lazy="dynamic", cascade="all, delete-orphan")
+    auth_attempt_events = db.relationship("AuthAttemptEvent", back_populates="session", lazy="dynamic", cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
