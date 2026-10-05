@@ -7,6 +7,7 @@ Supports wildcard patterns like *.domain.fr
 import logging
 import fnmatch
 from urllib.parse import urlparse
+from flask import request
 
 from models.cors import AllowedOrigin
 
@@ -73,3 +74,16 @@ def get_all_origins():
 def dynamic_origin(origin):
     """Callback for Flask-CORS to allow/disallow origins dynamically."""
     return origin if is_origin_allowed(origin) else False
+
+
+def apply_cors_headers(response):
+    """Apply database-backed CORS to collection, excluding the public probe."""
+    if request.endpoint == "latency_probe.probe":
+        return response
+    origin = request.headers.get("Origin")
+    if origin and dynamic_origin(origin):
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    return response

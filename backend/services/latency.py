@@ -34,7 +34,9 @@ def normalize_latency(value):
         "client_timezone": client_timezone,
         "client_utc_offset_minutes": offset,
         "source": "client_reported",
-        "measurement": "fetch_response_headers",
+        "measurement": "lightweight_probe" if (
+            value.get("measurement") == "lightweight_probe" and request_path.endswith("/api/latency")
+        ) else "fetch_response_headers",
         "received_at": datetime.now(timezone.utc).isoformat(),
         "server": {
             "location": get_global_setting(SERVER_LOCATION_KEY) or GLOBAL_DEFAULTS[SERVER_LOCATION_KEY],

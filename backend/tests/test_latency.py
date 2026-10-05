@@ -4,9 +4,12 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from flask import Flask
+from flask_cors import CORS
 
 from models import Heartbeat, Session
 from routes.heartbeat import heartbeat_bp
+from routes.latency import latency_bp
+from services.cors_origins import apply_cors_headers
 from routes.collect import collect_bp
 from routes.behavioral_event import behavioral_event_bp
 from routes.settings import update_globals
@@ -19,6 +22,34 @@ from services.schema import get_schema, get_field_meta
 from rules.engine import build_condition, build_session_query
 from services.database import db
 from sqlalchemy.dialects import postgresql
+
+
+class LatencyProbeTests(unittest.TestCase):
+    def setUp(self):
+        self.app = Flask(__name__)
+        CORS(self.app, resources={r"/api/*": {"supports_credentials": True}}, origins=[])
+        self.app.register_blueprint(latency_bp)
+        self.app.after_request(apply_cors_headers)
+
+    def test_probe_is_empty_uncached_public_and_skips_database_cors(self):
+        with patch("services.cors_origins.dynamic_origin", side_effect=AssertionError("Database CORS lookup")) as origins:
+            response = self.app.test_client().get("/api/latency", headers={"Origin": "https://other.test"})
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.data, b"")
+        self.assertEqual(response.headers["X-OFM-Latency-Probe"], "1")
+        self.assertIn("no-store", response.headers["Cache-Control"])
+        self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
+        self.assertNotIn("Access-Control-Allow-Credentials", response.headers)
+        self.assertIn("X-OFM-Latency-Probe", response.headers["Access-Control-Expose-Headers"])
+        origins.assert_not_called()
+
+    def test_regular_routes_keep_existing_cors_validation(self):
+        self.app.add_url_rule("/other", view_func=lambda: "ok")
+        with patch("services.cors_origins.dynamic_origin", return_value="https://allowed.test") as origins:
+            response = self.app.test_client().get("/other", headers={"Origin": "https://allowed.test"})
+        origins.assert_called_once_with("https://allowed.test")
+        self.assertEqual(response.headers["Access-Control-Allow-Origin"], "https://allowed.test")
+        self.assertEqual(response.headers["Access-Control-Allow-Credentials"], "true")
 
 
 class LatencyTests(unittest.TestCase):
@@ -102,6 +133,15 @@ class LatencyTests(unittest.TestCase):
             for sample in invalid:
                 self.assertIsNone(normalize_latency(sample))
             settings.assert_not_called()
+
+    def test_probe_measurements_are_distinguished_from_legacy_ingestion_timings(self):
+        with patch("services.latency.get_global_setting", side_effect=GLOBAL_DEFAULTS.get):
+            probe = normalize_latency({**self.sample, "request_path": "/api/latency", "measurement": "lightweight_probe"})
+            legacy = normalize_latency(self.sample)
+            forged = normalize_latency({**self.sample, "measurement": "lightweight_probe"})
+        self.assertEqual(probe["measurement"], "lightweight_probe")
+        self.assertEqual(legacy["measurement"], "fetch_response_headers")
+        self.assertEqual(forged["measurement"], "fetch_response_headers")
 
     def test_capture_updates_latest_sample_but_absence_does_not_erase_it(self):
         session = SimpleNamespace(latency=None)

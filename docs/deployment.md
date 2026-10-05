@@ -20,20 +20,31 @@ is `UTC`. These are global settings (`server.location`, `server.timezone`), not
 changes to the operating system's timezone. Location is intentionally unset by
 default; no geolocation lookup is performed.
 
-The client `latency` extension measures successful collection requests using
-`performance.now()` around fetch, stopping when response headers are received.
-This is an HTTP round trip: it includes network delay, upload, server/proxy
-processing, and possibly connection setup. It is not isolated server processing
-time, one-way latency, or a reliable geographic distance measurement.
+The client `latency` extension measures `GET /api/latency`, a public endpoint
+returning an empty `204` response. The endpoint performs no database queries,
+session writes, rule evaluation, or Redis calls. Its public wildcard CORS avoids
+the database-backed origin lookup used for credentialed collection requests.
+Both server response headers and client fetch options prevent caching; the
+client verifies the response status and `X-OFM-Latency-Probe: 1` marker.
 
-The latest successful measurement is included as `extensions.latency` in the
-**next** initial, heartbeat, or direct behavioral request. The first request has
-no prior sample (`null`). Initial collection waits for its response before the
-first heartbeat, so that heartbeat can carry the initial timing. Normal requests
-use fetch with credentials and a 15-second timeout. Hidden-page delivery uses
-`sendBeacon` when available, falling back to fetch if the beacon is rejected.
-Beacon-only, failed, aborted, and non-successful requests do not create timings;
-the last successful sample remains available. No extra probe request is sent.
+Each measurement uses **two sequential requests**: a discarded warm-up followed
+by a timed probe using `performance.now()`, stopping at response headers. Probes
+omit credentials and have a 5-second timeout per request. Concurrent refreshes
+share one in-flight pair. This reduces connection-setup effects and excludes
+ingestion database/queue work. Network delay, proxy/worker scheduling, and browser
+scheduling can still contribute; it is not one-way latency or proof of distance.
+
+Initial fingerprint collection waits for its probe pair, so the initial payload
+can already include a sample. Each visible heartbeat starts a background refresh
+and sends the previous sample; the refreshed sample travels with the next normal
+request. Hidden pages skip probes. Failed/aborted requests, incorrect status or
+marker responses, and probes completed after the page becomes hidden do not
+replace the last valid sample. If no probe has succeeded, the sample is `null`.
+
+Initial, heartbeat, and behavioral requests carry the latest sample as
+`extensions.latency` but **never measure their own ingestion time**. Normal
+collection still uses credentialed fetch with a 15-second timeout. Hidden-page
+delivery uses `sendBeacon` when available, with fetch fallback if rejected.
 
 Example client sample:
 
@@ -41,7 +52,8 @@ Example client sample:
 {
     "round_trip_ms": 42.125,
     "measured_at": 1791200000000,
-    "request_path": "/api/initial",
+    "request_path": "/api/latency",
+    "measurement": "lightweight_probe",
     "client_timezone": "Europe/Paris",
     "client_utc_offset_minutes": 120
 }
@@ -51,9 +63,12 @@ Example client sample:
 positive east of UTC. Query strings are omitted from `request_path`. The browser
 timezone is an advertised JavaScript value, not a verified location or a custom
 HTTP header. Samples are untrusted: the backend ignores malformed values and
-marks accepted samples `source: "client_reported"`, adding `received_at`,
-`measurement: "fetch_response_headers"`, and the server configuration at
-ingestion time. Client-supplied server metadata is not trusted.
+marks accepted samples `source: "client_reported"`, adding `received_at` and the
+server configuration at ingestion time. New probe samples are labeled
+`measurement: "lightweight_probe"`; older ingestion timings retain
+`measurement: "fetch_response_headers"`. The `latency_ms` filter continues to
+use the session's latest sample; historical timings are not rewritten.
+Client-supplied server metadata is not trusted.
 
 The latest sample is stored on the session and exposed by its detail API.
 Heartbeats retain per-request samples in their `latency` field and summaries;
@@ -74,6 +89,9 @@ docker compose up -d --build backend frontend worker
 Backend/worker startup adds nullable JSONB `latency` columns to existing session
 and heartbeat tables through the existing idempotent schema-upgrade mechanism.
 Ensure monitored sites refresh cached copies of `ofm.js`.
+Reverse proxies serving selected collection paths must forward `/api/latency`
+to the same backend too; otherwise probe marker verification fails and no new
+samples are recorded.
 
 Client transport regression tests run with `npm test` in the `client` directory
 (Node 18+). Backend configuration/ingestion checks are in
@@ -176,7 +194,7 @@ When the OFM backend runs separately, proxy the OFM script and collection endpoi
 }
 
 (ofm_routes) {
-    @ofm_collection path /ofm.js /api/initial /api/heartbeat /api/behavioral_event
+    @ofm_collection path /ofm.js /api/initial /api/heartbeat /api/behavioral_event /api/latency
 
     handle @ofm_collection {
         reverse_proxy ofm:5000 {
@@ -228,6 +246,7 @@ The `ofm_routes` matcher should include every client collection endpoint used by
 - `/api/initial`
 - `/api/heartbeat`
 - `/api/behavioral_event`
+- `/api/latency` (GET, lightweight probe)
 
 Keep the OFM handles before the application's fallback proxy. Otherwise the application container may receive `/api/initial` instead of the OFM backend.
 
@@ -271,7 +290,7 @@ If a separate-host deployment is used, configure an explicit allowed origin in O
 ## Verifying a deployment
 
 1. Open the monitored site and inspect the Network panel.
-2. Confirm that `/ofm.js`, `/api/initial`, `/api/heartbeat`, and `/api/behavioral_event` use the monitored hostname.
+2. Confirm that `/ofm.js`, `/api/initial`, `/api/heartbeat`, `/api/behavioral_event`, and `/api/latency` use the monitored hostname. The probe must return `204` with `X-OFM-Latency-Probe: 1`.
 3. Inspect the `/api/initial` request and confirm that its request headers contain `Cookie` when an applicable cookie exists.
 4. Confirm that the response is handled successfully and that the session appears in the OFM dashboard.
 5. For reverse-proxy deployments, verify that the OFM backend receives the original monitored `Host` value.

