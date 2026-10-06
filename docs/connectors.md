@@ -102,7 +102,9 @@ Queries an [OpenCTI](https://filigran.io/solutions/products/opencti-threat-intel
 
 **Scope:** `ipv4-addr`, `ipv6-addr`, `user-agent`
 
-**STIX output:** Indicators, malware, campaigns, intrusion sets, and their relationships to the queried observable.
+**Lookup behavior:** The connector finds `based-on` relationships targeting the queried IP, hydrates each Indicator to check its `revoked` state, and skips revoked Indicators. For each active Indicator, it queries `indicates` relationships targeting Malware, Campaign, and Intrusion Set objects.
+
+**STIX output:** The queried observable, active Indicators based on it, supported indicated SDOs, and their relationships to the queried observable/Indicator.
 
 **Config:**
 ```yaml

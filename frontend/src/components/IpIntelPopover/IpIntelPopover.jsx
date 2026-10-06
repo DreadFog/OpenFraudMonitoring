@@ -139,19 +139,17 @@ export default function IpIntelPopover({ ip }) {
 
   if (!ip) return null;
 
-  // Extract malware names from relationships
-  const malwareEntries = [];
-  if (data?.found && data.relationships) {
-    for (const r of data.relationships) {
-      const src = r.source || {};
-      const tgt = r.target || {};
-      if (src.stix_type === "malware") {
-        malwareEntries.push({ name: src.raw?.name || src.value, date: fmtDate(r.start_time || r.created_at_platform) });
-      } else if (tgt.stix_type === "malware") {
-        malwareEntries.push({ name: tgt.raw?.name || tgt.value, date: fmtDate(r.start_time || r.created_at_platform) });
-      }
-    }
-  }
+  const latestBehavior = (data?.known_malicious_behavior || [])
+    .filter((behavior) => behavior.latest_indicated?.entity)
+    .reduce((latest, behavior) => {
+      const currentTime = Date.parse(behavior.latest_indicated.indicated_at || "") || 0;
+      const latestTime = Date.parse(latest?.latest_indicated?.indicated_at || "") || 0;
+      return currentTime > latestTime ? behavior : latest;
+    }, null);
+  const latestTarget = latestBehavior?.latest_indicated?.entity;
+  const latestTargetName = latestTarget?.stix_object?.name || latestTarget?.value;
+  const latestIndicatorName = latestBehavior?.indicator?.stix_object?.name
+    || latestBehavior?.indicator?.value;
 
   const popover = open ? createPortal(
     <div
@@ -187,33 +185,32 @@ export default function IpIntelPopover({ ip }) {
             <span className="ip-intel-label">AS</span>
             <span className="ip-intel-value">
               {data.autonomous_system
-                ? `${data.autonomous_system.raw?.number ? `AS${data.autonomous_system.raw.number}` : ""} ${data.autonomous_system.raw?.name || data.autonomous_system.value || ""}`.trim()
+                ? `${data.autonomous_system.stix_object?.number ? `AS${data.autonomous_system.stix_object.number}` : ""} ${data.autonomous_system.stix_object?.name || data.autonomous_system.value || ""}`.trim()
                 : "—"}
             </span>
           </div>
           <div className="ip-intel-row">
             <span className="ip-intel-label">Country</span>
             <span className="ip-intel-value">
-              {data.country?.raw?.name || data.country?.value || "—"}
+              {data.country?.stix_object?.name || data.country?.value || "—"}
             </span>
           </div>
-          {malwareEntries.length > 0 && (
-            <div className="ip-intel-malware-section">
-              <span className="ip-intel-label">Malware</span>
-              {malwareEntries.map((m, i) => (
-                <div key={i} className="ip-intel-malware-item">
-                  <span className="ip-intel-malware-name">{m.name}</span>
-                  {m.date && <span className="ip-intel-malware-date">{m.date}</span>}
-                </div>
-              ))}
-            </div>
-          )}
-          {malwareEntries.length === 0 && (
-            <div className="ip-intel-row">
-              <span className="ip-intel-label">Malware</span>
-              <span className="ip-intel-value ip-intel-muted">None</span>
-            </div>
-          )}
+          <div className="ip-intel-row">
+            <span className="ip-intel-label">Known behavior</span>
+            {latestTarget ? (
+              <span className="ip-intel-value">
+                {latestIndicatorName && <>{latestIndicatorName} → </>}
+                <b>{latestTarget.stix_type}:</b> {latestTargetName}
+                {latestBehavior.latest_indicated.indicated_at && (
+                  <small className="ip-intel-behavior-date">
+                    Indicated {fmtDate(latestBehavior.latest_indicated.indicated_at)}
+                  </small>
+                )}
+              </span>
+            ) : (
+              <span className="ip-intel-value ip-intel-muted">None cached</span>
+            )}
+          </div>
         </div>
       )}
     </div>,

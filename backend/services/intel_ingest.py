@@ -23,10 +23,11 @@ Sample created bundle based on the IPInfo connector
 
 import logging
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from services.database import db
+from services.stix_objects import normalize_stix_object
 from models import (
     StixIPv4Addr,
     StixIPv6Addr,
@@ -60,7 +61,13 @@ def _parse_iso(ts: Optional[str]) -> Optional[datetime]:
     if not ts:
         return None
     try:
-        return datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        if isinstance(ts, datetime):
+            parsed = ts
+        else:
+            parsed = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed
     except (ValueError, TypeError):
         return None
 
@@ -78,12 +85,17 @@ def _upsert_typed(obj: dict, source_connector_id: int = None) -> None:
         if loc_type and loc_type != "country":
             return
 
-        # Country may be ISO code or country name in external exports.
+        # Keep the OFM lookup key as a country code when aliases provide one.
         country = obj.get("country")
         if not country:
             return
+        aliases = obj.get("x_opencti_aliases") or []
+        country_code = next(
+            (alias for alias in aliases if isinstance(alias, str) and len(alias) == 2),
+            country,
+        )
         Model = StixCountry
-        value = country
+        value = country_code
     else:
         entry = _TYPE_MAP.get(otype)
         if not entry:
@@ -162,10 +174,11 @@ def ingest_bundle(bundle: dict, source_connector_id: int = None) -> int:
         if not isinstance(obj, dict):
             continue
         try:
-            if obj.get("type") == "relationship":
-                _upsert_relationship(obj, source_connector_id=source_connector_id)
+            normalized = normalize_stix_object(obj, platform_created_at=datetime.now(timezone.utc))
+            if normalized.get("type") == "relationship":
+                _upsert_relationship(normalized, source_connector_id=source_connector_id)
             else:
-                _upsert_typed(obj, source_connector_id=source_connector_id)
+                _upsert_typed(normalized, source_connector_id=source_connector_id)
             count += 1
         except Exception as e:
             logger.exception("Failed to ingest STIX object %s: %s", obj.get("id"), e)

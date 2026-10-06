@@ -914,7 +914,7 @@ function AddEntityDrawer({ onAdd, onClose }) {
   };
 
   const entityLabel = (ent) => {
-    const name = ent.raw?.name;
+    const name = ent.stix_object?.name;
     if (searchKind === "autonomous-system") return `AS${ent.value}${name ? ` · ${name}` : ""}`;
     return name || ent.value;
   };

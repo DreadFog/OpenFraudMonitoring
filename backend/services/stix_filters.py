@@ -86,7 +86,7 @@ def _type_specific_fields(stix_type: str, Model):
             "name": "country_code",
             "label": "Country Code",
             "type": "string",
-            "expr": Model.raw["country"].astext,
+            "expr": Model.value,
         })
         fields.append({
             "name": "country_name",
@@ -98,7 +98,7 @@ def _type_specific_fields(stix_type: str, Model):
             "name": "location_type",
             "label": "Location Type",
             "type": "string",
-            "expr": func.coalesce(Model.raw["x_ofm_location_type"].astext, Model.raw["x_opencti_location_type"].astext),
+            "expr": Model.raw["x_opencti_location_type"].astext,
         })
     elif stix_type == "indicator":
         fields.append({
@@ -122,10 +122,10 @@ def _type_specific_fields(stix_type: str, Model):
         })
     elif stix_type == "user-agent":
         fields.append({
-            "name": "string",
+            "name": "value",
             "label": "User-Agent String",
             "type": "string",
-            "expr": func.coalesce(Model.raw["string"].astext, Model.raw["value"].astext),
+            "expr": Model.raw["value"].astext,
         })
     return fields
 

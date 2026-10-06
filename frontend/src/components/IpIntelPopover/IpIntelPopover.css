@@ -76,6 +76,13 @@
   word-break: break-word;
 }
 
+.ip-intel-behavior-date {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .ip-intel-muted {
   color: var(--muted);
 }

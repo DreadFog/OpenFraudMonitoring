@@ -22,6 +22,7 @@ from models.stix import (
     StixIPv4Addr, StixIPv6Addr, StixUserAgent,
     StixCountry, StixAutonomousSystem, StixRelationship,
 )
+from services.stix_objects import normalize_stix_object
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ IPObservable = Union[StixIPv4Addr, StixIPv6Addr]
 # matching the approach used by OpenCTI (identifier.js).
 # UUID is derived from canonicalized JSON of contributing fields.
 OASIS_NAMESPACE = uuid.UUID("00abedb4-aa42-466c-9c01-fed23315a9b7")
+OFM_SDO_SRO_NAMESPACE = uuid.UUID("6b28b8d1-91e4-4cdf-b5e6-2a7fc033f6d1")
 
 
 def _canonical(data: dict) -> str:
@@ -68,7 +70,13 @@ def get_or_create_ip(ip: str) -> Optional[IPObservable]:
         return existing
 
     sco = stix2.IPv4Address(value=ip) if version == 4 else stix2.IPv6Address(value=ip)
-    obj = Model(stix_id=sco.id, value=ip, raw=_to_plain(sco))
+    raw = _to_plain(sco)
+    raw.update({
+        "x_opencti_type": "IPv4-Addr" if version == 4 else "IPv6-Addr",
+        "x_opencti_score": 50,
+    })
+    raw = normalize_stix_object(raw)
+    obj = Model(stix_id=sco.id, value=ip, raw=raw)
     db.session.add(obj)
     db.session.flush()
     return obj
@@ -78,8 +86,7 @@ def get_or_create_user_agent(user_agent: str) -> Optional[StixUserAgent]:
     """
     Persist a STIX 2.1 user-agent observable.  Empty / sentinel values return None.
 
-    Emit an OpenCTI-like user-agent shape using OFM custom fields.
-    We keep deterministic UUIDv5 identifiers for stable deduplication.
+    Emit the OpenCTI user-agent SCO extension shape and a deterministic STIX id.
     """
     if not user_agent:
         return None
@@ -98,14 +105,10 @@ def get_or_create_user_agent(user_agent: str) -> Optional[StixUserAgent]:
         "spec_version": "2.1",
         "id": stix_id,
         "value": ua,
-        # Mirror string for compatibility with tools expecting the SCO field name.
-        "string": ua,
-        "x_ofm_type": "User-Agent",
+        "x_opencti_type": "User-Agent",
+        "x_opencti_score": 50,
     }
-    try:
-        raw = dict(stix2.parse(raw, allow_custom=True))
-    except Exception:
-        logger.debug("Could not parse user-agent with stix2; storing raw OFM shape", exc_info=True)
+    raw = normalize_stix_object(raw)
 
     obj = StixUserAgent(stix_id=stix_id, value=ua, raw=raw)
     db.session.add(obj)
@@ -129,16 +132,19 @@ def get_or_create_country(country_iso: str, country_name: Optional[str] = None) 
         return existing
 
     name = (country_name or code).strip()
-    stix_id = f"location--{uuid.uuid5(OASIS_NAMESPACE, _canonical({'name': name.lower(), 'x_ofm_location_type': 'Country'}))}"
+    stix_id = f"location--{uuid.uuid5(OFM_SDO_SRO_NAMESPACE, _canonical({'country': code, 'name': name.lower()}))}"
     location = stix2.Location(
         id=stix_id,
-        country=code,
+        country=name,
         name=name,
         allow_custom=True,
-        x_ofm_location_type="Country",
-        x_ofm_type="Country",
+        revoked=False,
+        confidence=100,
+        x_opencti_aliases=[code],
+        x_opencti_location_type="Country",
+        x_opencti_type="Country",
     )
-    raw = _to_plain(location)
+    raw = normalize_stix_object(_to_plain(location))
     obj = StixCountry(stix_id=stix_id, value=code, raw=raw)
     db.session.add(obj)
     db.session.flush()
@@ -162,8 +168,14 @@ def get_or_create_autonomous_system(asn: str, asn_org: Optional[str] = None) -> 
 
     # Extract numeric part for the STIX object ("AS12322" -> 12322)
     asn_number = int("".join(c for c in asn_str if c.isdigit()) or "0")
-    as_obj = stix2.AutonomousSystem(number=asn_number, name=asn_org or asn_str)
-    raw = _to_plain(as_obj)
+    as_obj = stix2.AutonomousSystem(
+        number=asn_number,
+        name=asn_org or asn_str,
+        allow_custom=True,
+        x_opencti_type="Autonomous-System",
+        x_opencti_score=50,
+    )
+    raw = normalize_stix_object(_to_plain(as_obj))
     obj = StixAutonomousSystem(stix_id=as_obj.id, value=asn_str, raw=raw)
     db.session.add(obj)
     db.session.flush()
@@ -186,14 +198,19 @@ def get_or_create_relationship(source_stix_id: str, relationship_type: str, targ
     if existing:
         return existing
 
-    stix_id = f"relationship--{uuid.uuid5(OASIS_NAMESPACE, _canonical({'relationship_type': relationship_type, 'source_ref': source_stix_id, 'target_ref': target_stix_id}))}"
+    stix_id = f"relationship--{uuid.uuid5(OFM_SDO_SRO_NAMESPACE, _canonical({'relationship_type': relationship_type, 'source_ref': source_stix_id, 'target_ref': target_stix_id}))}"
     rel = stix2.Relationship(
         id=stix_id,
         relationship_type=relationship_type,
         source_ref=source_stix_id,
         target_ref=target_stix_id,
+        revoked=False,
+        confidence=100,
+        lang="en",
+        allow_custom=True,
+        x_opencti_type=relationship_type,
     )
-    raw = _to_plain(rel)
+    raw = normalize_stix_object(_to_plain(rel))
     obj = StixRelationship(
         stix_id=stix_id,
         relationship_type=relationship_type,

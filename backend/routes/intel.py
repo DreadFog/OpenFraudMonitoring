@@ -25,6 +25,7 @@ from datetime import datetime, timedelta
 import logging
 
 from flask import Blueprint, request, jsonify, current_app, g
+from sqlalchemy import and_, func, or_
 
 from services.database import db
 from services.mq import publish_intel_request
@@ -40,6 +41,8 @@ intel_bp = Blueprint("intel", __name__, url_prefix="/api/intel")
 
 logger = logging.getLogger(__name__)
 
+_SCO_TYPES = {"ipv4-addr", "ipv6-addr", "user-agent"}
+
 def _stix_id_type(stix_id: str) -> str:
     return (stix_id or "").split("--", 1)[0]
 
@@ -51,6 +54,50 @@ def _resolve(stix_id: str):
     if not Model:
         return None
     return Model.query.filter_by(stix_id=stix_id).first()
+
+
+def _entity_dict(row, stix_type=None):
+    if row is None:
+        return None
+    stix_type = stix_type or _stix_id_type(row.stix_id)
+    return {**row.to_dict(), "stix_type": stix_type}
+
+
+def _session_condition(observable):
+    stix_type = observable.get("stix_type")
+    row_id = (observable.get("platform") or {}).get("id")
+    if row_id is None:
+        return None
+    if stix_type in ("ipv4-addr", "ipv6-addr"):
+        return and_(Session.ip_observable_id == row_id, Session.ip_observable_type == stix_type)
+    if stix_type == "user-agent":
+        return Session.user_agent_observable_id == row_id
+    return None
+
+
+def _sessions_for_observables(observables):
+    conditions = [
+        condition for observable in observables
+        if (condition := _session_condition(observable)) is not None
+    ]
+    if not conditions:
+        return None
+    return Session.query.filter(or_(*conditions))
+
+
+def _session_summary(observables):
+    query = _sessions_for_observables(observables)
+    if query is None:
+        return {"count": 0, "first_seen": None, "last_seen": None}
+    count = query.with_entities(Session.id).distinct().count()
+    first_seen, last_seen = query.with_entities(
+        func.min(Session.first_seen), func.max(Session.last_seen),
+    ).one()
+    return {
+        "count": count,
+        "first_seen": first_seen if first_seen and first_seen > 0 else None,
+        "last_seen": last_seen if last_seen and last_seen > 0 else None,
+    }
 
 
 def _apply_decay(rows, days: int):
@@ -76,7 +123,7 @@ def _detect_ip_model(ip: str):
 
 
 def _build_entity_response(obs, stix_type: str):
-    """Build the standard intel response dict for any STIX observable."""
+    """Build the intel response with direct, indicator, and observable context separated."""
     days = int(current_app.config.get("INTEL_DECAY_DAYS", 7))
 
     rels = StixRelationship.query.filter(
@@ -84,17 +131,17 @@ def _build_entity_response(obs, stix_type: str):
         | (StixRelationship.target_ref == obs.stix_id)
     ).all()
 
-    # Indirect: indicators -> malware/campaign/intrusion-set
-    indicator_ids = [
+    # For an SCO, add its based-on indicators and each indicator's indications.
+    based_on_rels = [
         r.source_ref
         for r in rels
         if r.relationship_type == "based-on" and r.target_ref == obs.stix_id
     ]
     indirect_rels = []
-    if indicator_ids:
+    if based_on_rels:
         indirect_rels = StixRelationship.query.filter(
             StixRelationship.relationship_type == "indicates",
-            StixRelationship.source_ref.in_(indicator_ids),
+            StixRelationship.source_ref.in_(based_on_rels),
         ).all()
 
     _apply_decay([obs], days)
@@ -122,28 +169,91 @@ def _build_entity_response(obs, stix_type: str):
     # Convenience extracts: AS + country directly belonging-to / located-at.
     autonomous_system = None
     country = None
+    summarized_rel_ids = set()
     for r in rels:
         if r.relationship_type == "belongs-to" and r.source_ref == obs.stix_id:
             tgt = referenced.get(r.target_ref)
             if tgt and tgt["stix_type"] == "autonomous-system":
                 autonomous_system = tgt
+                summarized_rel_ids.add(r.stix_id)
         elif r.relationship_type == "located-at" and r.source_ref == obs.stix_id:
             tgt = referenced.get(r.target_ref)
             if tgt and tgt["stix_type"] == "location":
                 country = tgt
+                summarized_rel_ids.add(r.stix_id)
 
     obs_dict = {**obs.to_dict(), "stix_type": stix_type}
 
-    # Count linked sessions
-    session_count = 0
-    if stix_type in ("ipv4-addr", "ipv6-addr"):
-        session_count = Session.query.filter_by(
-            ip_observable_id=obs.id, ip_observable_type=stix_type
-        ).count()
-    elif stix_type == "user-agent":
-        session_count = Session.query.filter_by(
-            user_agent_observable_id=obs.id
-        ).count()
+    known_malicious_behavior = []
+    if stix_type in _SCO_TYPES:
+        indicates_by_indicator = {}
+        for rel in indirect_rels:
+            indicator = referenced.get(rel.source_ref)
+            target = referenced.get(rel.target_ref)
+            if (
+                not indicator
+                or indicator["stix_object"].get("revoked") is True
+                or not target
+            ):
+                continue
+            indicates_by_indicator.setdefault(rel.source_ref, []).append(rel)
+            summarized_rel_ids.add(rel.stix_id)
+        for rel in rels:
+            if rel.relationship_type != "based-on" or rel.target_ref != obs.stix_id:
+                continue
+            indicator = referenced.get(rel.source_ref)
+            if not indicator or indicator["stix_object"].get("revoked") is True:
+                continue
+            summarized_rel_ids.add(rel.stix_id)
+            indicator_rels = [
+                item for item in indicates_by_indicator.get(rel.source_ref, [])
+                if item.target_ref in referenced
+            ]
+            target_ids = dict.fromkeys(item.target_ref for item in indicator_rels)
+            targets = [referenced[target_id] for target_id in target_ids]
+            latest_rel = max(
+                indicator_rels,
+                key=lambda item: item.created_at_platform or datetime.min,
+                default=None,
+            )
+            latest_indicated = None
+            if latest_rel:
+                latest_indicated = {
+                    "entity": referenced[latest_rel.target_ref],
+                    "indicated_at": latest_rel.created_at_platform.isoformat()
+                    if latest_rel.created_at_platform else None,
+                }
+            known_malicious_behavior.append({
+                "indicator": indicator,
+                "indicates": targets,
+                "latest_indicated": latest_indicated,
+            })
+
+    based_on_observables = []
+    indicated_entities = []
+    if stix_type == "indicator":
+        based_on_ids = set()
+        indicated_ids = set()
+        for rel in rels:
+            if rel.source_ref != obs.stix_id:
+                continue
+            if rel.relationship_type == "based-on":
+                target = referenced.get(rel.target_ref)
+                if target and target["stix_type"] in _SCO_TYPES and rel.target_ref not in based_on_ids:
+                    based_on_observables.append(target)
+                    based_on_ids.add(rel.target_ref)
+                    summarized_rel_ids.add(rel.stix_id)
+            elif rel.relationship_type == "indicates":
+                target = referenced.get(rel.target_ref)
+                if target and rel.target_ref not in indicated_ids:
+                    indicated_entities.append(target)
+                    indicated_ids.add(rel.target_ref)
+                    summarized_rel_ids.add(rel.stix_id)
+
+    session_observables = based_on_observables if stix_type == "indicator" else (
+        [obs_dict] if stix_type in _SCO_TYPES else []
+    )
+    observable_sessions = _session_summary(session_observables)
 
     return {
         "found": True,
@@ -151,12 +261,18 @@ def _build_entity_response(obs, stix_type: str):
         "observable": obs_dict,
         "autonomous_system": autonomous_system,
         "country": country,
-        "session_count": session_count,
+        "session_count": observable_sessions["count"],
+        "session_count_scope": "based-on observable(s)" if stix_type == "indicator" else "this observable" if stix_type in _SCO_TYPES else None,
+        "first_seen": observable_sessions["first_seen"],
+        "last_seen": observable_sessions["last_seen"],
+        "based_on_observables": based_on_observables,
+        "indicates": indicated_entities,
+        "known_malicious_behavior": known_malicious_behavior,
         "relationships": [
             {**r.to_dict(),
              "source": referenced.get(r.source_ref) if r.source_ref != obs.stix_id else obs_dict,
              "target": referenced.get(r.target_ref) if r.target_ref != obs.stix_id else obs_dict}
-            for r in all_rels
+            for r in all_rels if r.stix_id not in summarized_rel_ids
         ],
         "decay_days": days,
     }
@@ -332,16 +448,26 @@ def get_entity_sessions():
     except (ValueError, TypeError):
         limit = 10
     
-    # Query sessions linked to this entity based on type
-    sessions = []
-    if stix_type in ("ipv4-addr", "ipv6-addr"):
-        sessions = Session.query.filter_by(
-            ip_observable_id=obs.id, ip_observable_type=stix_type
-        ).order_by(Session.last_seen.desc()).limit(limit).all()
-    elif stix_type == "user-agent":
-        sessions = Session.query.filter_by(
-            user_agent_observable_id=obs.id
-        ).order_by(Session.last_seen.desc()).limit(limit).all()
+    observables = []
+    if stix_type in _SCO_TYPES:
+        observables.append(_entity_dict(obs, stix_type))
+    elif stix_type == "indicator":
+        based_on = StixRelationship.query.filter_by(
+            relationship_type="based-on", source_ref=obs.stix_id,
+        ).all()
+        for relationship in based_on:
+            observable_type = _stix_id_type(relationship.target_ref)
+            if observable_type not in _SCO_TYPES:
+                continue
+            observable = _resolve(relationship.target_ref)
+            if observable is not None:
+                observables.append(_entity_dict(observable, observable_type))
+
+    session_query = _sessions_for_observables(observables)
+    sessions = (
+        session_query.order_by(Session.last_seen.desc()).limit(limit).all()
+        if session_query is not None else []
+    )
     
     return jsonify({
         "entity_type": stix_type,

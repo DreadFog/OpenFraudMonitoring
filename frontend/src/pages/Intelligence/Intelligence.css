@@ -276,6 +276,87 @@
   word-break: break-all;
 }
 
+.intel-description {
+  margin: 14px 0 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.intel-seen-dates,
+.intel-indicator-dates {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px 20px;
+  margin-top: 14px;
+}
+
+.intel-seen-dates > div,
+.intel-indicator-dates > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.intel-seen-dates span,
+.intel-indicator-dates span {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.intel-seen-dates b,
+.intel-indicator-dates b {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.intel-indicator-links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px 28px;
+  margin-top: 20px;
+}
+
+.intel-indicator-links h3 {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.intel-indicator-link + .intel-indicator-link {
+  margin-top: 8px;
+}
+
+.intel-indicator-link p {
+  margin: 3px 0 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.intel-behavior-entry + .intel-behavior-entry {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.intel-behavior-targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+  margin: 6px 0 0 10px;
+  font-size: 12px;
+}
+
+.intel-behavior-targets > span:first-child {
+  color: var(--muted);
+}
+
 /* AS + country grid */
 .intel-grid {
   display: grid;

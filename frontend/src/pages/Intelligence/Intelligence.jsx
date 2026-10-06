@@ -86,8 +86,8 @@ function fmtDate(iso) {
 
 function ObjectLabel({ obj, onClick }) {
   if (!obj) return <span className="intel-muted">—</span>;
-  const { stix_type, value, raw } = obj;
-  const r = raw || {};
+  const { stix_type, value, stix_object: r } = obj;
+  const stix = r || {};
   const wrap = (content) => onClick
     ? <span
         className="intel-link"
@@ -98,12 +98,12 @@ function ObjectLabel({ obj, onClick }) {
         onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }}
       >{content}</span>
     : <span>{content}</span>;
-  if (stix_type === "indicator") return wrap(<><b>indicator</b> · {r.name || r.pattern || value}</>);
-  if (stix_type === "malware") return wrap(<><b>malware</b> · {r.name || value}</>);
-  if (stix_type === "campaign") return wrap(<><b>campaign</b> · {r.name || value}</>);
-  if (stix_type === "intrusion-set") return wrap(<><b>intrusion-set</b> · {r.name || value}</>);
-  if (stix_type === "autonomous-system") return wrap(<><b>AS</b> · {r.number ? `AS${r.number}` : value} {r.name ? `(${r.name})` : ""}</>);
-  if (stix_type === "location") return wrap(<><b>country</b> · {r.name || value}</>);
+  if (stix_type === "indicator") return wrap(<><b>indicator</b> · {stix.name || stix.pattern || value}</>);
+  if (stix_type === "malware") return wrap(<><b>malware</b> · {stix.name || value}</>);
+  if (stix_type === "campaign") return wrap(<><b>campaign</b> · {stix.name || value}</>);
+  if (stix_type === "intrusion-set") return wrap(<><b>intrusion-set</b> · {stix.name || value}</>);
+  if (stix_type === "autonomous-system") return wrap(<><b>AS</b> · {stix.number ? `AS${stix.number}` : value} {stix.name ? `(${stix.name})` : ""}</>);
+  if (stix_type === "location") return wrap(<><b>country</b> · {stix.name || value}</>);
   return wrap(<><b>{stix_type}</b> · {value}</>);
 }
 
@@ -157,13 +157,15 @@ export default function Intelligence() {
   const [, recordRecent] = useRecentItems();
 
   const observable = data?.found ? data.observable : null;
+  const stixObject = observable?.stix_object || {};
+  const isIndicator = observable?.stix_type === "indicator";
   useEffect(() => {
     if (!observable?.stix_type || !observable.value) return;
     const { stix_type: type, value } = observable;
     recordRecent({
       key: `stix:${type}:${value}`,
       kind: "entity",
-      label: observable.raw?.name || value,
+      label: observable.stix_object?.name || value,
       sub: type,
       path: `/intelligence?type=${encodeURIComponent(type)}&value=${encodeURIComponent(value)}`,
     });
@@ -590,9 +592,9 @@ export default function Intelligence() {
                       onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }}
                     >
                       <td className="intel-entity-value">{ent.value}</td>
-                      <td>{fmtDate(ent.created_at_platform)}</td>
-                      <td>{fmtDate(ent.last_refreshed_at)}</td>
-                      <td>{ent.decayed
+                      <td>{fmtDate(ent.platform?.created_at_platform)}</td>
+                      <td>{fmtDate(ent.platform?.last_refreshed_at)}</td>
+                      <td>{ent.platform?.decayed
                         ? <span className="intel-pill intel-pill-decayed">decayed</span>
                         : <span className="intel-muted">—</span>}</td>
                     </tr>
@@ -628,21 +630,33 @@ export default function Intelligence() {
           </button>
           <section className="intel-card">
             <div className="intel-card-head">
-              <h2>{data.observable.value}</h2>
+              <h2>{data.observable.stix_object?.name || data.observable.value}</h2>
               <div className="intel-pill">{data.observable.stix_type}</div>
-              {data.observable.decayed && <div className="intel-pill intel-pill-decayed">decayed</div>}
+              {data.observable.platform?.decayed && <div className="intel-pill intel-pill-decayed">decayed</div>}
             </div>
             <div className="intel-meta">
-              <div><span>Created on platform</span><b>{fmtDate(data.observable.created_at_platform)}</b></div>
-              <div><span>Last refreshed</span><b>{fmtDate(data.observable.last_refreshed_at)}</b></div>
+              <div><span>Created on platform</span><b>{fmtDate(data.observable.platform?.created_at_platform)}</b></div>
+              <div><span>Last refreshed</span><b>{fmtDate(data.observable.platform?.last_refreshed_at)}</b></div>
               <div><span>STIX ID</span><code>{data.observable.stix_id}</code></div>
               {data.session_count != null && (
-                <div><span>Sessions</span><b>{data.session_count}</b></div>
+                <div>
+                  <span>{isIndicator ? "Sessions on based-on observable(s)" : "Sessions"}</span>
+                  <b>{data.session_count}</b>
+                </div>
               )}
             </div>
+            {stixObject.description && (
+              <p className="intel-description">{stixObject.description}</p>
+            )}
+            {!isIndicator && (stixObject.first_seen || stixObject.last_seen) && (
+              <div className="intel-seen-dates">
+                {stixObject.first_seen && <div><span>First seen</span><b>{fmtDate(stixObject.first_seen)}</b></div>}
+                {stixObject.last_seen && <div><span>Last seen</span><b>{fmtDate(stixObject.last_seen)}</b></div>}
+              </div>
+            )}
           </section>
 
-          {(data.autonomous_system || data.country) && (
+          {(data.autonomous_system || data.country || data.known_malicious_behavior?.length > 0) && (
             <section className="intel-grid">
               {data.autonomous_system && (
                 <div className="intel-mini">
@@ -660,17 +674,65 @@ export default function Intelligence() {
                   </div>
                 </div>
               )}
+              {data.known_malicious_behavior?.length > 0 && (
+                <div className="intel-mini intel-malicious-behavior">
+                  <div className="intel-mini-label">Known malicious behavior</div>
+                  {data.known_malicious_behavior.map((behavior) => (
+                    <div className="intel-behavior-entry" key={behavior.indicator.stix_id}>
+                      <ObjectLabel obj={behavior.indicator} onClick={selectEntity} />
+                      {behavior.indicates.length > 0 && (
+                        <div className="intel-behavior-targets">
+                          <span>Indicates</span>
+                          {behavior.indicates.map((target) => (
+                            <ObjectLabel key={target.stix_id} obj={target} onClick={selectEntity} />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
           )}
 
-          <section className="intel-card">
-            <div className="intel-card-head">
-              <h2>Relationships</h2>
-              <span className="intel-count">{data.relationships.length}</span>
-            </div>
-            {data.relationships.length === 0 ? (
-              <p className="intel-muted">No relationships cached.</p>
-            ) : (
+          {isIndicator && (
+            <section className="intel-card intel-indicator-summary">
+              <div className="intel-card-head"><h2>Indicator coverage</h2></div>
+              <div className="intel-indicator-dates">
+                <div><span>Valid from</span><b>{fmtDate(stixObject.valid_from)}</b></div>
+                <div><span>Valid until</span><b>{fmtDate(stixObject.valid_until)}</b></div>
+                <div><span>First seen on based-on observable(s)</span><b>{fmtDate(data.first_seen)}</b></div>
+                <div><span>Last seen on based-on observable(s)</span><b>{fmtDate(data.last_seen)}</b></div>
+                <div><span>Sessions on based-on observable(s)</span><b>{data.session_count}</b></div>
+              </div>
+              <div className="intel-indicator-links">
+                <div>
+                  <h3>Based on</h3>
+                  {data.based_on_observables?.length ? data.based_on_observables.map((item) => (
+                    <div className="intel-indicator-link" key={item.stix_id}>
+                      <ObjectLabel obj={item} onClick={selectEntity} />
+                    </div>
+                  )) : <span className="intel-muted">No observable references</span>}
+                </div>
+                <div>
+                  <h3>Indicates</h3>
+                  {data.indicates?.length ? data.indicates.map((item) => (
+                    <div className="intel-indicator-link" key={item.stix_id}>
+                      <ObjectLabel obj={item} onClick={selectEntity} />
+                      {item.stix_object?.description && <p>{item.stix_object.description}</p>}
+                    </div>
+                  )) : <span className="intel-muted">No indicated objects</span>}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {data.relationships.length > 0 && (
+            <section className="intel-card">
+              <div className="intel-card-head">
+                <h2>Other relationships</h2>
+                <span className="intel-count">{data.relationships.length}</span>
+              </div>
               <div className="intel-table-wrap">
                 <table className="intel-table">
                   <thead>
@@ -687,11 +749,11 @@ export default function Intelligence() {
                         <td><ObjectLabel obj={r.source} onClick={selectEntity} /></td>
                         <td><span className="intel-rel-type">{r.relationship_type}</span></td>
                         <td><ObjectLabel obj={r.target} onClick={selectEntity} /></td>
-                        <td>{r.decayed
+                        <td>{r.platform?.decayed
                           ? <span className="intel-pill intel-pill-decayed">decayed</span>
                           : <span className="intel-muted">—</span>}</td>
                         <td className="intel-rel-dates">
-                          <div>Created: {fmtDate(r.created_at_platform)}</div>
+                          <div>Created on platform: {fmtDate(r.platform?.created_at_platform)}</div>
                           <div>Start: {fmtDate(r.start_time)}</div>
                           <div>Stop: {fmtDate(r.stop_time)}</div>
                         </td>
@@ -700,8 +762,8 @@ export default function Intelligence() {
                   </tbody>
                 </table>
               </div>
-            )}
-          </section>
+            </section>
+          )}
 
           <section className="intel-card">
             <div className="intel-card-head">
