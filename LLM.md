@@ -92,7 +92,7 @@ Dense technical reference for LLMs. Self-hosted browser fingerprinting, behavior
 
 **TAXII feeds** `/api/taxii-feeds`: `GET`, `GET /<id>`, `POST`, plus update/delete.
 
-**TAXII 2.1 server** `/taxii2` (api root `default`): `GET /`, `GET /default/`, `GET /default/collections/`, `GET /default/collections/<id>/`, `GET /default/collections/<id>/objects/`. Own `require_taxii_auth`.
+**TAXII 2.1 server** `/taxii2` (api root `default`, read-only, TAXII 2.1 OS): discovery `GET /`, `GET /default/`, `GET /default/collections/`, `GET /default/collections/<id>/`, `GET .../manifest/`, `GET|POST(403) .../objects/`, `GET|DELETE(403) .../objects/<object_id>/`, `GET .../objects/<object_id>/versions/`, `GET /default/status/<id>/` (404). Responses use `application/taxii+json;version=2.1` and TAXII error resources. Auth is `require_taxii_auth`: Basic, Bearer token/JWT, or `access_token`. Feed `object_types`/`filters` scope each collection. Tests: `backend/tests/test_taxii.py`.
 
 **Misc**: `GET /` (info), `GET /health`, `GET /ofm.js`.
 

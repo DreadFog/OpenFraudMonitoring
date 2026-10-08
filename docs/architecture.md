@@ -404,11 +404,19 @@ See [Monitored Domains](domains.md).
 | POST | `/api/taxii-feeds` | Create a feed |
 | PUT | `/api/taxii-feeds/<id>` | Update a feed |
 | DELETE | `/api/taxii-feeds/<id>` | Delete a feed |
-| GET | `/taxii2/` | TAXII discovery |
+| GET | `/taxii2/` | TAXII discovery (unauthenticated) |
 | GET | `/taxii2/default/` | API root |
-| GET | `/taxii2/default/collections/` | List collections |
+| GET | `/taxii2/default/collections/` | List collections (one per active feed) |
 | GET | `/taxii2/default/collections/<id>/` | Collection metadata |
-| GET | `/taxii2/default/collections/<id>/objects/` | STIX objects in a collection |
+| GET | `/taxii2/default/collections/<id>/manifest/` | Object manifest (`id`, `date_added`, `version`, `media_type`) |
+| GET | `/taxii2/default/collections/<id>/objects/` | STIX objects envelope |
+| POST | `/taxii2/default/collections/<id>/objects/` | Always `403` (collections are read-only) |
+| GET | `/taxii2/default/collections/<id>/objects/<object_id>/` | One object envelope |
+| DELETE | `/taxii2/default/collections/<id>/objects/<object_id>/` | Always `403` |
+| GET | `/taxii2/default/collections/<id>/objects/<object_id>/versions/` | Object versions |
+| GET | `/taxii2/default/status/<id>/` | Always `404` (no write operations) |
+
+The server follows TAXII 2.1 OS: responses use `application/taxii+json;version=2.1`, errors are TAXII error resources, and unsupported `Accept` headers get `406` (`*/*` and `application/json` stay accepted for browsers). Clients authenticate with HTTP Basic (username/password, or an API token as the password), `Authorization: Bearer <API token or JWT>`, or `?access_token=`. A `401` includes `WWW-Authenticate`. A feed's `object_types` and `filters` scope its collection; filters that do not apply to a type exclude that type. Supported parameters are `added_after`, `limit` (default 100, max 1000), `next`, and `match[id|type|version|spec_version]`. Pages are ordered by `date_added`, which is the last refresh time or else the platform insertion time. Responses with objects include `X-TAXII-Date-Added-First/Last`. OFM stores one version per object: `version` is `modified`/`created`, or the insertion time for SCOs.
 
 ## Built-in Risk Scoring
 
