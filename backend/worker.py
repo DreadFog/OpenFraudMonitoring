@@ -209,9 +209,11 @@ def process_intel_responses():
 def process_data_retention():
     """Sweep on worker startup and hourly, reloading the retention setting."""
     from services.retention import purge_inactive_data
+    from services.indicator_revocation import refresh_indicator_revocation
     while True:
         try:
             with app.app_context():
+                refresh_indicator_revocation()
                 counts = purge_inactive_data()
                 logger.info("Data retention sweep: %s", counts)
         except Exception:

@@ -17,7 +17,6 @@ class StixRelationship(db.Model):
     created_at_platform = db.Column(db.DateTime, server_default=func.now(), nullable=False)
     start_time = db.Column(db.DateTime, nullable=True)
     stop_time = db.Column(db.DateTime, nullable=True)
-    decayed = db.Column(db.Boolean, default=False, nullable=False)
     raw = db.Column(JSONB, nullable=False, default=dict)
     source_connector_id = db.Column(
         db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True,
@@ -38,14 +37,12 @@ class StixRelationship(db.Model):
             "created_at_platform": created_at_platform,
             "start_time": start_time,
             "stop_time": stop_time,
-            "decayed": self.decayed,
             "raw": stix_object,
             "source_connector_id": self.source_connector_id,
             "stix_object": stix_object,
             "platform": {
                 "id": self.id,
                 "created_at_platform": created_at_platform,
-                "decayed": self.decayed,
                 "source_connector_id": self.source_connector_id,
             },
         }

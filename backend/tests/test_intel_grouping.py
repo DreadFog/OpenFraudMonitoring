@@ -24,7 +24,7 @@ class FakeEntity:
         self.id = properties.pop("id", 1)
         self.stix_id = stix_id
         self.value = value
-        self.decayed = False
+        self.revoked = False
         self.raw = {"type": stix_type, "id": stix_id, "value": value, **properties}
 
     def to_dict(self):
@@ -35,7 +35,7 @@ class FakeEntity:
             "value": self.value,
             "raw": self.raw,
             "stix_object": self.raw,
-            "platform": {"id": self.id, "decayed": False},
+            "platform": {"id": self.id},
         }
 
 
@@ -48,13 +48,12 @@ def relationship(stix_id, relationship_type, source_ref, target_ref, created_at_
         start_time=None,
         stop_time=None,
         created_at_platform=created_at_platform,
-        decayed=False,
         to_dict=lambda: {
             "stix_id": stix_id,
             "relationship_type": relationship_type,
             "source_ref": source_ref,
             "target_ref": target_ref,
-            "platform": {"decayed": False},
+            "platform": {},
         },
     )
 
@@ -62,7 +61,6 @@ def relationship(stix_id, relationship_type, source_ref, target_ref, created_at_
 class IntelligenceGroupingTests(unittest.TestCase):
     def setUp(self):
         self.app = Flask(__name__)
-        self.app.config["INTEL_DECAY_DAYS"] = 7
 
     def build_response(self, observable, direct, indirect, entities, session_summary=None):
         relationship_query = SimpleNamespace(
@@ -80,7 +78,8 @@ class IntelligenceGroupingTests(unittest.TestCase):
         with self.app.app_context(), \
              patch("routes.intel.StixRelationship", relationship_model), \
              patch("routes.intel._resolve", side_effect=lambda sid: entities.get(sid)), \
-             patch("routes.intel._apply_decay"), \
+             patch("routes.intel.apply_indicator_revocation"), \
+             patch("routes.intel.get_revocation_days", return_value=7), \
              patch("routes.intel._session_summary", return_value=session_summary or {
                  "count": 0, "first_seen": None, "last_seen": None,
              }) as summarize:

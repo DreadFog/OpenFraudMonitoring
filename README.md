@@ -102,7 +102,6 @@ All variables are in [`.env.example`](.env.example). Key ones:
 | `REDIS_URL` | Redis connection string |
 | `POSTGRES_PASSWORD` | Database password |
 | `CONNECTOR_TOKEN` | Shared auth token for connector HTTP fallback |
-| `INTEL_DECAY_DAYS` | Days before STIX intel is marked as decayed (default 7) |
 
 ## Documentation
 

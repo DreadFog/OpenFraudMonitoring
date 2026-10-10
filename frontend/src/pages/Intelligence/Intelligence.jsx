@@ -577,7 +577,7 @@ export default function Intelligence() {
                     <th>Value</th>
                     <th>Created</th>
                     <th>Last Refreshed</th>
-                    <th>Decay</th>
+                    {entityType === 'indicator' && <th>Revoked</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -594,9 +594,9 @@ export default function Intelligence() {
                       <td className="intel-entity-value">{ent.stix_type === 'indicator' ? (ent.name || ent.stix_object?.name || ent.value) : ent.value}</td>
                       <td>{fmtDate(ent.platform?.created_at_platform)}</td>
                       <td>{fmtDate(ent.platform?.last_refreshed_at)}</td>
-                      <td>{ent.platform?.decayed
-                        ? <span className="intel-pill intel-pill-decayed">decayed</span>
-                        : <span className="intel-muted">—</span>}</td>
+                      {entityType === 'indicator' && <td>{ent.revoked
+                        ? <span className="intel-pill intel-pill-revoked">revoked</span>
+                        : <span className="intel-muted">—</span>}</td>}
                     </tr>
                   ))}
                 </tbody>
@@ -632,7 +632,7 @@ export default function Intelligence() {
             <div className="intel-card-head">
               <h2>{data.observable.stix_object?.name || data.observable.value}</h2>
               <div className="intel-pill">{data.observable.stix_type}</div>
-              {data.observable.platform?.decayed && <div className="intel-pill intel-pill-decayed">decayed</div>}
+              {data.observable.stix_type === 'indicator' && data.observable.revoked && <div className="intel-pill intel-pill-revoked">revoked</div>}
             </div>
             <div className="intel-meta">
               <div><span>Created on platform</span><b>{fmtDate(data.observable.platform?.created_at_platform)}</b></div>
@@ -740,7 +740,7 @@ export default function Intelligence() {
                       <th>Source</th>
                       <th>Type</th>
                       <th>Target</th>
-                      <th>Decay</th>
+                      <th>Dates</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -749,9 +749,6 @@ export default function Intelligence() {
                         <td><ObjectLabel obj={r.source} onClick={selectEntity} /></td>
                         <td><span className="intel-rel-type">{r.relationship_type}</span></td>
                         <td><ObjectLabel obj={r.target} onClick={selectEntity} /></td>
-                        <td>{r.platform?.decayed
-                          ? <span className="intel-pill intel-pill-decayed">decayed</span>
-                          : <span className="intel-muted">—</span>}</td>
                         <td className="intel-rel-dates">
                           <div>Created on platform: {fmtDate(r.platform?.created_at_platform)}</div>
                           <div>Start: {fmtDate(r.start_time)}</div>

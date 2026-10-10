@@ -104,7 +104,7 @@ Dense technical reference for LLMs. Self-hosted browser fingerprinting, behavior
 - **Typed behavioral event tables** (replaced legacy `behavioral_events` JSONB table, all carry `authenticated`): `beh_copy` (`CopyEvent`: length, text?, source_tag/id/name/type, form_action), `beh_paste` (`PasteEvent`: length, text?, target_tag/id/name/type, form_action), `beh_form_submit` (`FormSubmitEvent`: action, method, field_names JSONB array + GIN index), `beh_button_click` (`ButtonClickEvent`: x, y, tag, text), `beh_auth_attempt` (`AuthAttemptEvent`: domain_config_id FK, action, method, matched_field_names — **server-generated only**, posting `event_type=auth_attempt` returns 400).
 - `rules` (conditions JSONB, rule_type realtime|periodic, logic AND|OR, score_modifier, period_seconds) → `rule_matches`.
 - `dashboards` (widgets JSONB). `users` (+`settings` JSONB per-user prefs), `api_tokens`, `allowed_origins`, `domain_configs`, `taxii_feeds`, `app_settings` (key PK, value JSONB — global settings e.g. `graph.expand_warn_threshold`).
-- **STIX tables** (shared cols: id, stix_id[unique], value[indexed], created_at_platform, last_refreshed_at, decayed, raw JSONB): `stix_ipv4_addr`, `stix_ipv6_addr`, `stix_user_agent`, `stix_autonomous_system`, `stix_country`, `stix_indicator`, `stix_malware`, `stix_campaign`, `stix_intrusion_set`, `stix_relationship` (source_ref/target_ref cross-table STIX IDs). STIX IDs deterministic (UUIDv5) → dedup. `decayed` set once older than `INTEL_DECAY_DAYS`.
+- **STIX tables** (shared cols: id, stix_id[unique], value[indexed], created_at_platform, last_refreshed_at, raw JSONB): `stix_ipv4_addr`, `stix_ipv6_addr`, `stix_user_agent`, `stix_autonomous_system`, `stix_country`, `stix_indicator`, `stix_malware`, `stix_campaign`, `stix_intrusion_set`, `stix_relationship` (source_ref/target_ref cross-table STIX IDs). Only indicators have platform `revoked`, optional `name`, and optional `description`; observables, other SDOs, and relationships have no platform revocation field. `services/indicator_revocation.py` applies the configurable `intel.indicator_revocation_days` policy (default 7) since refresh/insertion, preserving source revocation.
 
 ## Filters / schema
 
@@ -147,9 +147,10 @@ Dense technical reference for LLMs. Self-hosted browser fingerprinting, behavior
 - Latest sample in nullable JSONB `Session.latency` (detail API); per-heartbeat sample in `Heartbeat.latency` (summary API); normalized initial extension in fingerprint `_extensions.latency`; behavior events refresh session sample. `_COLUMN_UPGRADES` adds both JSONB columns for existing DBs. Retention deletes samples with their sessions/heartbeats.
 - No matching connector, timezone mismatch detection, or risk scoring is implemented. Round trip includes network and server work and is not proof of location. Tests: `client/test/latency.test.cjs` via `npm test`; `backend/tests/test_latency.py` via unittest.
 
-## Data retention
+## Data management
 
 - Global setting `data.retention_months` defaults to 6 positive whole calendar months; admin control at `/admin/retention` (`RetentionSettings`).
+- Indicator revocation delay `intel.indicator_revocation_days` defaults to 7 positive whole days, in the same Data management tab. Saving recalculates status immediately; Intelligence/TAXII/graph reads and hourly worker maintain status. Refreshing an unrevoked indicator clears age-based revocation; source revocation remains authoritative.
 - `services/retention.py::purge_inactive_data` runs on worker startup and hourly. Sessions expire by `last_seen` in milliseconds, strictly before the UTC calendar-month cutoff (month-end clamped).
 - ORM session deletion cascades to fingerprints, heartbeats, URLs, browser sessions, rule matches, and all five typed behavioral-event tables. Use `db.session.delete(session)`, not bulk session deletion, to preserve these cascades.
 - Devices with no retained visits and their cookie aliases are deleted. Surviving devices get session-derived `last_seen` and recent IP lists. Shared STIX observables/enrichment remain while retained visits need them; enrichment traversal does not cross into unrelated IP/UA leaves. Exclusive expired-visit entities and their relationships are removed; standalone intelligence expires by refresh/creation date.
@@ -175,4 +176,4 @@ Full docs: `docs/graph.md`. Route `/graph?seeds=<url-encoded JSON array>` (Cytos
 
 ## Key env vars
 
-`DATABASE_URL`, `REDIS_URL`, `RABBITMQ_URL`, `JWT_SECRET`, `JWT_EXPIRY_HOURS`, `OFM_ADMIN_USERNAME/PASSWORD/TOKEN`, `INTEL_DECAY_DAYS`(7), `PERIODIC_INTERVAL_SECONDS`(60), `FPSCANNER_KEY` (must match fpscanner build key; passed to backend+frontend build args and backend runtime), `OFM_SERVER_URL`, `OFM_ENV`(production), `FLASK_DEBUG`, `LOG_LEVEL`, `DB_POOL_SIZE`, `DB_MAX_OVERFLOW`. License: AGPL-3.0 (see `LICENSE` + `NOTICE`; vendored `fpscanner/` stays MIT © 2017 antoinevastel).
+`DATABASE_URL`, `REDIS_URL`, `RABBITMQ_URL`, `JWT_SECRET`, `JWT_EXPIRY_HOURS`, `OFM_ADMIN_USERNAME/PASSWORD/TOKEN`, `PERIODIC_INTERVAL_SECONDS`(60), `FPSCANNER_KEY` (must match fpscanner build key; passed to backend+frontend build args and backend runtime), `OFM_SERVER_URL`, `OFM_ENV`(production), `FLASK_DEBUG`, `LOG_LEVEL`, `DB_POOL_SIZE`, `DB_MAX_OVERFLOW`. License: AGPL-3.0 (see `LICENSE` + `NOTICE`; vendored `fpscanner/` stays MIT © 2017 antoinevastel).

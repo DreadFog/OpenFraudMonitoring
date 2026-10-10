@@ -3,7 +3,7 @@ Database configuration and session management
 """
 
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import text
+from sqlalchemy import Boolean, inspect, text
 from sqlalchemy.exc import IntegrityError
 
 db = SQLAlchemy()
@@ -42,6 +42,8 @@ _COLUMN_UPGRADES = [
     "ALTER TABLE stix_indicator ADD COLUMN IF NOT EXISTS description TEXT",
     "UPDATE stix_indicator SET name = raw->>'name', description = raw->>'description' "
     "WHERE name IS DISTINCT FROM raw->>'name' OR description IS DISTINCT FROM raw->>'description'",
+    "ALTER TABLE stix_indicator ADD COLUMN IF NOT EXISTS revoked BOOLEAN NOT NULL DEFAULT false",
+    "UPDATE stix_indicator SET revoked = true WHERE raw->>'revoked' = 'true' AND NOT revoked",
     "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS latency JSONB",
     "ALTER TABLE heartbeats ADD COLUMN IF NOT EXISTS latency JSONB",
     "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS visit_id VARCHAR(36)",
@@ -83,6 +85,14 @@ def _apply_column_upgrades():
         try:
             for stmt in _COLUMN_UPGRADES:
                 conn.execute(text(stmt))
+            inspector = inspect(conn)
+            quote = engine.dialect.identifier_preparer.quote
+            for table in db.metadata.sorted_tables:
+                if not table.name.startswith("stix_"):
+                    continue
+                for column in inspector.get_columns(table.name):
+                    if isinstance(column["type"], Boolean) and column["name"] not in table.c:
+                        conn.execute(text(f"ALTER TABLE {quote(table.name)} DROP COLUMN {quote(column['name'])}"))
             conn.commit()
         finally:
             conn.execute(text("SELECT pg_advisory_unlock(:k)"), {"k": _SCHEMA_INIT_LOCK_KEY})

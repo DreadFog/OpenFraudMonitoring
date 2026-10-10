@@ -2,7 +2,7 @@
 
 This migration normalizes supported `raw` STIX JSON objects to the v1.4
 OpenCTI-compatible contract. Platform columns such as `created_at_platform`,
-`last_refreshed_at`, `decayed`, and `source_connector_id` are not changed.
+`last_refreshed_at` and `source_connector_id` are not changed. Indicator revocation is managed by the platform's Data management policy.
 The operation does not alter the database schema.
 
 It removes OFM-only keys from embedded STIX JSON, maps legacy user-agent

@@ -26,7 +26,6 @@ class Config:
     RABBITMQ_URL = os.environ.get("RABBITMQ_URL", "amqp://ofm:ofm@ofm-rabbitmq:5672/")
 
     # ── Intel / Connectors ──
-    INTEL_DECAY_DAYS = int(os.environ.get("INTEL_DECAY_DAYS", "7"))
 
     # ── Authentication ──
     JWT_SECRET = os.environ.get("JWT_SECRET", "change-me-in-production")

@@ -44,7 +44,6 @@ def _common_fields(Model):
     return [
         {"name": "value", "label": "Value", "type": "string", "expr": Model.value},
         {"name": "stix_id", "label": "STIX ID", "type": "string", "expr": Model.stix_id},
-        {"name": "decayed", "label": "Decayed", "type": "boolean", "expr": Model.decayed},
         {
             "name": "source_connector_id",
             "label": "Source Connector ID",
@@ -101,6 +100,7 @@ def _type_specific_fields(stix_type: str, Model):
             "expr": Model.raw["x_opencti_location_type"].astext,
         })
     elif stix_type == "indicator":
+        fields.append({"name": "revoked", "label": "Revoked", "type": "boolean", "expr": Model.revoked})
         fields.append({
             "name": "pattern",
             "label": "Pattern",

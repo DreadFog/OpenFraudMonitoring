@@ -1,11 +1,12 @@
 import unittest
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import Mock, patch
 
 from models.stix.sco import StixIPv4Addr
 from models.stix.sdo import StixIndicator
 from services import intel_ingest
 from services.stix_objects import normalize_stix_object
+from services.indicator_revocation import apply_indicator_revocation
 
 
 class StixNormalizationTests(unittest.TestCase):
@@ -21,7 +22,6 @@ class StixNormalizationTests(unittest.TestCase):
             stix_id=raw["id"],
             value="192.0.2.1",
             created_at_platform=datetime(2026, 10, 6),
-            decayed=True,
             raw=raw,
             source_connector_id=3,
         )
@@ -32,7 +32,8 @@ class StixNormalizationTests(unittest.TestCase):
         self.assertEqual(result["stix_object"], raw)
         self.assertEqual(result["platform"]["id"], 7)
         self.assertEqual(result["created_at_platform"], "2026-10-06T00:00:00")
-        self.assertTrue(result["decayed"])
+        self.assertNotIn("revoked", result)
+        self.assertNotIn("revoked", result["platform"])
         self.assertEqual(result["platform"]["source_connector_id"], 3)
 
     def test_user_agent_uses_opencti_value_shape(self):
@@ -133,7 +134,7 @@ class IndicatorPersistenceTests(unittest.TestCase):
         payload = row.to_dict()
         self.assertEqual(payload["name"], self.obj["name"])
         self.assertEqual(payload["description"], self.obj["description"])
-        self.assertEqual(payload["stix_object"], self.obj)
+        self.assertEqual(payload["stix_object"], {**self.obj, "revoked": False})
 
     def test_refresh_updates_optional_fields(self):
         row = StixIndicator(name="Old name", description="Old description")
@@ -159,6 +160,44 @@ class IndicatorPersistenceTests(unittest.TestCase):
         intel_ingest._upsert_typed(obj)
         self.assertIsNone(row.name)
         self.assertIsNone(row.description)
+
+
+class IndicatorRevocationTests(unittest.TestCase):
+    def setUp(self):
+        self.now = datetime(2026, 10, 10, tzinfo=timezone.utc)
+        self.row = StixIndicator(
+            stix_id="indicator--test", value="pattern", raw={}, revoked=False,
+            created_at_platform=datetime(2026, 10, 3),
+        )
+        session = patch("services.indicator_revocation.db.session")
+        self.session = session.start()
+        self.addCleanup(session.stop)
+
+    def test_indicator_revokes_at_delay_boundary_and_can_be_refreshed(self):
+        apply_indicator_revocation([self.row], days=8, now=self.now)
+        self.assertFalse(self.row.revoked)
+        apply_indicator_revocation([self.row], days=7, now=self.now)
+        self.assertTrue(self.row.revoked)
+        self.assertTrue(self.row.to_dict()["stix_object"]["revoked"])
+        self.row.last_refreshed_at = self.now
+        apply_indicator_revocation([self.row], days=7, now=self.now)
+        self.assertFalse(self.row.revoked)
+
+    def test_source_revocation_survives_fresh_enrichment(self):
+        self.row.raw = {"revoked": True}
+        self.row.last_refreshed_at = self.now
+        apply_indicator_revocation([self.row], days=7, now=self.now)
+        self.assertTrue(self.row.revoked)
+
+    def test_configured_delay_and_non_indicator_models(self):
+        from models import StixRelationship, StixMalware
+        ip = StixIPv4Addr(stix_id="ipv4-addr--test", raw={})
+        with patch("services.indicator_revocation.get_global_setting", return_value=6):
+            apply_indicator_revocation([self.row, ip], now=self.now)
+        self.assertTrue(self.row.revoked)
+        for model in (StixIPv4Addr, StixMalware, StixRelationship):
+            self.assertNotIn("revoked", model.__table__.c)
+        self.assertNotIn("revoked", ip.to_dict()["platform"])
 
 
 if __name__ == "__main__":

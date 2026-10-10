@@ -12,7 +12,6 @@ class StixObjectBase:
     value = db.Column(db.String(2048), nullable=False, index=True)
     created_at_platform = db.Column(db.DateTime, server_default=func.now(), nullable=False)
     last_refreshed_at = db.Column(db.DateTime, nullable=True)
-    decayed = db.Column(db.Boolean, default=False, nullable=False)
     raw = db.Column(JSONB, nullable=False, default=dict)
     source_connector_id = db.Column(
         db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True,
@@ -26,7 +25,6 @@ class StixObjectBase:
             "id": self.id,
             "created_at_platform": created_at_platform,
             "last_refreshed_at": last_refreshed_at,
-            "decayed": self.decayed,
             "source_connector_id": self.source_connector_id,
         }
         return {
@@ -36,7 +34,6 @@ class StixObjectBase:
             "value": self.value,
             "created_at_platform": created_at_platform,
             "last_refreshed_at": last_refreshed_at,
-            "decayed": self.decayed,
             "raw": stix_object,
             "source_connector_id": self.source_connector_id,
             "stix_object": stix_object,

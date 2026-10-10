@@ -27,6 +27,7 @@ CLIPBOARD_CENSOR_KEY = "clipboard_censor"
 DASHBOARD_DEFAULT_TIME_RANGE_KEY = "dashboard.default_time_range"
 CONTENT_WIDTH_PERCENT_KEY = "layout.content_width_percent"
 DATA_RETENTION_MONTHS_KEY = "data.retention_months"
+INDICATOR_REVOCATION_DAYS_KEY = "intel.indicator_revocation_days"
 SERVER_LOCATION_KEY = "server.location"
 SERVER_TIMEZONE_KEY = "server.timezone"
 
@@ -36,6 +37,7 @@ GLOBAL_DEFAULTS = {
     DASHBOARD_DEFAULT_TIME_RANGE_KEY: "24h",
     CONTENT_WIDTH_PERCENT_KEY: 100,
     DATA_RETENTION_MONTHS_KEY: 6,
+    INDICATOR_REVOCATION_DAYS_KEY: 7,
     SERVER_LOCATION_KEY: {"name": "", "latitude": None, "longitude": None},
     SERVER_TIMEZONE_KEY: "UTC",
 }

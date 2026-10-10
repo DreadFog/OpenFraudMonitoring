@@ -22,6 +22,7 @@ from services.settings import (
     DASHBOARD_DEFAULT_TIME_RANGE_KEY,
     CONTENT_WIDTH_PERCENT_KEY,
     DATA_RETENTION_MONTHS_KEY,
+    INDICATOR_REVOCATION_DAYS_KEY,
     validate_retention_months,
     SERVER_LOCATION_KEY,
     SERVER_TIMEZONE_KEY,
@@ -62,6 +63,7 @@ _ALLOWED_GLOBAL_KEYS = {
     DASHBOARD_DEFAULT_TIME_RANGE_KEY: lambda v: v if v in ("24h", "7d", "1m") else None,
     CONTENT_WIDTH_PERCENT_KEY: lambda v: int(v) if 25 <= int(v) <= 100 else None,
     DATA_RETENTION_MONTHS_KEY: validate_retention_months,
+    INDICATOR_REVOCATION_DAYS_KEY: validate_retention_months,
     SERVER_LOCATION_KEY: validate_server_location,
     SERVER_TIMEZONE_KEY: validate_server_timezone,
 }
@@ -90,5 +92,9 @@ def update_globals():
 
     for key, value in updated.items():
         set_global_setting(key, value)
+
+    if INDICATOR_REVOCATION_DAYS_KEY in updated:
+        from services.indicator_revocation import refresh_indicator_revocation
+        refresh_indicator_revocation()
 
     return jsonify({"ok": True, "updated": updated, "settings": get_global_settings()}), 200

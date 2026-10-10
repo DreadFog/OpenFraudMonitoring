@@ -97,11 +97,18 @@ Client transport regression tests run with `npm test` in the `client` directory
 (Node 18+). Backend configuration/ingestion checks are in
 `backend/tests/test_latency.py`.
 
-## Data retention
+## Data management
 
-Administrators configure **Administration > Data retention** (`/admin/retention`).
+Administrators configure **Administration > Data management** (`/admin/retention`).
 The default is **6 calendar months** of inactivity; the setting accepts positive
 whole numbers of months and is stored as the global key `data.retention_months`.
+
+Indicator revocation defaults to **7 days** without enrichment, configured by
+`intel.indicator_revocation_days` (positive whole days). Only indicators have a
+platform `revoked` state. Saving a new delay recalculates it immediately; reads
+and the hourly worker also keep it current. Fresh, unrevoked enrichment resets
+age-based revocation, but source-provided revocation always takes precedence.
+This policy does not delete indicators and is independent of retention.
 
 The worker runs cleanup on startup and once per hour, reading the current setting
 each time. A session expires when its `last_seen` is strictly before the UTC

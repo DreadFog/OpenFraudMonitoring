@@ -106,6 +106,7 @@ def _upsert_typed(obj: dict, source_connector_id: int = None) -> None:
     indicator_fields = {
         "name": obj.get("name"),
         "description": obj.get("description"),
+        "revoked": bool(obj.get("revoked")),
     } if otype == "indicator" else {}
 
     existing = Model.query.filter_by(stix_id=sid).first()
@@ -115,7 +116,6 @@ def _upsert_typed(obj: dict, source_connector_id: int = None) -> None:
         for field_name, field_value in indicator_fields.items():
             setattr(existing, field_name, field_value)
         existing.last_refreshed_at = datetime.utcnow()
-        existing.decayed = False
         if value:
             existing.value = value[:2048]
         if source_connector_id is not None:
@@ -146,7 +146,6 @@ def _upsert_relationship(obj: dict, source_connector_id: int = None) -> None:
         existing.target_ref = obj.get("target_ref", existing.target_ref)
         existing.start_time = _parse_iso(obj.get("start_time")) or existing.start_time
         existing.stop_time = _parse_iso(obj.get("stop_time")) or existing.stop_time
-        existing.decayed = False
         if source_connector_id is not None:
             existing.source_connector_id = source_connector_id
     else:

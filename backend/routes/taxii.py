@@ -25,6 +25,7 @@ from models.user import ApiToken, User
 from services.auth import check_password, decode_jwt, hash_api_token
 from services.database import db
 from services.stix_filters import TYPE_TO_MODEL, apply_filters
+from services.indicator_revocation import refresh_indicator_revocation
 
 
 taxii_bp = Blueprint("taxii", __name__, url_prefix="/taxii2")
@@ -327,6 +328,8 @@ def _date_added_column(model):
 
 def record_from_row(row) -> TaxiiRecord:
     raw = row.raw if isinstance(row.raw, dict) else {}
+    if row.stix_id.startswith("indicator--"):
+        raw = {**raw, "revoked": bool(getattr(row, "revoked", False) or raw.get("revoked"))}
     date_added = getattr(row, "last_refreshed_at", None) or row.created_at_platform
     version = raw.get("modified") or raw.get("created")
     if not isinstance(version, str) or parse_timestamp(version) is None:
@@ -450,6 +453,8 @@ def fetch_page(
     page so clients paginating with ``added_after`` never skip objects.
     """
     types = feed_types(feed)
+    if "indicator" in types:
+        refresh_indicator_revocation()
     requested_types = query.match.get("type")
     if requested_types:
         types = [stix_type for stix_type in types if stix_type in requested_types]

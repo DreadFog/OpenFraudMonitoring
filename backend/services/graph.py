@@ -212,6 +212,9 @@ def build_device_node(device: Device) -> dict:
 
 
 def build_stix_node(obj, stix_type: str) -> dict:
+    if stix_type == "indicator":
+        from services.indicator_revocation import apply_indicator_revocation
+        apply_indicator_revocation([obj])
     name = (obj.raw or {}).get("name") if isinstance(obj.raw, dict) else None
     return {
         "id": stix_node_id(obj.stix_id),
@@ -224,7 +227,7 @@ def build_stix_node(obj, stix_type: str) -> dict:
             "stix_type": stix_type,
             "name": name,
             "value": obj.value,
-            "decayed": obj.decayed,
+            **({"revoked": obj.revoked} if stix_type == "indicator" else {}),
         },
     }
 

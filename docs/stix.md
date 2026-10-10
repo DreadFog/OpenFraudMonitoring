@@ -9,7 +9,7 @@ TAXII exports only `stix_object`, never the ORM wrapper.
 The current model package is grouped by STIX category under
 `backend/models/stix/`: `sco/`, `sdo/`, and `sro/`. `StixCountry` is a storage
 model for a `location` SDO. Local table IDs, indexed `value`, platform arrival
-and refresh times, decay state, and connector attribution remain platform data.
+and refresh times, indicator-only revocation state, and connector attribution remain platform data.
 They are not embedded in the STIX JSON. The indexed `value` is retained as an
 OFM search/navigation key; the canonical STIX fields remain in `stix_object`.
 

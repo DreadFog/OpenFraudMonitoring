@@ -71,6 +71,7 @@ class TaxiiServerTests(unittest.TestCase):
         )
         user = SimpleNamespace(id=1, is_active=True)
         self.patches = [
+            patch.object(taxii, "refresh_indicator_revocation"),
             patch.object(taxii, "_resolve_taxii_user", return_value=user),
             patch.object(taxii, "active_feed_by_uuid", side_effect=lambda cid: self.feed if cid == FEED_ID else None),
             patch.object(taxii, "record_sources", side_effect=fake_sources),
@@ -246,6 +247,14 @@ class TaxiiHelperTests(unittest.TestCase):
     def test_feed_types(self):
         self.assertEqual(taxii.feed_types(SimpleNamespace(object_types=[])), list(taxii.SUPPORTED_TYPES))
         self.assertEqual(taxii.feed_types(SimpleNamespace(object_types=["Malware", "bogus"])), ["malware"])
+
+    def test_indicator_export_includes_effective_revocation(self):
+        row = SimpleNamespace(
+            stix_id=IND.stix_id, created_at_platform=IND.date_added,
+            last_refreshed_at=None, raw=IND.raw, revoked=True,
+        )
+        self.assertTrue(taxii.record_from_row(row).raw["revoked"])
+        self.assertNotIn("revoked", IND.raw)
 
 
 if __name__ == "__main__":

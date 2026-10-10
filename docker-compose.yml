@@ -67,7 +67,6 @@ services:
       OFM_ADMIN_USERNAME: ${OFM_ADMIN_USERNAME:-admin}
       OFM_ADMIN_PASSWORD: ${OFM_ADMIN_PASSWORD:-admin}
       OFM_ADMIN_TOKEN: ${OFM_ADMIN_TOKEN:-dev-admin-token}
-      INTEL_DECAY_DAYS: ${INTEL_DECAY_DAYS:-7}
       OFM_SAVE_PRIVATE_IP: ${OFM_SAVE_PRIVATE_IP:-false}
       FPSCANNER_KEY: ${FPSCANNER_KEY:-dev-key}
       DB_POOL_SIZE: ${DB_POOL_SIZE:-5}
@@ -93,7 +92,6 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://ofm:ofm@ofm-db:5432/ofm}
       REDIS_URL: ${REDIS_URL:-redis://ofm-redis:6379/0}
       RABBITMQ_URL: ${RABBITMQ_URL:-amqp://ofm:ofm@ofm-rabbitmq:5672/}
-      INTEL_DECAY_DAYS: ${INTEL_DECAY_DAYS:-7}
       PERIODIC_INTERVAL_SECONDS: ${PERIODIC_INTERVAL_SECONDS:-60}
       DB_POOL_SIZE: ${DB_POOL_SIZE:-5}
       DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-10}

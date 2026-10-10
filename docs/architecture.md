@@ -175,7 +175,6 @@ All STIX entity tables share a common schema:
 | `value` | string | Human-readable value, indexed |
 | `created_at_platform` | datetime | When first seen on this platform |
 | `last_refreshed_at` | datetime | When last enriched from a connector |
-| `decayed` | bool | True once data is older than `INTEL_DECAY_DAYS` |
 | `raw` | JSONB | Full STIX object |
 
 ```
@@ -193,10 +192,12 @@ stix_relationship       ← SROs linking any two STIX objects
   ├── stix_id, relationship_type
   ├── source_ref, target_ref    ← STIX IDs (cross-table references)
   ├── start_time, stop_time
-  └── decayed
+  └── raw (canonical STIX JSON)
 ```
 
 STIX IDs are deterministic (UUIDv5 with OASIS namespace + canonical JSON), ensuring deduplication across connector runs.
+
+Only indicators have a platform `revoked` field. Administration > Data management configures `intel.indicator_revocation_days` (default 7 positive whole days since last refresh, or insertion if never refreshed). Source-revoked indicators remain revoked regardless of age; fresh, unrevoked enrichment resets platform revocation. Observables, other SDOs, and relationships have no platform revocation field.
 
 ## Redis Keys
 

@@ -7,7 +7,7 @@ Endpoints
 GET /api/intel/ip/<value>
     Return cached intel for an IP value: the observable record, AS,
     country, indicators (and what they indicate), all relationships.
-    Decayed flag set when older than INTEL_DECAY_DAYS.
+    Indicator revocation follows the platform's configured refresh delay.
 
 POST /api/intel/lookup
     Body: {"connector": "opencti", "value": "1.2.3.4"}
@@ -21,10 +21,10 @@ POST /api/intel/ingest
 
 import ipaddress
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 
-from flask import Blueprint, request, jsonify, current_app, g
+from flask import Blueprint, request, jsonify, g
 from sqlalchemy import and_, func, or_
 
 from services.database import db
@@ -32,6 +32,7 @@ from services.mq import publish_intel_request
 from services.intel_ingest import ingest_bundle
 from services.auth import require_auth, require_role
 from services.stix_filters import TYPE_TO_MODEL, get_filter_schema, apply_filters
+from services.indicator_revocation import apply_indicator_revocation, get_revocation_days, refresh_indicator_revocation
 from models import (
     Session,
     StixRelationship,
@@ -100,20 +101,6 @@ def _session_summary(observables):
     }
 
 
-def _apply_decay(rows, days: int):
-    """Mark/unmark `decayed` based on last_refreshed_at age.  Commits."""
-    threshold = datetime.utcnow() - timedelta(days=days)
-    changed = False
-    for r in rows:
-        ref = r.last_refreshed_at or r.created_at_platform
-        should_decay = bool(ref and ref < threshold)
-        if r.decayed != should_decay:
-            r.decayed = should_decay
-            changed = True
-    if changed:
-        db.session.commit()
-
-
 def _detect_ip_model(ip: str):
     try:
         v = ipaddress.ip_address(ip).version
@@ -124,7 +111,7 @@ def _detect_ip_model(ip: str):
 
 def _build_entity_response(obs, stix_type: str):
     """Build the intel response with direct, indicator, and observable context separated."""
-    days = int(current_app.config.get("INTEL_DECAY_DAYS", 7))
+    days = get_revocation_days()
 
     rels = StixRelationship.query.filter(
         (StixRelationship.source_ref == obs.stix_id)
@@ -144,7 +131,7 @@ def _build_entity_response(obs, stix_type: str):
             StixRelationship.source_ref.in_(based_on_rels),
         ).all()
 
-    _apply_decay([obs], days)
+    apply_indicator_revocation([obs], days)
 
     all_rels = rels + indirect_rels
     referenced_ids = set()
@@ -154,17 +141,15 @@ def _build_entity_response(obs, stix_type: str):
     referenced_ids.discard(obs.stix_id)
 
     referenced = {}
-    related_objs = []
     for sid in referenced_ids:
         ro = _resolve(sid)
         if ro is None:
             continue
-        related_objs.append(ro)
+        apply_indicator_revocation([ro], days)
         referenced[sid] = {
             **ro.to_dict(),
             "stix_type": _stix_id_type(sid),
         }
-    _apply_decay(related_objs, days)
 
     # Convenience extracts: AS + country directly belonging-to / located-at.
     autonomous_system = None
@@ -274,7 +259,7 @@ def _build_entity_response(obs, stix_type: str):
              "target": referenced.get(r.target_ref) if r.target_ref != obs.stix_id else obs_dict}
             for r in all_rels if r.stix_id not in summarized_rel_ids
         ],
-        "decay_days": days,
+        "indicator_revocation_days": days,
     }
 
 
@@ -384,14 +369,14 @@ def list_entities():
     if Model is None:
         return jsonify({"error": f"unknown entity type: {stix_type}"}), 400
 
-    days = int(current_app.config.get("INTEL_DECAY_DAYS", 7))
+    if stix_type == "indicator":
+        refresh_indicator_revocation()
     query = Model.query
     query, err = apply_filters(query, stix_type, filters, logic=logic)
     if err:
         return jsonify({"error": err}), 400
 
     rows = query.order_by(Model.created_at_platform.desc()).limit(limit).all()
-    _apply_decay(rows, days)
 
     return jsonify({
         "type": stix_type,

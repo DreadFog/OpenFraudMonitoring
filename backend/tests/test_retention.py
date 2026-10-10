@@ -3,7 +3,7 @@ import unittest
 from datetime import datetime, timezone
 from unittest.mock import patch
 
-from flask import Flask
+from flask import Flask, g
 
 from models import (
     Session, Device, DeviceCookie, Fingerprint, Heartbeat, SessionURL,
@@ -11,13 +11,43 @@ from models import (
     StixIPv4Addr, StixIPv6Addr, StixUserAgent, StixAutonomousSystem,
     StixRelationship,
 )
-from routes.settings import settings_bp
+from routes.settings import settings_bp, update_globals
 from services.database import db
 from services.retention import purge_inactive_data, retention_cutoff
-from services.settings import DATA_RETENTION_MONTHS_KEY, validate_retention_months
+from services.settings import DATA_RETENTION_MONTHS_KEY, INDICATOR_REVOCATION_DAYS_KEY, GLOBAL_DEFAULTS, validate_retention_months
 
 
 class RetentionSettingTests(unittest.TestCase):
+    def test_revocation_setting_defaults_and_validates_positive_whole_days(self):
+        app = Flask(__name__)
+        self.assertEqual(GLOBAL_DEFAULTS[INDICATOR_REVOCATION_DAYS_KEY], 7)
+        with app.test_request_context(json={INDICATOR_REVOCATION_DAYS_KEY: 14}), \
+             patch("routes.settings.set_global_setting") as save, \
+             patch("routes.settings.get_global_settings", return_value={}), \
+             patch("services.indicator_revocation.refresh_indicator_revocation") as refresh:
+            g.current_user = type("Admin", (), {"role": "admin"})()
+            _, status = update_globals.__wrapped__()
+            self.assertEqual(status, 200)
+            save.assert_called_once_with(INDICATOR_REVOCATION_DAYS_KEY, 14)
+            refresh.assert_called_once()
+
+        for value in (True, False, 0, -1, 1.5, "7", None):
+            with app.test_request_context(json={INDICATOR_REVOCATION_DAYS_KEY: value}), \
+                 patch("routes.settings.set_global_setting") as save:
+                g.current_user = type("Admin", (), {"role": "admin"})()
+                _, status = update_globals.__wrapped__()
+                self.assertEqual(status, 400, value)
+                save.assert_not_called()
+
+    def test_revocation_setting_requires_admin(self):
+        app = Flask(__name__)
+        with app.test_request_context(json={INDICATOR_REVOCATION_DAYS_KEY: 14}), \
+             patch("routes.settings.set_global_setting") as save:
+            g.current_user = type("User", (), {"role": "user"})()
+            _, status = update_globals.__wrapped__()
+            self.assertEqual(status, 403)
+            save.assert_not_called()
+
     def test_requires_positive_integer(self):
         self.assertEqual(validate_retention_months(6), 6)
         for value in (True, False, 0, -1, 1.5, "6", None, {}):
