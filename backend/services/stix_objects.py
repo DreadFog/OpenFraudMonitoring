@@ -59,6 +59,13 @@ _OPENCTI_TYPE_NAMES = {
 }
 
 
+def export_field_names(stix_type):
+    common = _SCO_FIELDS if stix_type in _SCO_TYPES else _SDO_FIELDS
+    fields = common | _TYPE_FIELDS.get(stix_type, set())
+    return sorted(fields | {"stix_id", "created_at_platform", "source_connector_id"}
+                  | ({"last_refreshed_at", "value"} if stix_type != "relationship" else set()))
+
+
 def _timestamp(value, fallback=None):
     value = value or fallback
     if isinstance(value, datetime):

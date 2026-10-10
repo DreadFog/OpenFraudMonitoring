@@ -221,8 +221,20 @@ def process_data_retention():
         time.sleep(3600)
 
 
+def process_csv_feeds():
+    from services.csv_feeds import refresh_due_csv_feeds
+    while True:
+        try:
+            with app.app_context():
+                refresh_due_csv_feeds()
+        except Exception:
+            logger.exception("CSV feed update failed")
+        time.sleep(60)
+
+
 if __name__ == "__main__":
     threading.Thread(target=process_periodic_rules, daemon=True).start()
     threading.Thread(target=process_intel_responses, daemon=True).start()
     threading.Thread(target=process_data_retention, daemon=True).start()
+    threading.Thread(target=process_csv_feeds, daemon=True).start()
     process_realtime_events()

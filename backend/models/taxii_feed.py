@@ -1,4 +1,4 @@
-"""TAXII feed configuration model."""
+"""CSV and TAXII feed configuration with durable incremental CSV batches."""
 
 import uuid
 
@@ -16,6 +16,17 @@ class TaxiiFeed(db.Model):
     name = db.Column(db.String(128), nullable=False)
     description = db.Column(db.Text, nullable=True)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
+    is_public = db.Column(db.Boolean, nullable=False, default=False)
+    export_format = db.Column(db.String(8), nullable=False, default="taxii")
+    export_fields = db.Column(JSONB, nullable=False, default=list)
+    include_headers = db.Column(db.Boolean, nullable=False, default=True)
+    csv_delimiter = db.Column(db.String(1), nullable=False, default=",")
+    auto_update = db.Column(db.Boolean, nullable=False, default=False)
+    update_interval_minutes = db.Column(db.Integer, nullable=False, default=60)
+    filter_logic = db.Column(db.String(3), nullable=False, default="AND")
+    matching_ids = db.Column(JSONB, nullable=False, default=list)
+    csv_content = db.Column(db.Text, nullable=True)
+    last_generated_at = db.Column(db.DateTime, nullable=True)
     object_types = db.Column(JSONB, nullable=False, default=list)
     filters = db.Column(JSONB, nullable=False, default=list)
     owner_user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
@@ -29,6 +40,15 @@ class TaxiiFeed(db.Model):
             "name": self.name,
             "description": self.description,
             "is_active": self.is_active,
+            "is_public": self.is_public,
+            "export_format": self.export_format,
+            "export_fields": list(self.export_fields or []),
+            "include_headers": self.include_headers,
+            "csv_delimiter": self.csv_delimiter,
+            "auto_update": self.auto_update,
+            "update_interval_minutes": self.update_interval_minutes,
+            "filter_logic": self.filter_logic,
+            "last_generated_at": self.last_generated_at.isoformat() if self.last_generated_at else None,
             "object_types": list(self.object_types or []),
             "filters": list(self.filters or []),
             "owner_user_id": self.owner_user_id,

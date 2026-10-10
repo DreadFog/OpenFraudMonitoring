@@ -396,18 +396,20 @@ See [Monitored Domains](domains.md).
 | GET | `/api/admin/domains/export` | Download all configurations as JSON |
 | POST | `/api/admin/domains/import` | Upsert configurations from JSON |
 
-### TAXII 2.1
+### CSV And TAXII Exports
 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/taxii-feeds` | List published feeds |
 | GET | `/api/taxii-feeds/<id>` | Feed detail |
 | POST | `/api/taxii-feeds` | Create a feed |
-| PUT | `/api/taxii-feeds/<id>` | Update a feed |
+| PATCH | `/api/taxii-feeds/<id>` | Update a feed |
 | DELETE | `/api/taxii-feeds/<id>` | Delete a feed |
+| GET | `/api/taxii-feeds/export-fields?type=<type>` | Selectable CSV fields (authenticated) |
+| GET | `/api/csv/<uuid>/` | Download CSV; authenticated unless explicitly public |
 | GET | `/taxii2/` | TAXII discovery (unauthenticated) |
 | GET | `/taxii2/default/` | API root |
-| GET | `/taxii2/default/collections/` | List collections (one per active feed) |
+| GET | `/taxii2/default/collections/` | List collections (one per active TAXII feed; anonymous reads see only public feeds) |
 | GET | `/taxii2/default/collections/<id>/` | Collection metadata |
 | GET | `/taxii2/default/collections/<id>/manifest/` | Object manifest (`id`, `date_added`, `version`, `media_type`) |
 | GET | `/taxii2/default/collections/<id>/objects/` | STIX objects envelope |
@@ -417,7 +419,11 @@ See [Monitored Domains](domains.md).
 | GET | `/taxii2/default/collections/<id>/objects/<object_id>/versions/` | Object versions |
 | GET | `/taxii2/default/status/<id>/` | Always `404` (no write operations) |
 
-The server follows TAXII 2.1 OS: responses use `application/taxii+json;version=2.1`, errors are TAXII error resources, and unsupported `Accept` headers get `406` (`*/*` and `application/json` stay accepted for browsers). Clients authenticate with HTTP Basic (username/password, or an API token as the password), `Authorization: Bearer <API token or JWT>`, or `?access_token=`. A `401` includes `WWW-Authenticate`. A feed's `object_types` and `filters` scope its collection; filters that do not apply to a type exclude that type. Supported parameters are `added_after`, `limit` (default 100, max 1000), `next`, and `match[id|type|version|spec_version]`. Pages are ordered by `date_added`, which is the last refresh time or else the platform insertion time. Responses with objects include `X-TAXII-Date-Added-First/Last`. OFM stores one version per object: `version` is `modified`/`created`, or the insertion time for SCOs.
+The server follows TAXII 2.1 OS: responses use `application/taxii+json;version=2.1`, errors are TAXII error resources, and unsupported `Accept` headers get `406` (`*/*` and `application/json` stay accepted for browsers). Clients authenticate with HTTP Basic (username/password, or an API token as the password), `Authorization: Bearer <API token or JWT>`, or `?access_token=`. A `401` includes `WWW-Authenticate`. Feeds default to private; admins may explicitly allow anonymous reads with `is_public`. Anonymous TAXII clients can discover the API root when public collections exist, but cannot list or read private collections. Management remains authenticated and mutations admin-only. A feed's `object_types`, `filters`, and `filter_logic` scope its collection; filters that do not apply to a type exclude that type. Supported parameters are `added_after`, `limit` (default 100, max 1000), `next`, and `match[id|type|version|spec_version]`. Pages are ordered by `date_added`, which is the last refresh time or else the platform insertion time. Responses with objects include `X-TAXII-Date-Added-First/Last`. OFM stores one version per object: `version` is `modified`/`created`, or the insertion time for SCOs.
+
+CSV feeds select one entity type, ordered `export_fields`, optional `include_headers`, and `csv_delimiter` (comma by default; comma, semicolon, tab, or pipe). Existing feeds retain comma delimiters. Changing the delimiter regenerates the incremental baseline. Standard STIX properties and platform navigation/timestamp/provenance fields are selectable. Nested lists/objects are JSON cells, missing values are empty cells, and potentially executable spreadsheet formulas are prefixed with an apostrophe. CSV quoting preserves embedded delimiters, quotes, and newlines.
+
+With `auto_update=false`, every download contains all entities currently matching the filters. With `auto_update=true`, `update_interval_minutes` configures a shared incremental batch (1 minute minimum; default 60). The initial batch contains every current match. Later batches contain only entities absent from the previous matching set; leaving and subsequently re-entering that set includes an entity again. Changes that keep an entity matching do not re-export it. The worker checks due feeds every minute, and a download refreshes an overdue feed under a database row lock. `matching_ids`, `csv_content`, and `last_generated_at` survive restarts. Downloads do not consume batches. Each update replaces the previous batch, including with an empty batch, so clients must poll frequently enough not to miss an interval. Membership transitions entirely between two checks are not observed. Changing filters, entity type, mode, field selection, or headers resets the baseline; changing only metadata or public access does not. TAXII remains a live collection, not a scheduled CSV batch.
 
 ## Built-in Risk Scoring
 

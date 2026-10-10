@@ -8,12 +8,12 @@ def get_revocation_days():
     return get_global_setting(INDICATOR_REVOCATION_DAYS_KEY)
 
 
-def refresh_indicator_revocation():
+def refresh_indicator_revocation(commit=True):
     from models import StixIndicator
-    return apply_indicator_revocation(StixIndicator.query.yield_per(500))
+    return apply_indicator_revocation(StixIndicator.query.yield_per(500), commit=commit)
 
 
-def apply_indicator_revocation(rows, days=None, now=None):
+def apply_indicator_revocation(rows, days=None, now=None, commit=True):
     if days is None:
         days = get_revocation_days()
     now = now or datetime.now(timezone.utc)
@@ -29,6 +29,6 @@ def apply_indicator_revocation(rows, days=None, now=None):
         if row.revoked != revoked:
             row.revoked = revoked
             changed = True
-    if changed:
+    if changed and commit:
         db.session.commit()
     return changed

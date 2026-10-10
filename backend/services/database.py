@@ -38,6 +38,17 @@ def _create_all_safely():
 # new columns to existing tables — we apply the small set of additive changes
 # here.  Each statement is safe to run repeatedly.
 _COLUMN_UPGRADES = [
+    "ALTER TABLE taxii_feeds ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT false",
+    "ALTER TABLE taxii_feeds ADD COLUMN IF NOT EXISTS export_format VARCHAR(8) NOT NULL DEFAULT 'taxii'",
+    "ALTER TABLE taxii_feeds ADD COLUMN IF NOT EXISTS export_fields JSONB NOT NULL DEFAULT '[]'::jsonb",
+    "ALTER TABLE taxii_feeds ADD COLUMN IF NOT EXISTS include_headers BOOLEAN NOT NULL DEFAULT true",
+    "ALTER TABLE taxii_feeds ADD COLUMN IF NOT EXISTS csv_delimiter VARCHAR(1) NOT NULL DEFAULT ','",
+    "ALTER TABLE taxii_feeds ADD COLUMN IF NOT EXISTS auto_update BOOLEAN NOT NULL DEFAULT false",
+    "ALTER TABLE taxii_feeds ADD COLUMN IF NOT EXISTS update_interval_minutes INTEGER NOT NULL DEFAULT 60",
+    "ALTER TABLE taxii_feeds ADD COLUMN IF NOT EXISTS filter_logic VARCHAR(3) NOT NULL DEFAULT 'AND'",
+    "ALTER TABLE taxii_feeds ADD COLUMN IF NOT EXISTS matching_ids JSONB NOT NULL DEFAULT '[]'::jsonb",
+    "ALTER TABLE taxii_feeds ADD COLUMN IF NOT EXISTS csv_content TEXT",
+    "ALTER TABLE taxii_feeds ADD COLUMN IF NOT EXISTS last_generated_at TIMESTAMP",
     "ALTER TABLE stix_indicator ADD COLUMN IF NOT EXISTS name TEXT",
     "ALTER TABLE stix_indicator ADD COLUMN IF NOT EXISTS description TEXT",
     "UPDATE stix_indicator SET name = raw->>'name', description = raw->>'description' "

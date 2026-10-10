@@ -71,6 +71,7 @@ class TaxiiServerTests(unittest.TestCase):
         )
         user = SimpleNamespace(id=1, is_active=True)
         self.patches = [
+            patch.object(taxii, "_has_public_collections", return_value=False),
             patch.object(taxii, "refresh_indicator_revocation"),
             patch.object(taxii, "_resolve_taxii_user", return_value=user),
             patch.object(taxii, "active_feed_by_uuid", side_effect=lambda cid: self.feed if cid == FEED_ID else None),

@@ -181,6 +181,16 @@ def require_taxii_auth(fn):
     def wrapper(*args, **kwargs):
         user = _resolve_taxii_user()
         if user is None:
+            collection_id = kwargs.get("collection_id")
+            if request.method in ("GET", "HEAD"):
+                if collection_id:
+                    feed = active_feed_by_uuid(collection_id)
+                    if feed is not None and getattr(feed, "is_public", False):
+                        g.current_user = None
+                        return fn(*args, **kwargs)
+                elif fn.__name__ in ("api_root", "collections") and _has_public_collections():
+                    g.current_user = None
+                    return fn(*args, **kwargs)
             raise TaxiiError(
                 401,
                 "Unauthorized",
@@ -363,7 +373,7 @@ def _iter_model_records(
         return
     query = model.query
     if feed.filters:
-        query, error = apply_filters(query, stix_type, feed.filters)
+        query, error = apply_filters(query, stix_type, feed.filters, getattr(feed, "filter_logic", "AND"))
         if error:
             # A feed filter that does not apply to this type excludes the type.
             return
@@ -489,7 +499,11 @@ def _object_in_collection(feed: TaxiiFeed, object_id: str) -> bool:
 
 
 def active_feed_by_uuid(collection_id: str) -> TaxiiFeed | None:
-    return TaxiiFeed.query.filter_by(uuid=collection_id, is_active=True).first()
+    return TaxiiFeed.query.filter_by(uuid=collection_id, is_active=True, export_format="taxii").first()
+
+
+def _has_public_collections():
+    return TaxiiFeed.query.filter_by(is_active=True, export_format="taxii", is_public=True).first() is not None
 
 
 def _require_feed(collection_id: str) -> TaxiiFeed:
@@ -554,7 +568,10 @@ def status(status_id: str):
 @taxii_bp.route(f"/{API_ROOT_SEGMENT}/collections/", methods=["GET"])
 @require_taxii_auth
 def collections():
-    feeds = TaxiiFeed.query.filter_by(is_active=True).order_by(TaxiiFeed.id.asc()).all()
+    query = TaxiiFeed.query.filter_by(is_active=True, export_format="taxii")
+    if g.current_user is None:
+        query = query.filter_by(is_public=True)
+    feeds = query.order_by(TaxiiFeed.id.asc()).all()
     if not feeds:
         return taxii_response({})
     return taxii_response({"collections": [_collection_resource(feed) for feed in feeds]})

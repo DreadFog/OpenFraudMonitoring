@@ -470,6 +470,12 @@ export const api = {
 
   // ── TAXII Feeds ──
 
+  getExportFields: async (type) => {
+    const res = await authFetch(`/api/taxii-feeds/export-fields?type=${encodeURIComponent(type)}`);
+    if (!res.ok) throw new Error("Failed to fetch export fields");
+    return res.json();
+  },
+
   listTaxiiFeeds: async (includeInactive = false) => {
     const params = includeInactive ? "?include_inactive=true" : "";
     const res = await authFetch(`/api/taxii-feeds${params}`);

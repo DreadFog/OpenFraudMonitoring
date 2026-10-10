@@ -66,10 +66,54 @@
   padding: 8px;
 }
 
-.exports-inline-check {
+.exports-form .exports-inline-check {
   flex-direction: row;
   align-items: center;
   margin-top: 24px;
+}
+
+.exports-csv-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.exports-fields {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+}
+
+.exports-column-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.exports-column-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px;
+  align-items: end;
+  gap: 8px;
+}
+
+.exports-column-row select {
+  width: 100%;
+  min-width: 0;
+}
+
+.exports-column-row button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
+
+.exports-feed-url {
+  max-width: 220px;
+  overflow-wrap: anywhere;
+  font-size: 12px;
 }
 
 .exports-types {
