@@ -38,6 +38,10 @@ def _create_all_safely():
 # new columns to existing tables — we apply the small set of additive changes
 # here.  Each statement is safe to run repeatedly.
 _COLUMN_UPGRADES = [
+    "ALTER TABLE stix_indicator ADD COLUMN IF NOT EXISTS name TEXT",
+    "ALTER TABLE stix_indicator ADD COLUMN IF NOT EXISTS description TEXT",
+    "UPDATE stix_indicator SET name = raw->>'name', description = raw->>'description' "
+    "WHERE name IS DISTINCT FROM raw->>'name' OR description IS DISTINCT FROM raw->>'description'",
     "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS latency JSONB",
     "ALTER TABLE heartbeats ADD COLUMN IF NOT EXISTS latency JSONB",
     "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS visit_id VARCHAR(36)",

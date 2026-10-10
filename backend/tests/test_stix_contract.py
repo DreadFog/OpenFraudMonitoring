@@ -1,7 +1,10 @@
 import unittest
 from datetime import datetime
+from unittest.mock import Mock, patch
 
 from models.stix.sco import StixIPv4Addr
+from models.stix.sdo import StixIndicator
+from services import intel_ingest
 from services.stix_objects import normalize_stix_object
 
 
@@ -98,6 +101,64 @@ class StixNormalizationTests(unittest.TestCase):
                 "type": "custom-observable",
                 "id": "custom-observable--11111111-1111-4111-8111-111111111111",
             })
+
+
+class IndicatorPersistenceTests(unittest.TestCase):
+    def setUp(self):
+        self.obj = {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--11111111-1111-4111-8111-111111111111",
+            "pattern": "[ipv4-addr:value = '192.0.2.1']",
+            "name": "192.0.2.1",
+            "description": "Known malicious activity",
+        }
+        self.model = Mock(side_effect=StixIndicator)
+        self.model.query.filter_by.return_value.first.return_value = None
+        mapping = patch.dict(intel_ingest._TYPE_MAP, {
+            "indicator": (self.model, lambda obj: obj.get("pattern", "")[:2048]),
+        })
+        mapping.start()
+        self.addCleanup(mapping.stop)
+        session = patch.object(intel_ingest.db, "session")
+        self.session = session.start()
+        self.addCleanup(session.stop)
+
+    def test_insert_populates_optional_fields_and_preserves_pattern(self):
+        intel_ingest._upsert_typed(self.obj)
+        row = self.session.add.call_args.args[0]
+        self.assertEqual(row.name, self.obj["name"])
+        self.assertEqual(row.description, self.obj["description"])
+        self.assertEqual(row.value, self.obj["pattern"])
+        payload = row.to_dict()
+        self.assertEqual(payload["name"], self.obj["name"])
+        self.assertEqual(payload["description"], self.obj["description"])
+        self.assertEqual(payload["stix_object"], self.obj)
+
+    def test_refresh_updates_optional_fields(self):
+        row = StixIndicator(name="Old name", description="Old description")
+        self.model.query.filter_by.return_value.first.return_value = row
+        intel_ingest._upsert_typed(self.obj)
+        self.assertEqual(row.name, self.obj["name"])
+        self.assertEqual(row.description, self.obj["description"])
+        self.assertEqual(row.raw, self.obj)
+        self.session.add.assert_not_called()
+
+    def test_missing_optional_fields_remain_nullable_on_insert_and_refresh(self):
+        obj = {key: value for key, value in self.obj.items() if key not in ("name", "description")}
+        intel_ingest._upsert_typed(obj)
+        row = self.session.add.call_args.args[0]
+        self.assertIsNone(row.name)
+        self.assertIsNone(row.description)
+        self.assertTrue(StixIndicator.__table__.c.name.nullable)
+        self.assertTrue(StixIndicator.__table__.c.description.nullable)
+
+        row.name = "Old name"
+        row.description = "Old description"
+        self.model.query.filter_by.return_value.first.return_value = row
+        intel_ingest._upsert_typed(obj)
+        self.assertIsNone(row.name)
+        self.assertIsNone(row.description)
 
 
 if __name__ == "__main__":

@@ -103,10 +103,17 @@ def _upsert_typed(obj: dict, source_connector_id: int = None) -> None:
         Model, value_fn = entry
         value = value_fn(obj) or ""
 
+    indicator_fields = {
+        "name": obj.get("name"),
+        "description": obj.get("description"),
+    } if otype == "indicator" else {}
+
     existing = Model.query.filter_by(stix_id=sid).first()
     if existing:
         logging.debug("Object exists in database: '%s'", existing)
         existing.raw = obj
+        for field_name, field_value in indicator_fields.items():
+            setattr(existing, field_name, field_value)
         existing.last_refreshed_at = datetime.utcnow()
         existing.decayed = False
         if value:
@@ -121,6 +128,7 @@ def _upsert_typed(obj: dict, source_connector_id: int = None) -> None:
             raw=obj,
             last_refreshed_at=datetime.utcnow(),
             source_connector_id=source_connector_id,
+            **indicator_fields,
         ))
 
 

@@ -591,7 +591,7 @@ export default function Intelligence() {
                       }}
                       onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }}
                     >
-                      <td className="intel-entity-value">{ent.value}</td>
+                      <td className="intel-entity-value">{ent.stix_type === 'indicator' ? (ent.name || ent.stix_object?.name || ent.value) : ent.value}</td>
                       <td>{fmtDate(ent.platform?.created_at_platform)}</td>
                       <td>{fmtDate(ent.platform?.last_refreshed_at)}</td>
                       <td>{ent.platform?.decayed

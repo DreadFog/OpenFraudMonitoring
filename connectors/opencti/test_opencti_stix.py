@@ -142,6 +142,7 @@ class OpenCtiStixTests(unittest.TestCase):
             "entity_type": "Indicator",
             "standard_id": "indicator--11111111-1111-4111-8111-111111111111",
             "name": "test",
+            "description": "Known malicious activity",
             "pattern": "[ipv4-addr:value = '192.0.2.1']",
             "pattern_type": None,
             "valid_from": None,
@@ -157,6 +158,8 @@ class OpenCtiStixTests(unittest.TestCase):
             "autonomous-system--11111111-1111-4111-8111-111111111111")
 
         self.assertTrue(indicator["created"] and indicator["modified"] and indicator["valid_from"])
+        self.assertEqual(indicator["name"], "test")
+        self.assertEqual(indicator["description"], "Known malicious activity")
         self.assertEqual(indicator["pattern_type"], "stix")
         self.assertEqual(indicator["confidence"], 100)
         self.assertIs(indicator["revoked"], False)

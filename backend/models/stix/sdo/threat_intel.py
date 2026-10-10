@@ -13,6 +13,14 @@ class StixCountry(StixObjectBase, db.Model):
 class StixIndicator(StixObjectBase, db.Model):
     __tablename__ = "stix_indicator"
 
+    name = db.Column(db.Text, nullable=True)
+    description = db.Column(db.Text, nullable=True)
+
+    def to_dict(self):
+        data = super().to_dict()
+        data.update(name=self.name, description=self.description)
+        return data
+
 
 class StixMalware(StixObjectBase, db.Model):
     __tablename__ = "stix_malware"
