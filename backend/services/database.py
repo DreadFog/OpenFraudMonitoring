@@ -2,8 +2,10 @@
 Database configuration and session management
 """
 
+import os
+
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Boolean, inspect, text
+from sqlalchemy import inspect, text
 from sqlalchemy.exc import IntegrityError
 
 db = SQLAlchemy()
@@ -33,90 +35,60 @@ def _create_all_safely():
             conn.commit()
 
 
-# Idempotent column additions for tables that already exist in older
-# deployments.  This repo has no migration tool, so `create_all` will not add
-# new columns to existing tables — we apply the small set of additive changes
-# here.  Each statement is safe to run repeatedly.
-_COLUMN_UPGRADES = [
-    "ALTER TABLE taxii_feeds ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT false",
-    "ALTER TABLE taxii_feeds ADD COLUMN IF NOT EXISTS export_format VARCHAR(8) NOT NULL DEFAULT 'taxii'",
-    "ALTER TABLE taxii_feeds ADD COLUMN IF NOT EXISTS export_fields JSONB NOT NULL DEFAULT '[]'::jsonb",
-    "ALTER TABLE taxii_feeds ADD COLUMN IF NOT EXISTS include_headers BOOLEAN NOT NULL DEFAULT true",
-    "ALTER TABLE taxii_feeds ADD COLUMN IF NOT EXISTS csv_delimiter VARCHAR(1) NOT NULL DEFAULT ','",
-    "ALTER TABLE taxii_feeds ADD COLUMN IF NOT EXISTS auto_update BOOLEAN NOT NULL DEFAULT false",
-    "ALTER TABLE taxii_feeds ADD COLUMN IF NOT EXISTS update_interval_minutes INTEGER NOT NULL DEFAULT 60",
-    "ALTER TABLE taxii_feeds ADD COLUMN IF NOT EXISTS filter_logic VARCHAR(3) NOT NULL DEFAULT 'AND'",
-    "ALTER TABLE taxii_feeds ADD COLUMN IF NOT EXISTS matching_ids JSONB NOT NULL DEFAULT '[]'::jsonb",
-    "ALTER TABLE taxii_feeds ADD COLUMN IF NOT EXISTS csv_content TEXT",
-    "ALTER TABLE taxii_feeds ADD COLUMN IF NOT EXISTS last_generated_at TIMESTAMP",
-    "ALTER TABLE stix_indicator ADD COLUMN IF NOT EXISTS name TEXT",
-    "ALTER TABLE stix_indicator ADD COLUMN IF NOT EXISTS description TEXT",
-    "UPDATE stix_indicator SET name = raw->>'name', description = raw->>'description' "
-    "WHERE name IS DISTINCT FROM raw->>'name' OR description IS DISTINCT FROM raw->>'description'",
-    "ALTER TABLE stix_indicator ADD COLUMN IF NOT EXISTS revoked BOOLEAN NOT NULL DEFAULT false",
-    "UPDATE stix_indicator SET revoked = true WHERE raw->>'revoked' = 'true' AND NOT revoked",
-    "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS latency JSONB",
-    "ALTER TABLE heartbeats ADD COLUMN IF NOT EXISTS latency JSONB",
-    "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS visit_id VARCHAR(36)",
-    "UPDATE sessions SET visit_id = gen_random_uuid()::text WHERE visit_id IS NULL",
-    "ALTER TABLE sessions ALTER COLUMN visit_id SET NOT NULL",
-    "ALTER TABLE sessions DROP CONSTRAINT IF EXISTS sessions_fsid_key",
-    "DROP INDEX IF EXISTS ix_sessions_fsid",
-    "CREATE INDEX IF NOT EXISTS ix_sessions_fsid ON sessions (fsid)",
-    "CREATE UNIQUE INDEX IF NOT EXISTS ix_sessions_visit_id ON sessions (visit_id)",
-    "ALTER TABLE devices ADD COLUMN IF NOT EXISTS cpu_count DOUBLE PRECISION DEFAULT 0",
-    "ALTER TABLE devices ADD COLUMN IF NOT EXISTS memory DOUBLE PRECISION DEFAULT 0",
-    "ALTER TABLE devices ADD COLUMN IF NOT EXISTS match_profile JSONB DEFAULT '{}'::jsonb",
-    "ALTER TABLE device_cookies ADD COLUMN IF NOT EXISTS match_method VARCHAR(16) NOT NULL DEFAULT 'legacy'",
-    "ALTER TABLE device_cookies ADD COLUMN IF NOT EXISTS match_confidence DOUBLE PRECISION",
-    "ALTER TABLE device_cookies ADD COLUMN IF NOT EXISTS match_evidence JSONB DEFAULT '{}'::jsonb",
-    "ALTER TABLE users ADD COLUMN IF NOT EXISTS settings JSONB NOT NULL DEFAULT '{}'::jsonb",
-    "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS device_id INTEGER REFERENCES devices(id)",
-    "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS authenticated BOOLEAN NOT NULL DEFAULT false",
-    "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS domains JSONB NOT NULL DEFAULT '[]'::jsonb",
-    "ALTER TABLE devices ADD COLUMN IF NOT EXISTS is_mobile BOOLEAN NOT NULL DEFAULT false",
-    "ALTER TABLE devices ADD COLUMN IF NOT EXISTS device_type VARCHAR(16) NOT NULL DEFAULT 'unknown'",
-    "ALTER TABLE heartbeats ADD COLUMN IF NOT EXISTS authenticated BOOLEAN NOT NULL DEFAULT false",
-    "ALTER TABLE fingerprints ADD COLUMN IF NOT EXISTS authenticated BOOLEAN NOT NULL DEFAULT false",
-    "ALTER TABLE beh_copy ADD COLUMN IF NOT EXISTS authenticated BOOLEAN NOT NULL DEFAULT false",
-    "ALTER TABLE beh_paste ADD COLUMN IF NOT EXISTS authenticated BOOLEAN NOT NULL DEFAULT false",
-    "ALTER TABLE beh_form_submit ADD COLUMN IF NOT EXISTS authenticated BOOLEAN NOT NULL DEFAULT false",
-    "ALTER TABLE beh_button_click ADD COLUMN IF NOT EXISTS authenticated BOOLEAN NOT NULL DEFAULT false",
-    "ALTER TABLE beh_auth_attempt ADD COLUMN IF NOT EXISTS authenticated BOOLEAN NOT NULL DEFAULT false",
-]
+def _run_schema_migrations(connection):
+    """Apply ordered Alembic revisions using the existing database connection."""
+    from alembic import command
+    from alembic.config import Config as AlembicConfig
+
+    migration_config = AlembicConfig(os.path.join(os.path.dirname(__file__), "..", "alembic.ini"))
+    migration_config.set_main_option(
+        "script_location",
+        os.path.join(os.path.dirname(__file__), "..", "migrations"),
+    )
+    migration_config.attributes["connection"] = connection
+    command.upgrade(migration_config, "head")
+
+
+def _cleanup_legacy_stix_payloads(connection):
+    """Remove the legacy revoked field from STIX types without platform revocation."""
+    from models import StixIndicator
+
+    inspector = inspect(connection)
+    quote = connection.dialect.identifier_preparer.quote
+    for table in db.metadata.sorted_tables:
+        if not table.name.startswith("stix_") or table.name == StixIndicator.__tablename__:
+            continue
+        if inspector.has_table(table.name) and "raw" in table.c:
+            connection.execute(text(
+                f"UPDATE {quote(table.name)} SET raw = raw - 'revoked' WHERE raw ? 'revoked'"
+            ))
 
 
 def _apply_column_upgrades():
-    """Apply schema upgrades and legacy STIX payload cleanup on PostgreSQL."""
-    engine = db.engine
-    if engine.dialect.name != "postgresql":
+    """Run the repeatable legacy STIX payload cleanup used by maintenance tests."""
+    if db.engine.dialect.name != "postgresql":
         return
-    with engine.connect() as conn:
-        conn.execute(text("SELECT pg_advisory_lock(:k)"), {"k": _SCHEMA_INIT_LOCK_KEY})
-        try:
-            for stmt in _COLUMN_UPGRADES:
-                conn.execute(text(stmt))
-            inspector = inspect(conn)
-            quote = engine.dialect.identifier_preparer.quote
-            for table in db.metadata.sorted_tables:
-                if not table.name.startswith("stix_"):
-                    continue
-                for column in inspector.get_columns(table.name):
-                    if isinstance(column["type"], Boolean) and column["name"] not in table.c:
-                        conn.execute(text(f"ALTER TABLE {quote(table.name)} DROP COLUMN {quote(column['name'])}"))
-                if table.name != "stix_indicator":
-                    conn.execute(text(
-                        f"UPDATE {quote(table.name)} SET raw = raw - 'revoked' WHERE raw ? 'revoked'"
-                    ))
-            conn.commit()
-        finally:
-            conn.execute(text("SELECT pg_advisory_unlock(:k)"), {"k": _SCHEMA_INIT_LOCK_KEY})
-            conn.commit()
+    with db.engine.begin() as connection:
+        _cleanup_legacy_stix_payloads(connection)
 
 
 def init_db(app):
     """Initialize the database with the Flask app"""
     db.init_app(app)
     with app.app_context():
+        import models  # noqa: F401 - ensure all model tables are registered
+
+        engine = db.engine
+        if engine.dialect.name == "postgresql":
+            with engine.connect() as connection:
+                connection.execute(text("SELECT pg_advisory_lock(:k)"), {"k": _SCHEMA_INIT_LOCK_KEY})
+                try:
+                    _run_schema_migrations(connection)
+                    db.metadata.create_all(bind=connection)
+                    _cleanup_legacy_stix_payloads(connection)
+                    connection.commit()
+                finally:
+                    connection.execute(text("SELECT pg_advisory_unlock(:k)"), {"k": _SCHEMA_INIT_LOCK_KEY})
+                    connection.commit()
+            return
         _create_all_safely()
-        _apply_column_upgrades()

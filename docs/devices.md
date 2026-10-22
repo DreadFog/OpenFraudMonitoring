@@ -102,9 +102,8 @@ The device rebuild and optional pruning procedure is maintained in the
 - `sessions.id` remains the internal row key; unique `sessions.visit_id`
   identifies a tab-scoped visit, while indexed `fsid` is non-unique fingerprint
   metadata.
-- `sessions.device_id` — nullable FK to `devices.id`, added via the
-  `_COLUMN_UPGRADES` additive-migration pattern in `services/database.py`
-  (this repo has no migration framework).
+- `sessions.device_id` — nullable FK to `devices.id`, introduced for existing
+  databases by the Alembic migration in `backend/migrations/versions/`.
 
 Note: device type classification (mobile/workstation/unknown) is a
 **device-level** field, not a session-level one — it's derived once per

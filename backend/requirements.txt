@@ -1,4 +1,5 @@
 Flask==2.3.2
+alembic==1.13.3
 flask-cors==4.0.0
 flask-bcrypt==1.0.1
 Werkzeug==2.3.6
