@@ -87,7 +87,7 @@ _COLUMN_UPGRADES = [
 
 
 def _apply_column_upgrades():
-    """Apply additive column upgrades on PostgreSQL (no-op elsewhere)."""
+    """Apply schema upgrades and legacy STIX payload cleanup on PostgreSQL."""
     engine = db.engine
     if engine.dialect.name != "postgresql":
         return
@@ -104,6 +104,10 @@ def _apply_column_upgrades():
                 for column in inspector.get_columns(table.name):
                     if isinstance(column["type"], Boolean) and column["name"] not in table.c:
                         conn.execute(text(f"ALTER TABLE {quote(table.name)} DROP COLUMN {quote(column['name'])}"))
+                if table.name != "stix_indicator":
+                    conn.execute(text(
+                        f"UPDATE {quote(table.name)} SET raw = raw - 'revoked' WHERE raw ? 'revoked'"
+                    ))
             conn.commit()
         finally:
             conn.execute(text("SELECT pg_advisory_unlock(:k)"), {"k": _SCHEMA_INIT_LOCK_KEY})

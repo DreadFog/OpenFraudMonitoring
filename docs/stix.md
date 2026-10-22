@@ -13,6 +13,19 @@ and refresh times, indicator-only revocation state, and connector attribution re
 They are not embedded in the STIX JSON. The indexed `value` is retained as an
 OFM search/navigation key; the canonical STIX fields remain in `stix_object`.
 
+**Revocation is indicator-only in OFM.** Only indicators store or expose the
+`revoked` property and offer it as an export/filter field. All other entities,
+including malware, campaigns, countries, observables, and relationships, discard
+this property during ingestion and editing. This is an OFM-specific restriction:
+STIX itself allows revocation on other versioned objects too.
+
+Backend startup removes legacy `revoked` keys from non-indicator `raw` JSON in
+the database, preserving other fields and all indicator revocation state. The
+cleanup is idempotent and runs under the existing schema-upgrade lock. Redeploy
+backend, worker, and connectors together so older processes cannot reintroduce
+the property. Existing generated CSV snapshots refresh on their next scheduled
+generation.
+
 ## OpenCTI Compatibility
 
 IPv4/IPv6 addresses and autonomous systems use their STIX 2.1 SCO property
@@ -144,8 +157,12 @@ revoked and expired indicator changes nothing:
 POST /api/intel/indicators/<indicator stix_id>/revoke
 ```
 
-Every entity detail page also has **Edit**, which opens the stored STIX object
-as JSON. Saving replaces the object after normalization and validation:
+Every entity detail page also has **Edit**, which opens a modal dialog with
+labeled inputs, checkboxes for booleans, and grouped fields for nested properties
+and lists. The entity ID is hidden and preserved, and platform-managed properties
+and observable lookup values are read-only. Date/time pickers use UTC;
+clearing **Valid until** removes the explicit expiry. Saving replaces
+the object after normalization and validation:
 
 ```http
 PUT /api/intel/entities/<stix_id>

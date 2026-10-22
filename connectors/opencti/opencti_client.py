@@ -60,7 +60,7 @@ _INDICATOR_ATTRIBUTES = """
     }
 """
 _COMMON_OBJECT_FIELDS = {
-    "created_by_ref", "created", "modified", "revoked", "labels", "confidence",
+    "created_by_ref", "created", "modified", "labels", "confidence",
     "lang", "external_references", "object_marking_refs", "granular_markings",
     "defanged", "extensions",
 }
@@ -74,6 +74,7 @@ _TYPE_OBJECT_FIELDS = {
         "country", "administrative_area", "city", "street_address", "postal_code",
     },
     "indicator": {
+        "revoked",
         "name", "description", "indicator_types", "pattern", "pattern_type",
         "pattern_version", "valid_from", "valid_until", "kill_chain_phases",
     },
@@ -443,9 +444,9 @@ def _opencti_fields(payload: Dict[str, Any], source: Dict[str, Any], stix_type: 
         modified = source.get("modified") or source.get("updated_at") or created
         payload["created"] = created
         payload["modified"] = modified
-        payload["revoked"] = source.get("revoked") if source.get("revoked") is not None else False
         payload["confidence"] = source.get("confidence") if source.get("confidence") is not None else 100
         if stix_type == "indicator":
+            payload["revoked"] = source.get("revoked") if source.get("revoked") is not None else False
             if not payload.get("pattern_type"):
                 payload["pattern_type"] = "stix"
             if not payload.get("valid_from"):
@@ -454,4 +455,6 @@ def _opencti_fields(payload: Dict[str, Any], source: Dict[str, Any], stix_type: 
             payload["is_family"] = False
     if stix_type == "relationship":
         payload["lang"] = source.get("lang", "en")
+    if stix_type != "indicator":
+        payload.pop("revoked", None)
     return {key: value for key, value in payload.items() if value is not None}

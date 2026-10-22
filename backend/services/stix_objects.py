@@ -8,7 +8,7 @@ _OPENCTI_NAMESPACE = uuid.UUID("00abedb4-aa42-466c-9c01-fed23315a9b7")
 
 _SDO_FIELDS = {
     "type", "spec_version", "id", "created_by_ref", "created", "modified",
-    "revoked", "labels", "confidence", "lang", "external_references",
+    "labels", "confidence", "lang", "external_references",
     "object_marking_refs", "granular_markings", "extensions",
 }
 _SCO_FIELDS = {
@@ -25,6 +25,7 @@ _TYPE_FIELDS = {
         "country", "administrative_area", "city", "street_address", "postal_code",
     },
     "indicator": {
+        "revoked",
         "name", "description", "indicator_types", "pattern", "pattern_type",
         "pattern_version", "valid_from", "valid_until", "kill_chain_phases",
     },
@@ -125,11 +126,11 @@ def normalize_stix_object(obj, platform_created_at=None):
         )
         normalized["created"] = created
         normalized["modified"] = modified
-        if normalized.get("revoked") is None:
-            normalized["revoked"] = False
         if normalized.get("confidence") is None:
             normalized["confidence"] = 100
         if stix_type == "indicator":
+            if normalized.get("revoked") is None:
+                normalized["revoked"] = False
             if not normalized.get("pattern_type"):
                 normalized["pattern_type"] = "stix"
             if not normalized.get("valid_from"):
@@ -140,7 +141,6 @@ def normalize_stix_object(obj, platform_created_at=None):
     else:
         normalized.pop("created", None)
         normalized.pop("modified", None)
-        normalized.pop("revoked", None)
         normalized.setdefault("x_opencti_score", 50)
 
     for key in tuple(normalized):

@@ -5,11 +5,41 @@ from unittest.mock import Mock, patch
 from models.stix.sco import StixIPv4Addr
 from models.stix.sdo import StixIndicator
 from services import intel_ingest
-from services.stix_objects import normalize_stix_object
+from services.stix_objects import normalize_stix_object, export_field_names
 from services.indicator_revocation import apply_indicator_revocation
 
 
 class StixNormalizationTests(unittest.TestCase):
+    def test_revoked_is_only_supported_for_indicators(self):
+        properties = {
+            "ipv4-addr": {"value": "192.0.2.1"},
+            "ipv6-addr": {"value": "2001:db8::1"},
+            "user-agent": {"value": "Browser/1.0"},
+            "autonomous-system": {"number": 64512},
+            "location": {"country": "FR"},
+            "malware": {"name": "Example", "is_family": False},
+            "campaign": {"name": "Example"},
+            "intrusion-set": {"name": "Example"},
+            "relationship": {
+                "relationship_type": "related-to",
+                "source_ref": "malware--source", "target_ref": "campaign--target",
+            },
+            "indicator": {"pattern": "[ipv4-addr:value = '192.0.2.1']"},
+        }
+        for stix_type, fields in properties.items():
+            for revoked in (None, False, True):
+                with self.subTest(stix_type=stix_type, revoked=revoked):
+                    obj = {"type": stix_type, "id": f"{stix_type}--test", **fields}
+                    if revoked is not None:
+                        obj["revoked"] = revoked
+                    result = normalize_stix_object(obj)
+                    if stix_type == "indicator":
+                        self.assertIs(result["revoked"], bool(revoked))
+                        self.assertIn("revoked", export_field_names(stix_type))
+                    else:
+                        self.assertNotIn("revoked", result)
+                        self.assertNotIn("revoked", export_field_names(stix_type))
+
     def test_api_wrapper_separates_payload_and_preserves_legacy_fields(self):
         raw = {
             "type": "ipv4-addr",

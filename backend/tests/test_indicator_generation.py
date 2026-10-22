@@ -430,6 +430,65 @@ class IndicatorGenerationDatabaseTests(unittest.TestCase):
         db.session.expire_all()
         self.assertEqual(StixIPv4Addr.query.one().value, "192.0.2.1")
 
+    def test_non_indicator_ingestion_edit_and_startup_cleanup(self):
+        from services.database import _apply_column_upgrades
+        from services.intel_ingest import ingest_bundle
+        from services.stix_filters import TYPE_TO_MODEL
+        from routes.taxii import record_from_row
+        objects = [
+            {"type": "ipv4-addr", "value": "192.0.2.90"},
+            {"type": "ipv6-addr", "value": "2001:db8::90"},
+            {"type": "user-agent", "value": "Browser/1"},
+            {"type": "autonomous-system", "number": 64512},
+            {"type": "location", "country": "FR"},
+            {"type": "malware", "name": "Example", "is_family": False},
+            {"type": "campaign", "name": "Example"},
+            {"type": "intrusion-set", "name": "Example"},
+            {"type": "relationship", "relationship_type": "related-to",
+             "source_ref": "malware--source", "target_ref": "campaign--target"},
+            {"type": "indicator", "pattern": "[ipv4-addr:value = '192.0.2.90']"},
+        ]
+        objects = [{**obj, "id": f"{obj['type']}--{uuid4()}", "revoked": True} for obj in objects]
+        ingest_bundle({"objects": objects})
+        rows = []
+        for obj in objects:
+            model = StixRelationship if obj["type"] == "relationship" else TYPE_TO_MODEL[obj["type"]]
+            row = model.query.filter_by(stix_id=obj["id"]).one()
+            rows.append(row)
+            self.assertEqual("revoked" in row.raw, obj["type"] == "indicator")
+            if obj["type"] not in ("indicator", "relationship"):
+                response = self.client.put(f"/api/intel/entities/{row.stix_id}", headers=self.headers, json={
+                    "stix_object": {**row.raw, "revoked": True},
+                })
+                self.assertEqual(response.status_code, 200, response.json)
+                self.assertNotIn("revoked", response.json["entity"]["stix_object"])
+            # Simulate legacy JSON keys; all other fields must survive cleanup.
+            row.raw = {**row.raw, "revoked": True}
+        db.session.commit()
+        before = {row.stix_id: dict(row.raw) for row in rows}
+        # Separate startup connection must not contend with a test transaction.
+        db.session.remove()
+        _apply_column_upgrades()
+        _apply_column_upgrades()
+        for obj in objects:
+            model = StixRelationship if obj["type"] == "relationship" else TYPE_TO_MODEL[obj["type"]]
+            row = model.query.filter_by(stix_id=obj["id"]).one()
+            expected = dict(before[row.stix_id])
+            if obj["type"] != "indicator":
+                del expected["revoked"]
+            self.assertEqual(row.raw, expected)
+            self.assertEqual("revoked" in row.to_dict()["stix_object"], obj["type"] == "indicator")
+            self.assertEqual("revoked" in record_from_row(row).raw, obj["type"] == "indicator")
+
+    def test_locally_created_country_and_relationship_have_no_revoked(self):
+        from services.stix_store import get_or_create_country, get_or_create_relationship
+        country = get_or_create_country("FR", "France")
+        observable = self.observable()
+        relationship = get_or_create_relationship(observable.stix_id, "located-at", country.stix_id)
+        db.session.commit()
+        self.assertNotIn("revoked", country.raw)
+        self.assertNotIn("revoked", relationship.raw)
+
     def test_settings_endpoint_persists_and_requires_admin(self):
         policy = {**self.policy, "risk_threshold": 95}
         response = self.client.put("/api/settings/global", headers=self.headers, json={

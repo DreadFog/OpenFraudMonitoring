@@ -61,8 +61,11 @@ def _interop_object(obj, external_type: str, external_id: str, score: int = 50) 
         now = datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
         payload.setdefault("created", now)
         payload.setdefault("modified", payload["created"])
-        payload.setdefault("revoked", False)
         payload.setdefault("confidence", 100)
+    if payload.get("type") == "indicator":
+        payload.setdefault("revoked", False)
+    else:
+        payload.pop("revoked", None)
     if payload.get("type") == "relationship":
         payload.setdefault("lang", "en")
     return payload
@@ -149,7 +152,6 @@ class IPInfoClient:
                 id=country_stix_id,
                 name=country_name or country_code,
                 country=country_name or country_code,
-                revoked=False,
                 confidence=100,
                 allow_custom=True,
                 x_opencti_aliases=[country_code.upper()],

@@ -6,6 +6,7 @@ import { usePersistentState } from "../../hooks/usePersistentState";
 import { useRecentItems } from "../../hooks/useRecentItems";
 import { buildGraphUrl, stixSeed } from "../Graph/graphLink";
 import "./Intelligence.css";
+import EntityEditDialog from "./EntityEditDialog";
 
 function entityUrl(type, value) {
   return `/intelligence?type=${encodeURIComponent(type)}&value=${encodeURIComponent(value)}`;
@@ -443,14 +444,7 @@ export default function Intelligence() {
     }
   };
 
-  const saveEdit = async () => {
-    let stixObject;
-    try {
-      stixObject = JSON.parse(editDraft);
-    } catch (err) {
-      setEditError(`Invalid JSON: ${err.message}`);
-      return;
-    }
+  const saveEdit = async (stixObject) => {
     setSavingEdit(true);
     setEditError("");
     try {
@@ -738,36 +732,16 @@ export default function Intelligence() {
               {isAdmin && (
                 <button className="intel-btn" type="button" disabled={editDraft !== null}
                   onClick={() => {
-                    const draft = isIndicator
-                      ? { ...stixObject, revoked: Boolean(data.observable.platform?.revoked_explicitly) }
-                      : stixObject;
                     setEditError("");
-                    setEditDraft(JSON.stringify(draft, null, 2));
+                    setEditDraft(data.observable);
                   }}>
                   Edit
                 </button>
               )}
             </div>
             {editDraft !== null && (
-              <div className="intel-edit">
-                <p className="intel-muted">
-                  Edit the STIX object. <code>type</code> and <code>id</code> are fixed; observable values
-                  (IP, user agent, AS number, country) cannot change. For indicators, set <code>"revoked"</code>
-                  or <code>"valid_until"</code> to control blocking feeds.
-                </p>
-                <textarea className="intel-edit-text" spellCheck={false} value={editDraft}
-                  onChange={(event) => setEditDraft(event.target.value)} />
-                {editError && <div className="intel-edit-error">{editError}</div>}
-                <div className="intel-edit-actions">
-                  <button className="intel-btn intel-btn-primary" type="button" disabled={savingEdit} onClick={saveEdit}>
-                    {savingEdit ? "Saving..." : "Save"}
-                  </button>
-                  <button className="intel-btn" type="button" disabled={savingEdit}
-                    onClick={() => { setEditDraft(null); setEditError(""); }}>
-                    Cancel
-                  </button>
-                </div>
-              </div>
+              <EntityEditDialog entity={editDraft} saving={savingEdit} error={editError} onSave={saveEdit}
+                onClose={() => { setEditDraft(null); setEditError(""); }} />
             )}
             <div className="intel-meta">
               <div><span>Created on platform</span><b>{fmtDate(data.observable.platform?.created_at_platform)}</b></div>

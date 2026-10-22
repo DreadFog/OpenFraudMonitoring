@@ -22,6 +22,7 @@ class IPInfoStixTests(unittest.TestCase):
         by_type = {}
         for obj in bundle["objects"]:
             by_type.setdefault(obj["type"], []).append(obj)
+            self.assertNotIn("revoked", obj)
             self.assertFalse(any(key.startswith("x_ofm_") or key.startswith("_") for key in obj))
         location = by_type["location"][0]
         self.assertEqual(location["country"], "France")

@@ -5,6 +5,19 @@ import opencti_client
 
 
 class OpenCtiStixTests(unittest.TestCase):
+    def test_only_indicators_include_revoked(self):
+        for stix_type in opencti_client._TYPE_OBJECT_FIELDS:
+            for revoked in (None, False, True):
+                with self.subTest(stix_type=stix_type, revoked=revoked):
+                    result = opencti_client._opencti_fields(
+                        {"type": stix_type, "revoked": True},
+                        {"id": "test", "revoked": revoked}, stix_type,
+                    )
+                    if stix_type == "indicator":
+                        self.assertIs(result["revoked"], bool(revoked))
+                    else:
+                        self.assertNotIn("revoked", result)
+
     def test_lookup_includes_only_unrevoked_based_on_indicators_and_supported_targets(self):
         ip = {
             "id": "ip-internal-id",
