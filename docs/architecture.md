@@ -220,7 +220,9 @@ Only indicators have a platform `revoked` field. Administration > Data managemen
 ```
 backend/
   init/config.py         # Centralized env-based config
-  app.py                 # Flask app entry point; constructs the app and initializes services
+  app.py                 # create_app() factory and development entry point
+  alembic.ini            # Alembic configuration
+  migrations/            # Ordered database schema revisions
   worker.py              # Redis consumer + periodic evaluator + STIX ingest
   services/
     database.py          # SQLAlchemy setup
@@ -231,6 +233,10 @@ backend/
     intel_ingest.py      # STIX bundle → database ingestion
     stix_store.py        # get_or_create helpers for STIX entities
     stix_filters.py      # STIX filtering for TAXII feeds
+    taxii_collection.py  # TAXII object selection and pagination
+    graph.py             # Graph assembly and expansion operations
+    graph_nodes.py       # Graph node/edge serialization
+    graph_schema.py      # Curated graph metadata
     cors_origins.py      # Dynamic CORS origin validation
     domains.py           # Monitored-domain matching (auth cookie, login form)
     log_shipper.py       # Centralized log shipping to Redis
@@ -261,7 +267,7 @@ backend/
     dashboards.py        # CRUD /api/dashboards
     cors.py              # /api/admin/cors — CORS allowlist management
     domains.py           # /api/admin/domains — monitored domains + JSON import/export
-    taxii.py             # /taxii2 — TAXII 2.1 server
+    taxii.py             # /taxii2 — TAXII 2.1 routes and protocol handling
     taxii_feeds.py       # /api/taxii-feeds — feed management
   rules/
     engine.py            # Filter → SQLAlchemy query builder
@@ -285,7 +291,12 @@ connectors/
 
 frontend/
   src/
-    api.js               # All API calls
+    api.js               # Shared API object / compatibility entry point
+    api/
+      http.js            # Shared authenticated request handling
+      graph.js           # Graph resource client
+      intelligence.js    # Intelligence resource client
+      taxii.js           # TAXII feed resource client
     App.jsx              # Router
     pages/
       Dashboard/         # Session list + custom widgets + filters

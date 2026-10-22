@@ -9,6 +9,7 @@ from flask import Flask
 
 import routes.taxii as taxii
 from routes.taxii import TAXII_MEDIA_TYPE, taxii_bp
+import services.taxii_collection as taxii_collection
 
 
 FEED_ID = "8a0b5f7e-6f0e-4e41-9b44-2f4c1f0b7d11"
@@ -72,10 +73,10 @@ class TaxiiServerTests(unittest.TestCase):
         user = SimpleNamespace(id=1, is_active=True)
         self.patches = [
             patch.object(taxii, "_has_public_collections", return_value=False),
-            patch.object(taxii, "refresh_indicator_revocation"),
+            patch.object(taxii_collection, "refresh_indicator_revocation"),
             patch.object(taxii, "_resolve_taxii_user", return_value=user),
             patch.object(taxii, "active_feed_by_uuid", side_effect=lambda cid: self.feed if cid == FEED_ID else None),
-            patch.object(taxii, "record_sources", side_effect=fake_sources),
+            patch.object(taxii_collection, "record_sources", side_effect=fake_sources),
         ]
         for item in self.patches:
             item.start()

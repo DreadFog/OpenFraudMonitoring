@@ -210,14 +210,16 @@ PUT  /api/settings/global    admin only; e.g. {"graph.expand_warn_threshold": 50
 
 ## Backend layout
 
-- `services/graph.py` — node/edge builders, `PROPERTY_FIELDS`, `STIX_TYPE_LABELS`,
-  `resolve_seeds`, `get_expansions`, `expand`, `compute_links`.
+- `services/graph.py` — graph assembly, `resolve_seeds`, `get_expansions`,
+  `expand`, and `compute_links`.
+- `services/graph_nodes.py` — node/edge builders and graph identifiers.
+- `services/graph_schema.py` — curated property fields and STIX type labels.
 - `routes/graph.py` — the four graph endpoints.
 - `services/settings.py` — `USER_SETTINGS_DEFAULTS`, `GLOBAL_DEFAULTS`, merge helpers.
 - `routes/settings.py` — user + global settings endpoints.
 - `models/app_setting.py` — `app_settings` key/value table for global settings.
-- `models/user.py` — `users.settings` JSONB column (added at startup by
-  `services/database.py::_apply_column_upgrades` since there is no migration tool).
+- `models/user.py` — `users.settings` JSONB column (introduced for existing
+  databases by the Alembic migration in `migrations/versions/`).
 
 ## Frontend layout
 

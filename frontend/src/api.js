@@ -3,34 +3,15 @@
  * Uses relative URLs — proxied by Vite dev server or nginx in production
  */
 
-function getToken() {
-  return localStorage.getItem("ofm_token");
-}
-
-function authHeaders(extra = {}) {
-  const token = getToken();
-  const headers = { ...extra };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-  return headers;
-}
-
-async function authFetch(url, options = {}) {
-  const res = await fetch(url, {
-    ...options,
-    headers: authHeaders(options.headers || {}),
-  });
-  if (res.status === 401) {
-    localStorage.removeItem("ofm_token");
-    localStorage.removeItem("ofm_user");
-    window.location.href = "/login";
-    throw new Error("Session expired");
-  }
-  return res;
-}
+import { authFetch } from "./api/http";
+import { graphApi } from "./api/graph";
+import { intelligenceApi } from "./api/intelligence";
+import { taxiiApi } from "./api/taxii";
 
 export const api = {
+  ...graphApi,
+  ...intelligenceApi,
+  ...taxiiApi,
   // ── Auth ──
 
   login: async (username, password) => {
@@ -405,154 +386,6 @@ export const api = {
     return res.json();
   },
 
-  // ── Intelligence ──
-
-  getIpIntel: async (value) => {
-    const res = await authFetch(`/api/intel/ip/${encodeURIComponent(value)}`);
-    if (!res.ok) throw new Error("Failed to fetch IP intel");
-    return res.json();
-  },
-
-  getEntityIntel: async (type, value) => {
-    const res = await authFetch(`/api/intel/entity?type=${encodeURIComponent(type)}&value=${encodeURIComponent(value)}`);
-    if (!res.ok) throw new Error("Failed to fetch entity intel");
-    return res.json();
-  },
-
-  createObservableIndicator: async (type, stixId) => {
-    const res = await authFetch("/api/intel/indicators", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type, stix_id: stixId }),
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.error || "Failed to create indicator");
-    }
-    return res.json();
-  },
-
-  revokeIndicator: async (stixId) => {
-    const res = await authFetch(`/api/intel/indicators/${encodeURIComponent(stixId)}/revoke`, { method: "POST" });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.error || "Failed to revoke indicator");
-    }
-    return res.json();
-  },
-
-  updateEntity: async (stixId, stixObject) => {
-    const res = await authFetch(`/api/intel/entities/${encodeURIComponent(stixId)}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stix_object: stixObject }),
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.error || "Failed to update entity");
-    }
-    return res.json();
-  },
-
-  getEntitySessions: async (type, value, limit = 10) => {
-    const res = await authFetch(`/api/intel/entity-sessions?type=${encodeURIComponent(type)}&value=${encodeURIComponent(value)}&limit=${limit}`);
-    if (!res.ok) throw new Error("Failed to fetch entity sessions");
-    return res.json();
-  },
-
-  getIntelTypes: async () => {
-    const res = await authFetch("/api/intel/types");
-    if (!res.ok) throw new Error("Failed to fetch intel types");
-    return res.json();
-  },
-
-  getIntelFilterSchema: async (type) => {
-    const params = type ? `?type=${encodeURIComponent(type)}` : "";
-    const res = await authFetch(`/api/intel/filter-schema${params}`);
-    if (!res.ok) throw new Error("Failed to fetch intel filter schema");
-    return res.json();
-  },
-
-  listEntities: async (type, limit = 25, filters = [], logic = "AND") => {
-    const params = new URLSearchParams();
-    params.set("type", type);
-    params.set("limit", String(limit));
-    params.set("logic", logic || "AND");
-    if (Array.isArray(filters) && filters.length > 0) {
-      params.set("filters", JSON.stringify(filters));
-    }
-    const res = await authFetch(`/api/intel/entities?${params.toString()}`);
-    if (!res.ok) throw new Error("Failed to fetch entities");
-    return res.json();
-  },
-
-  triggerIntelLookup: async (connector, value) => {
-    const res = await authFetch("/api/intel/lookup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ connector, value }),
-    });
-    if (!res.ok) throw new Error("Failed to trigger lookup");
-    return res.json();
-  },
-
-  getEnrichers: async (entityType) => {
-    const params = entityType ? `?entity_type=${encodeURIComponent(entityType)}` : "";
-    const res = await authFetch(`/api/connectors/enrichers${params}`);
-    if (!res.ok) throw new Error("Failed to fetch enrichers");
-    return res.json();
-  },
-
-  // ── TAXII Feeds ──
-
-  getExportFields: async (type) => {
-    const res = await authFetch(`/api/taxii-feeds/export-fields?type=${encodeURIComponent(type)}`);
-    if (!res.ok) throw new Error("Failed to fetch export fields");
-    return res.json();
-  },
-
-  listTaxiiFeeds: async (includeInactive = false) => {
-    const params = includeInactive ? "?include_inactive=true" : "";
-    const res = await authFetch(`/api/taxii-feeds${params}`);
-    if (!res.ok) throw new Error("Failed to fetch TAXII feeds");
-    return res.json();
-  },
-
-  createTaxiiFeed: async (payload) => {
-    const res = await authFetch("/api/taxii-feeds", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.error || "Failed to create TAXII feed");
-    }
-    return res.json();
-  },
-
-  updateTaxiiFeed: async (id, payload) => {
-    const res = await authFetch(`/api/taxii-feeds/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.error || "Failed to update TAXII feed");
-    }
-    return res.json();
-  },
-
-  deleteTaxiiFeed: async (id) => {
-    const res = await authFetch(`/api/taxii-feeds/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.error || "Failed to delete TAXII feed");
-    }
-    return res.json();
-  },
-
   // ── Connectors / Logging ──
 
   getConnectorsStatus: async () => {
@@ -604,45 +437,4 @@ export const api = {
     return res.json();
   },
 
-  // ── Graph exploration ──
-
-  graphSeed: async (seeds) => {
-    const res = await authFetch("/api/graph/seed", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ seeds }),
-    });
-    if (!res.ok) throw new Error("Failed to build graph");
-    return res.json();
-  },
-
-  graphExpansions: async (ref, knownIds = []) => {
-    const res = await authFetch("/api/graph/expansions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ref, known_ids: knownIds }),
-    });
-    if (!res.ok) throw new Error("Failed to fetch expansions");
-    return res.json();
-  },
-
-  graphExpand: async (ref, key) => {
-    const res = await authFetch("/api/graph/expand", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ref, key }),
-    });
-    if (!res.ok) throw new Error("Failed to expand node");
-    return res.json();
-  },
-
-  graphLinks: async (ref, knownIds = []) => {
-    const res = await authFetch("/api/graph/links", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ref, known_ids: knownIds }),
-    });
-    if (!res.ok) throw new Error("Failed to compute links");
-    return res.json();
-  },
 };
