@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import and_, or_, func
 
+from services.sql_operators import apply_sql_operator
 from models import (
     StixIPv4Addr,
     StixIPv6Addr,
@@ -190,33 +191,7 @@ def _build_condition(expr, op: str, value, field_type: str):
     except (ValueError, TypeError):
         return None
 
-    if field_type == "string":
-        if op == "eq":
-            return expr == typed
-        if op == "neq":
-            return expr != typed
-        if op == "contains":
-            return expr.ilike(f"%{typed}%")
-        if op == "not_contains":
-            return ~expr.ilike(f"%{typed}%")
-        if op == "starts_with":
-            return expr.ilike(f"{typed}%")
-        if op == "ends_with":
-            return expr.ilike(f"%{typed}")
-
-    if op == "eq":
-        return expr == typed
-    if op == "neq":
-        return expr != typed
-    if op == "gt":
-        return expr > typed
-    if op == "gte":
-        return expr >= typed
-    if op == "lt":
-        return expr < typed
-    if op == "lte":
-        return expr <= typed
-    return None
+    return apply_sql_operator(expr, op, typed)
 
 
 def apply_filters(query, stix_type: str, filters, logic: str = "AND"):

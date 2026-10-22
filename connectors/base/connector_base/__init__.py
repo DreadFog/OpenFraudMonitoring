@@ -4,7 +4,7 @@ Shared library used by every OpenFraudMonitoring connector container.
 Public API:
 
     from connector_base import (
-        load_config,            # load YAML + apply env overrides
+        load_config,            # load YAML with environment-backed defaults
         ConnectorRunner,        # main loop helper (consume requests, publish responses)
         BackendClient,          # HTTP client to POST results to the backend
     )

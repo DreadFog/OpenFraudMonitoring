@@ -1,4 +1,4 @@
-"""YAML-based configuration loader, with environment-variable overrides."""
+"""YAML-based connector configuration with environment-backed defaults."""
 
 import os
 from dataclasses import dataclass, field
@@ -26,7 +26,7 @@ def _from_env(key: str, default: str = "") -> str:
 
 
 def load_config(path: str) -> ConnectorConfig:
-    """Load a YAML config file and overlay environment-variable overrides."""
+    """Load YAML configuration, using environment variables when keys are absent."""
     with open(path, "r", encoding="utf-8") as fh:
         data = yaml.safe_load(fh) or {}
 

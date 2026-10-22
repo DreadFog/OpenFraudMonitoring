@@ -49,28 +49,31 @@ scope:                       # STIX entity types this connector can handle
 # Infrastructure (defaults work inside Docker)
 rabbitmq_url: amqp://ofm:ofm@ofm-rabbitmq:5672/
 backend_url: http://ofm-backend:5000
-connector_token: ""
 
 # Connector-specific parameters (anything else is promoted to params)
 my_api_token: "abc123"
 ```
 
-All fields except `name` have defaults. Any top-level key not in the structural set (`name`, `mode`, `connector_type`, `scope`, `rabbitmq_url`, `backend_url`, `connector_token`, `params`) is automatically promoted into `config.params` for the connector handler to use.
+All fields except `name` have defaults. Any top-level key not in the structural set (`name`, `mode`, `connector_type`, `scope`, `rabbitmq_url`, `backend_url`, `admin_token`, `params`) is automatically promoted into `config.params` for the connector handler to use. The connector uses `admin_token` to self-register on first start; when that key is absent, it reads `OFM_ADMIN_TOKEN` from the environment.
 
-Environment variables override YAML values:
-- `RABBITMQ_URL` overrides `rabbitmq_url`
-- `BACKEND_URL` overrides `backend_url`
-- `CONNECTOR_TOKEN` overrides `connector_token`
+For `rabbitmq_url`, `backend_url`, and `admin_token`, YAML values take
+precedence. The corresponding environment variables (`RABBITMQ_URL`,
+`BACKEND_URL`, and `OFM_ADMIN_TOKEN`) are defaults used only when the YAML key
+is absent. Connector-specific environment variables are not automatically
+promoted into `config.params`.
 
 ## Trigger Modes
 
 | Mode | Behavior |
 |------|----------|
 | `manual` | Only triggered from the Intelligence page via the "Enrich" button |
-| `auto` | Automatically triggered when a new fingerprint is collected (for matching entity types) |
+| `auto` | Automatically triggered when a new fingerprint is collected and a public IP address is available |
 | `both` | Both automatic and manual triggering |
 
-When the mode is `auto` or `both`, the backend scans Redis on each fingerprint collection to find connectors that support the observable type and publishes enrichment requests automatically.
+When the mode is `auto` or `both`, the backend scans Redis on each fingerprint
+collection and publishes an IP lookup request for each such connector when a
+non-private client IP is available. This automatic trigger does not filter
+connectors by their declared scope.
 
 ## Available Connectors
 
@@ -216,7 +219,7 @@ connector-my-connector:
     RABBITMQ_URL: ${RABBITMQ_URL:-amqp://ofm:ofm@ofm-rabbitmq:5672/}
     REDIS_URL: ${REDIS_URL:-redis://ofm-redis:6379/0}
     BACKEND_URL: ${BACKEND_URL:-http://ofm-backend:5000}
-    CONNECTOR_TOKEN: ${CONNECTOR_TOKEN:-dev-connector-token}
+    OFM_ADMIN_TOKEN: ${OFM_ADMIN_TOKEN:-dev-admin-token}
     CONNECTOR_CONFIG: /connectors/my-connector/config.yml
   volumes:
     - ./connectors/my-connector/config.yml:/connectors/my-connector/config.yml:ro

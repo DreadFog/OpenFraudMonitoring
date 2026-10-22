@@ -23,7 +23,7 @@ liveness display.
 ## Shared library
 
 `connectors/base/` provides `connector_base` — a Python package with:
-- `load_config(path)` — YAML config loader (with env var overrides)
+- `load_config(path)` — YAML config loader with environment-backed defaults
 - `ConnectorRunner(config, handler)` — RabbitMQ consume/publish loop + Redis heartbeat
 - `log_shipper` — centralized log shipping to Redis
 

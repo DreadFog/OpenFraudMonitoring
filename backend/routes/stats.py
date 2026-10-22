@@ -5,6 +5,7 @@ Stats endpoint - overall statistics
 from flask import Blueprint, jsonify
 from datetime import datetime
 from models import Session
+from services.bot_detection import has_bot_flag
 from services.auth import require_auth
 
 stats_bp = Blueprint("stats", __name__, url_prefix="/api")
@@ -20,15 +21,8 @@ def get_stats():
     high_risk = Session.query.filter(Session.risk_score >= 60).count()
     low_risk = total - high_risk
 
-    # Count sessions with bot-related flags (FPScanner detection names)
-    bot_keywords = ["Webdriver", "Selenium", "CDP", "Playwright", "Bot"]
-    bots = 0
     bot_sessions = Session.query.filter(Session.flags != None).all()  # noqa: E711
-    for sess in bot_sessions:
-        for flag in (sess.flags or []):
-            if any(kw in flag for kw in bot_keywords):
-                bots += 1
-                break
+    bots = sum(1 for sess in bot_sessions if has_bot_flag(sess.flags))
 
     return jsonify({
         "total_sessions": total,

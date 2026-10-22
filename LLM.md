@@ -119,7 +119,7 @@ Dense technical reference for LLMs. Self-hosted browser fingerprinting, behavior
 ## Connectors (`connectors/`)
 
 - Shared lib `connectors/base/connector_base/`: `load_config`, `ConnectorRunner`, `log_shipper`.
-- `config.yml`: `name` (required, queue routing), `mode` (`manual|auto|both`), `connector_type` (`enricher|importer`), `scope` (STIX types), infra URLs; unknown keys → `config.params`. Env overrides: `RABBITMQ_URL`, `BACKEND_URL`, `CONNECTOR_TOKEN`.
+- `config.yml`: `name` (required, queue routing), `mode` (`manual|auto|both`), `connector_type` (`enricher|importer`), `scope` (STIX types), infra URLs, optional `admin_token`; unknown keys → `config.params`. YAML values take precedence; `RABBITMQ_URL`, `BACKEND_URL`, and `OFM_ADMIN_TOKEN` provide defaults when the matching YAML key is absent.
 - Handler receives `{request_id, type, value, connector}`, returns STIX 2.1 bundle dict.
 - **ipinfo**: IPinfo Lite, scope ipv4/ipv6 → AS (`belongs-to`) + country (`located-at`).
 - **opencti**: scope ipv4/ipv6/user-agent → indicators/malware/campaigns/intrusion-sets + relationships.

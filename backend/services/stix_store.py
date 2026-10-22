@@ -2,12 +2,8 @@
 Helpers for getting-or-creating STIX 2.1 observables/SDOs in the database.
 
 Uses the `stix2` library to build canonical STIX objects, then persists them
-into per-type tables (see `models/stix.py`).
-
-Phase 1 scope: only the two observables produced at ingestion time
-(IP address and user-agent string).  Other types (autonomous-system, country,
-indicator, malware, campaign, intrusion-set) and relationships will be
-populated by external connectors in a later phase.
+into per-type tables (see the `models/stix` package). The store provides
+helpers for the STIX entities used by collection and enrichment.
 """
 
 import ipaddress

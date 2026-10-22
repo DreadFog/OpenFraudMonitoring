@@ -24,15 +24,20 @@ Self-hosted browser fingerprinting, behavioral analysis, and fraud monitoring pl
 ## Quick Start
 
 ```bash
-cp .env.example .env   # edit if needed
+cp .env.example .env
+# For a local development instance, set OFM_ENV=development in .env.
+# For production, replace the placeholder application secrets and passwords.
+docker network create internal_network
+cp -n connectors/opencti/config.example.yml connectors/opencti/config.yml
+cp -n connectors/ipinfo/config.example.yml connectors/ipinfo/config.yml
 docker compose up --build
 ```
 
-| Service | URL |
-|---------|-----|
-| Dashboard | http://localhost:3000 |
-| Demo page | http://localhost:3000/demo |
-| API | http://localhost:5000 |
+Compose attaches services to the external `internal_network`; create it before
+starting the stack. The frontend port is not published on the host. To access
+the dashboard and demo page, configure a reverse proxy on this network as
+described in [Deployment](docs/deployment.md). The backend API is published on
+`http://localhost:5000` by default.
 
 ## Integration
 
@@ -102,7 +107,7 @@ All variables are in [`.env.example`](.env.example). Key ones:
 | `DATABASE_URL` | PostgreSQL connection string |
 | `REDIS_URL` | Redis connection string |
 | `POSTGRES_PASSWORD` | Database password |
-| `CONNECTOR_TOKEN` | Shared auth token for connector HTTP fallback |
+| `OFM_ADMIN_TOKEN` | Bootstrap admin API token used by connectors to self-register |
 
 ## Documentation
 

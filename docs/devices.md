@@ -13,7 +13,7 @@ includes `graphics.canvas.canvasFingerprint`. On browsers that randomize
 canvas output (privacy-hardened Firefox, some anti-fingerprinting
 extensions, certain mobile browsers), that single volatile value changes
 the whole `fsid` even though nothing about the underlying hardware changed.
-`POST /api/initial` now finds visits by `visit_id`, not `fsid`; fingerprint
+`POST /api/initial` identifies visits by `visit_id`, not `fsid`; fingerprint
 drift therefore does not merge or split visits.
 
 `Device` decouples hardware correlation from visit ID and `fsid`:

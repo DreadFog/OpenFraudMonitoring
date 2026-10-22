@@ -11,6 +11,7 @@ from models import AllowedOrigin, DomainConfig, Rule, RuleMatch, Session
 from models.device import Device
 from routes.connectors import _connector_info, _list_connectors
 from services.auth import require_auth
+from services.bot_detection import has_bot_flag
 from services.database import db
 from services.stix_filters import TYPE_TO_MODEL
 
@@ -18,13 +19,7 @@ overview_bp = Blueprint("overview", __name__, url_prefix="/api/overview")
 
 DAY_MS = 24 * 60 * 60 * 1000
 HIGH_RISK = 60
-# Same heuristic as /api/stats: flags named after automation detections.
-_BOT_KEYWORDS = ("Webdriver", "Selenium", "CDP", "Playwright", "Bot")
 _SEARCH_STIX_TYPES = ("ipv4-addr", "ipv6-addr", "user-agent", "autonomous-system")
-
-
-def _is_bot(flags):
-    return any(any(kw in str(f) for kw in _BOT_KEYWORDS) for f in flags or [])
 
 
 def _window_counts(start, end):
@@ -33,7 +28,7 @@ def _window_counts(start, end):
     return {
         "sessions": len(flags),
         "high_risk": active.filter(Session.risk_score >= HIGH_RISK).count(),
-        "bots": sum(1 for f in flags if _is_bot(f)),
+        "bots": sum(1 for f in flags if has_bot_flag(f)),
         "new_devices": Device.query.filter(Device.first_seen >= start, Device.first_seen < end).count(),
     }
 

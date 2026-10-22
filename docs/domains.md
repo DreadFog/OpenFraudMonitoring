@@ -2,7 +2,10 @@
 
 Monitored domains let an administrator describe each site that embeds `ofm.js`: which cookie proves a visitor is authenticated, and which form submission counts as an authentication attempt. Configuration is global (one entry per host) and can be exported/imported as JSON.
 
-This is separate from [CORS allowed origins](../README.md), which only control which sites may embed the script. Domain configuration adds behavior on top of collection.
+This is separate from [CORS allowed origins](../README.md). CORS controls
+whether browsers may read cross-origin responses; it does not control whether
+a site can embed the script. Domain configuration adds behavior on top of
+collection.
 
 ## Requirements
 
@@ -52,7 +55,7 @@ Redaction is enforced by the backend **before storage**, regardless of the clien
 - If the form action is missing, a matching field name or ID is enough. If both name and ID are missing but the login action matches, captured text is redacted conservatively.
 - Inputs identified as `type=password` are protected on the configured host even when the form action differs. No form method or other submitted fields are required for clipboard redaction.
 - DOM IDs/names, form actions, timestamps, authentication state, and original clipboard lengths remain available for analysis. Redaction does not add text when clipboard capture supplied none. Unrelated clipboard fields are unchanged.
-- `form_submit` field values (`data.fields`) are discarded at ingestion, for all forms. Only field names, action, method, and event metadata are stored. Matching submissions continue to create both the form-submit record and the server-generated `auth_attempt` record; neither contains submitted values.
+- `form_submit` field values (`data.fields`) are discarded by the backend at ingestion, for all forms. The collection client currently captures field values by default and logs the form-submit payload to the browser console before sending it. Only field names, action, method, and event metadata are stored by the backend. Matching submissions continue to create both the form-submit record and the server-generated `auth_attempt` record; neither contains submitted values.
 
 This protects newly received events only. Existing records are **not** scrubbed. Protection relies on the event's reported metadata and a configured login pattern; it does not inspect arbitrary clipboard contents or remove credentials from URLs. Backend redaction also does not prevent transmission of captured values: leave client capture disabled when values should never leave the browser.
 
@@ -98,7 +101,9 @@ docker compose logs -f backend | grep -E "auth cookie check|auth form check|auth
 - `auth form check … matched=False` — compare the logged `action`/`method` against the configuration; method and action mismatches are the common causes.
 - `authentication attempt detected` — a match was stored in `beh_auth_attempt`.
 
-Cookie values and form values are never logged.
+The backend does not log cookie values or submitted form values. The collection
+client does log its captured form-submit payload to the browser console; this
+payload can include field values.
 
 ## API
 

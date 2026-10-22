@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { api } from "./api";
 
 const AuthContext = createContext(null);
 
@@ -16,16 +17,7 @@ export function AuthProvider({ children }) {
   const isAuthenticated = !!token && !!user;
 
   const login = useCallback(async (username, password) => {
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.error || "Login failed");
-    }
-    const data = await res.json();
+    const data = await api.login(username, password);
     setToken(data.token);
     setUser(data.user);
     localStorage.setItem("ofm_token", data.token);

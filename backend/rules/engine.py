@@ -33,6 +33,7 @@ Supported step filter fields (mapped to typed model columns):
 
 from sqlalchemy import and_, or_
 from services.schema import get_field_meta
+from services.sql_operators import apply_sql_operator
 from filters import get_custom_handler
 
 # Lazy model resolution to avoid circular imports
@@ -65,28 +66,7 @@ def apply_operator(column, field_type, op, value):
     elif field_type == "boolean":
         value = str(value).lower() in ("true", "1", "yes")
 
-    if op == "eq":
-        return column == value
-    elif op == "neq":
-        return column != value
-    elif op == "contains":
-        return column.ilike(f"%{value}%")
-    elif op == "not_contains":
-        return ~column.ilike(f"%{value}%")
-    elif op == "starts_with":
-        return column.ilike(f"{value}%")
-    elif op == "ends_with":
-        return column.ilike(f"%{value}")
-    elif op == "gt":
-        return column > value
-    elif op == "gte":
-        return column >= value
-    elif op == "lt":
-        return column < value
-    elif op == "lte":
-        return column <= value
-
-    return None
+    return apply_sql_operator(column, op, value)
 
 
 def build_session_query(filters, logic="AND", base_query=None):
