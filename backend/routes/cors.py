@@ -7,6 +7,7 @@ from flask import Blueprint, request, jsonify
 from models.cors import AllowedOrigin
 from services.database import db
 from services.auth import require_auth, require_role
+from services.cors_origins import invalidate_origin_cache
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,7 @@ def add_origin():
         new_origin = AllowedOrigin(origin=origin, active=True)
         db.session.add(new_origin)
         db.session.commit()
+        invalidate_origin_cache()
         logger.info("Admin added CORS origin: %s", origin)
         return jsonify(new_origin.to_dict()), 201
     except Exception as e:
@@ -60,6 +62,7 @@ def remove_origin(origin_id):
     try:
         db.session.delete(origin_obj)
         db.session.commit()
+        invalidate_origin_cache()
         logger.info("Admin removed CORS origin: %s", origin_obj.origin)
         return jsonify({"message": "origin removed"}), 200
     except Exception as e:
@@ -77,6 +80,7 @@ def toggle_origin(origin_id):
     try:
         origin_obj.active = not origin_obj.active
         db.session.commit()
+        invalidate_origin_cache()
         logger.info("Admin toggled CORS origin %s to active=%s", origin_obj.origin, origin_obj.active)
         return jsonify(origin_obj.to_dict()), 200
     except Exception as e:

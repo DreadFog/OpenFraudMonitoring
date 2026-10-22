@@ -6,12 +6,35 @@ Supports wildcard patterns like *.domain.fr
 
 import logging
 import fnmatch
+from functools import lru_cache
 from urllib.parse import urlparse
-from flask import request
+from flask import current_app, request
 
 from models.cors import AllowedOrigin
 
 logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=16)
+def _active_origin_patterns(app=None) -> tuple[str, ...]:
+    """Load active origins once until an administrator changes the allowlist."""
+    return tuple(
+        origin for (origin,) in
+        AllowedOrigin.query.filter_by(active=True).with_entities(AllowedOrigin.origin).all()
+    )
+
+
+def _cached_active_origin_patterns() -> tuple[str, ...]:
+    try:
+        app = current_app._get_current_object()
+    except RuntimeError:
+        app = None
+    return _active_origin_patterns(app)
+
+
+def invalidate_origin_cache() -> None:
+    """Discard cached allowlist data after a committed change."""
+    _active_origin_patterns.cache_clear()
 
 
 def extract_domain_from_origin(origin: str) -> str:
@@ -49,11 +72,7 @@ def is_origin_allowed(origin: str) -> bool:
     
     domain = extract_domain_from_origin(origin)
     
-    # Check allowed origins
-    allowed_origins = AllowedOrigin.query.filter_by(active=True).all()
-    
-    for allowed in allowed_origins:
-        pattern = allowed.origin
+    for pattern in _cached_active_origin_patterns():
         
         # If pattern is a full URL, extract domain for comparison
         if pattern.startswith(('http://', 'https://', 'ws://', 'wss://')):
@@ -68,7 +87,7 @@ def is_origin_allowed(origin: str) -> bool:
 
 def get_all_origins():
     """Get list of all active allowed origins."""
-    return [o.origin for o in AllowedOrigin.query.filter_by(active=True).all()]
+    return list(_cached_active_origin_patterns())
 
 
 def dynamic_origin(origin):
