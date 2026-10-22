@@ -107,6 +107,7 @@ All variables are in [`.env.example`](.env.example). Key ones:
 
 - [Architecture](docs/architecture.md) — system overview, data flow, STIX storage, folder structure
 - [Deployment](docs/deployment.md) — deployment modes, Caddy reverse proxying, and cookie-based collection requirements
+- [Dissemination](docs/dissemination/README.md) — periodically apply OFM IP feeds to nftables, with a standalone cron updater
 - [Monitored Domains](docs/domains.md) — per-domain auth cookie, authentication-attempt detection, JSON import/export
 - [Connectors](docs/connectors.md) — how enrichment connectors work, how to build your own
 - [Rules](docs/rules.md) — how to create and manage detection rules
