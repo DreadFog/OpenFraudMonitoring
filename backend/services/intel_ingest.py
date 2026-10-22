@@ -72,6 +72,32 @@ def _parse_iso(ts: Optional[str]) -> Optional[datetime]:
         return None
 
 
+def stix_model_and_value(obj: dict):
+    """Return (Model, platform value) for a supported object, or None."""
+    otype = obj.get("type")
+    if otype == "location":
+        # Treat only country-like locations as StixCountry rows.
+        loc_type = (obj.get("x_ofm_location_type") or obj.get("x_opencti_location_type") or "").strip().lower()
+        if loc_type and loc_type != "country":
+            return None
+
+        # Keep the OFM lookup key as a country code when aliases provide one.
+        country = obj.get("country")
+        if not country:
+            return None
+        aliases = obj.get("x_opencti_aliases") or []
+        country_code = next(
+            (alias for alias in aliases if isinstance(alias, str) and len(alias) == 2),
+            country,
+        )
+        return StixCountry, country_code
+    entry = _TYPE_MAP.get(otype)
+    if not entry:
+        return None
+    Model, value_fn = entry
+    return Model, value_fn(obj) or ""
+
+
 def _upsert_typed(obj: dict, source_connector_id: int = None) -> None:
     logging.debug("Adding object: '%s'", obj)
     otype = obj.get("type")
@@ -79,29 +105,10 @@ def _upsert_typed(obj: dict, source_connector_id: int = None) -> None:
     if not sid:
         return
 
-    if otype == "location":
-        # Treat only country-like locations as StixCountry rows.
-        loc_type = (obj.get("x_ofm_location_type") or obj.get("x_opencti_location_type") or "").strip().lower()
-        if loc_type and loc_type != "country":
-            return
-
-        # Keep the OFM lookup key as a country code when aliases provide one.
-        country = obj.get("country")
-        if not country:
-            return
-        aliases = obj.get("x_opencti_aliases") or []
-        country_code = next(
-            (alias for alias in aliases if isinstance(alias, str) and len(alias) == 2),
-            country,
-        )
-        Model = StixCountry
-        value = country_code
-    else:
-        entry = _TYPE_MAP.get(otype)
-        if not entry:
-            return
-        Model, value_fn = entry
-        value = value_fn(obj) or ""
+    resolved = stix_model_and_value(obj)
+    if resolved is None:
+        return
+    Model, value = resolved
 
     indicator_fields = {
         "name": obj.get("name"),

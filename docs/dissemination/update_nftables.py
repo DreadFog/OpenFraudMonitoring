@@ -9,9 +9,12 @@ import io
 import ipaddress
 import json
 import logging
+import logging.handlers
 import os
+import re
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -37,6 +40,8 @@ ALLOWLIST = (
 NFT = "/usr/bin/nft"
 TABLE = "ofm_blocklist"
 LOCK = "/run/ofm-nftables.lock"
+LOG_FILE = "/var/log/ofm-nftables.log"
+LOG_RETENTION_DAYS = 14
 TIMEOUT = 30
 MAX_BYTES = 16 * 1024 * 1024
 MAX_ROWS = 200_000
@@ -200,13 +205,50 @@ def update_lock():
         yield
 
 
+def prune_logs(now=None):
+    """Delete rotated log files whose newest entry is older than the retention period."""
+    cutoff = (time.time() if now is None else now) - LOG_RETENTION_DAYS * 86400
+    directory, base = os.path.split(LOG_FILE)
+    rotated = re.compile(re.escape(base) + r"\.\d{4}-\d{2}-\d{2}")
+    for name in os.listdir(directory or "."):
+        path = os.path.join(directory, name)
+        if rotated.fullmatch(name) and os.path.isfile(path) and not os.path.islink(path) \
+                and os.lstat(path).st_mtime < cutoff:
+            os.unlink(path)
+
+
+def setup_logging(to_file):
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+    handlers = []
+    if to_file:
+        try:
+            if os.path.islink(LOG_FILE):
+                raise OSError(f"{LOG_FILE} must not be a symlink")
+            os.umask(0o077)
+            # Rotates daily (UTC); prune_logs enforces the age-based retention.
+            handler = logging.handlers.TimedRotatingFileHandler(
+                LOG_FILE, when="midnight", utc=True, backupCount=0, encoding="utf-8",
+            )
+            os.fchmod(handler.stream.fileno(), 0o600)
+            prune_logs()
+            handlers.append(handler)
+        except OSError as error:
+            print(f"Cannot use {LOG_FILE}: {error}", file=sys.stderr)
+            to_file = False
+    if not to_file or sys.stderr.isatty():
+        handlers.append(logging.StreamHandler())
+    for handler in handlers:
+        handler.setFormatter(formatter)
+    logging.basicConfig(level=logging.INFO, handlers=handlers, force=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--dry-run", action="store_true", help="Fetch and print rules, without root or nft")
     mode.add_argument("--check", action="store_true", help="Fetch and validate with nft, without applying")
     args = parser.parse_args()
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    setup_logging(to_file=not args.dry_run and os.geteuid() == 0)
     try:
         allowlist = validate_config()
         if not args.dry_run and os.geteuid() != 0:
@@ -227,6 +269,9 @@ def main():
     except (UpdateError, OSError, ValueError, csv.Error, urllib.error.URLError, http.client.HTTPException,
             subprocess.SubprocessError) as error:
         logging.error("%s", error)
+        return 1
+    except Exception:
+        logging.exception("Unexpected failure")
         return 1
     return 0
 

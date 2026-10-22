@@ -166,8 +166,10 @@ def process_periodic_rules():
                     )
                     _apply_rule_matches(rules, active_since=last_run)
                     logger.debug("[periodic] scan complete")
+                from services.indicator_generation import generate_session_indicators
+                generate_session_indicators()
         except Exception as e:
-            logger.error("Periodic error: %s", e)
+            logger.exception("Periodic error: %s", e)
         else:
             # Only advance the cursor on a successful run so we don't miss
             # sessions if an exception occurs mid-scan.

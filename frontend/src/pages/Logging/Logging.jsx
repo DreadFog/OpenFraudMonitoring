@@ -8,6 +8,7 @@ import DashboardGlobalSettings from "../../components/DashboardGlobalSettings/Da
 import PrivacySettings from "../../components/PrivacySettings/PrivacySettings";
 import RetentionSettings from "../../components/RetentionSettings/RetentionSettings";
 import ServerSettings from "../../components/ServerSettings/ServerSettings";
+import IndicatorSettings from "../../components/IndicatorSettings/IndicatorSettings";
 import UserManagement from "../Users/Users";
 import DomainSettings from "../../components/DomainSettings/DomainSettings";
 import { ADMIN_SECTIONS } from "./adminSections";
@@ -78,7 +79,12 @@ export default function Administration() {
 
       {section === "graph" && <GraphGlobalSettings />}
 
-      {section === "retention" && <RetentionSettings />}
+      {section === "retention" && (
+        <>
+          <IndicatorSettings />
+          <RetentionSettings />
+        </>
+      )}
 
       {section === "server" && <ServerSettings />}
 

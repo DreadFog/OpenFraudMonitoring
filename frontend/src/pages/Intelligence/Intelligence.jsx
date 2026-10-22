@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { api } from "../../api";
+import { useAuth } from "../../AuthContext";
 import { usePersistentState } from "../../hooks/usePersistentState";
 import { useRecentItems } from "../../hooks/useRecentItems";
 import { buildGraphUrl, stixSeed } from "../Graph/graphLink";
@@ -132,6 +133,8 @@ const TYPE_PLACEHOLDERS = {
 };
 
 export default function Intelligence() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [entityType, setEntityType] = usePersistentState("intel.entityType", "");
@@ -143,6 +146,11 @@ export default function Intelligence() {
   const [showRaw, setShowRaw] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshNote, setRefreshNote] = useState("");
+  const [creatingIndicator, setCreatingIndicator] = useState(false);
+  const [revokingId, setRevokingId] = useState(null);
+  const [editDraft, setEditDraft] = useState(null);
+  const [editError, setEditError] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
   const [enrichers, setEnrichers] = useState([]);
   const [enrichOpen, setEnrichOpen] = useState(false);
   const [entities, setEntities] = useState([]);
@@ -338,6 +346,8 @@ export default function Intelligence() {
     setData(null);
     setSessions([]);
     setShowRaw(false);
+    setEditDraft(null);
+    setEditError("");
     setEnrichers([]);
     setEnrichOpen(false);
     const nextType = type || entityType;
@@ -390,6 +400,67 @@ export default function Intelligence() {
       setRefreshNote(err.message || "Enrichment failed");
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const createIndicator = async (entity) => {
+    if (!window.confirm(
+      `Create or renew indicators for ${entity.value}? This also reactivates revoked related indicators and may add the IP to blocking feeds.`
+    )) return;
+    setCreatingIndicator(true);
+    setError("");
+    setRefreshNote("");
+    try {
+      const result = await api.createObservableIndicator(entity.stix_type, entity.stix_id);
+      const types = await api.getIntelTypes();
+      setAvailableTypes(types.types || []);
+      await selectEntity("indicator", result.indicators[0].value);
+      setRefreshNote(result.created ? "Indicator created." : "Related indicators renewed and reactivated.");
+    } catch (err) {
+      setError(err.message || "Failed to create indicator");
+    } finally {
+      setCreatingIndicator(false);
+    }
+  };
+
+  const revokeIndicator = async (entity, inDetail) => {
+    const label = entity.name || entity.stix_object?.name || entity.value;
+    if (!window.confirm(
+      `Revoke indicator ${label}? Its valid_until is set to now and it leaves filtered blocking feeds. Automation may reactivate it if new activity exceeds the risk threshold.`
+    )) return;
+    setRevokingId(entity.stix_id);
+    setError("");
+    setRefreshNote("");
+    try {
+      const result = await api.revokeIndicator(entity.stix_id);
+      setEntities((list) => list.map((item) => (item.stix_id === entity.stix_id ? result.entity : item)));
+      if (inDetail) await selectEntity("indicator", result.entity.value);
+      setRefreshNote(result.changed ? "Indicator revoked." : "Indicator was already revoked.");
+    } catch (err) {
+      setError(err.message || "Failed to revoke indicator");
+    } finally {
+      setRevokingId(null);
+    }
+  };
+
+  const saveEdit = async () => {
+    let stixObject;
+    try {
+      stixObject = JSON.parse(editDraft);
+    } catch (err) {
+      setEditError(`Invalid JSON: ${err.message}`);
+      return;
+    }
+    setSavingEdit(true);
+    setEditError("");
+    try {
+      const result = await api.updateEntity(observable.stix_id, stixObject);
+      await selectEntity(result.entity.stix_type, result.entity.value);
+      setRefreshNote("Entity updated.");
+    } catch (err) {
+      setEditError(err.message || "Failed to update entity");
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -578,6 +649,7 @@ export default function Intelligence() {
                     <th>Created</th>
                     <th>Last Refreshed</th>
                     {entityType === 'indicator' && <th>Revoked</th>}
+                    {isAdmin && (isIpEntityType(entityType) || entityType === 'indicator') && <th>Actions</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -597,6 +669,24 @@ export default function Intelligence() {
                       {entityType === 'indicator' && <td>{ent.revoked
                         ? <span className="intel-pill intel-pill-revoked">revoked</span>
                         : <span className="intel-muted">—</span>}</td>}
+                      {isAdmin && isIpEntityType(entityType) && (
+                        <td>
+                          <button className="intel-btn" type="button" disabled={creatingIndicator}
+                            onClick={(event) => { event.stopPropagation(); createIndicator(ent); }}>
+                            Create indicator
+                          </button>
+                        </td>
+                      )}
+                      {isAdmin && entityType === 'indicator' && (
+                        <td>
+                          {!ent.revoked && (
+                            <button className="intel-btn intel-btn-danger" type="button" disabled={revokingId === ent.stix_id}
+                              onClick={(event) => { event.stopPropagation(); revokeIndicator(ent, false); }}>
+                              {revokingId === ent.stix_id ? "Revoking..." : "Revoke"}
+                            </button>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -633,7 +723,52 @@ export default function Intelligence() {
               <h2>{data.observable.stix_object?.name || data.observable.value}</h2>
               <div className="intel-pill">{data.observable.stix_type}</div>
               {data.observable.stix_type === 'indicator' && data.observable.revoked && <div className="intel-pill intel-pill-revoked">revoked</div>}
+              {isAdmin && isIpEntityType(data.observable.stix_type) && (
+                <button className="intel-btn" type="button" disabled={creatingIndicator}
+                  onClick={() => createIndicator(data.observable)}>
+                  {creatingIndicator ? "Creating..." : "Create indicator"}
+                </button>
+              )}
+              {isAdmin && isIndicator && !data.observable.revoked && (
+                <button className="intel-btn intel-btn-danger" type="button" disabled={revokingId === data.observable.stix_id}
+                  onClick={() => revokeIndicator(data.observable, true)}>
+                  {revokingId === data.observable.stix_id ? "Revoking..." : "Revoke"}
+                </button>
+              )}
+              {isAdmin && (
+                <button className="intel-btn" type="button" disabled={editDraft !== null}
+                  onClick={() => {
+                    const draft = isIndicator
+                      ? { ...stixObject, revoked: Boolean(data.observable.platform?.revoked_explicitly) }
+                      : stixObject;
+                    setEditError("");
+                    setEditDraft(JSON.stringify(draft, null, 2));
+                  }}>
+                  Edit
+                </button>
+              )}
             </div>
+            {editDraft !== null && (
+              <div className="intel-edit">
+                <p className="intel-muted">
+                  Edit the STIX object. <code>type</code> and <code>id</code> are fixed; observable values
+                  (IP, user agent, AS number, country) cannot change. For indicators, set <code>"revoked"</code>
+                  or <code>"valid_until"</code> to control blocking feeds.
+                </p>
+                <textarea className="intel-edit-text" spellCheck={false} value={editDraft}
+                  onChange={(event) => setEditDraft(event.target.value)} />
+                {editError && <div className="intel-edit-error">{editError}</div>}
+                <div className="intel-edit-actions">
+                  <button className="intel-btn intel-btn-primary" type="button" disabled={savingEdit} onClick={saveEdit}>
+                    {savingEdit ? "Saving..." : "Save"}
+                  </button>
+                  <button className="intel-btn" type="button" disabled={savingEdit}
+                    onClick={() => { setEditDraft(null); setEditError(""); }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="intel-meta">
               <div><span>Created on platform</span><b>{fmtDate(data.observable.platform?.created_at_platform)}</b></div>
               <div><span>Last refreshed</span><b>{fmtDate(data.observable.platform?.last_refreshed_at)}</b></div>

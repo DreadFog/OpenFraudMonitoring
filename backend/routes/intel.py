@@ -17,11 +17,17 @@ POST /api/intel/ingest
     Auth:   Authorization: Bearer <CONNECTOR_TOKEN>
     Body:   {"connector": "opencti", "value": "...", "stix_bundle": {...}}
     Direct fallback HTTP path; persists the bundle into the STIX tables.
+
+PUT /api/intel/entities/<stix_id>       (admin)
+    Body: {"stix_object": {...}}; replaces the stored STIX object.
+
+POST /api/intel/indicators/<stix_id>/revoke   (admin)
+    Marks an indicator revoked.
 """
 
 import ipaddress
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from flask import Blueprint, request, jsonify, g
@@ -402,6 +408,84 @@ def lookup():
     if not request_id:
         return jsonify({"error": "Failed to enqueue request"}), 502
     return jsonify({"request_id": request_id, "connector": connector}), 202
+
+
+@intel_bp.route("/indicators", methods=["POST"])
+@require_auth
+@require_role("admin")
+def create_observable_indicator():
+    from services.indicator_generation import ensure_ip_indicators, IP_TYPES
+    from services.settings import INDICATOR_AUTOMATION_KEY, get_global_setting
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict):
+        return jsonify({"error": "body must be a JSON object"}), 400
+    stix_type, sid = body.get("type"), body.get("stix_id")
+    if stix_type not in IP_TYPES or not isinstance(sid, str):
+        return jsonify({"error": "type must be ipv4-addr or ipv6-addr, with a stix_id"}), 400
+    observable = TYPE_TO_MODEL[stix_type].query.filter_by(stix_id=sid).first()
+    if observable is None:
+        return jsonify({"error": "observable not found"}), 404
+    try:
+        rows, created, _ = ensure_ip_indicators(
+            stix_type, observable.id, datetime.now(timezone.utc),
+            get_global_setting(INDICATOR_AUTOMATION_KEY)["validity_hours"],
+            override_revocation=True,
+        )
+        db.session.commit()
+    except (ValueError, LookupError) as error:
+        db.session.rollback()
+        return jsonify({"error": str(error)}), 400
+    except Exception:
+        db.session.rollback()
+        logger.exception("Manual indicator creation failed for %s", sid)
+        raise
+    return jsonify({"created": created, "indicators": [row.to_dict() for row in rows]}), 201 if created else 200
+
+
+@intel_bp.route("/indicators/<path:stix_id>/revoke", methods=["POST"])
+@require_auth
+@require_role("admin")
+def revoke_indicator_route(stix_id):
+    from services.stix_editing import revoke_indicator
+    if _stix_id_type(stix_id) != "indicator":
+        return jsonify({"error": "not an indicator id"}), 400
+    row = TYPE_TO_MODEL["indicator"].query.filter_by(stix_id=stix_id).with_for_update().first()
+    if row is None:
+        db.session.rollback()
+        return jsonify({"error": "indicator not found"}), 404
+    changed = revoke_indicator(row)
+    db.session.commit()
+    return jsonify({"changed": changed, "entity": _entity_dict(row, "indicator")}), 200
+
+
+@intel_bp.route("/entities/<path:stix_id>", methods=["PUT"])
+@require_auth
+@require_role("admin")
+def update_entity_route(stix_id):
+    """Body: {"stix_object": {...}} — the complete edited STIX object."""
+    from services.stix_editing import EntityEditError, update_entity
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict) or set(body) != {"stix_object"}:
+        return jsonify({"error": "body must be {\"stix_object\": {...}}"}), 400
+    stix_type = _stix_id_type(stix_id)
+    Model = TYPE_TO_MODEL.get(stix_type)
+    if Model is None:
+        return jsonify({"error": f"unknown entity type: {stix_type}"}), 400
+    row = Model.query.filter_by(stix_id=stix_id).with_for_update().first()
+    if row is None:
+        db.session.rollback()
+        return jsonify({"error": "entity not found"}), 404
+    try:
+        update_entity(row, stix_type, body["stix_object"])
+        db.session.commit()
+    except EntityEditError as error:
+        db.session.rollback()
+        return jsonify({"error": str(error)}), 400
+    except Exception:
+        db.session.rollback()
+        logger.exception("Entity update failed for %s", stix_id)
+        raise
+    return jsonify({"entity": _entity_dict(row, stix_type)}), 200
 
 
 @intel_bp.route("/entity-sessions", methods=["GET"])

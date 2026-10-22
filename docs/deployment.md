@@ -105,7 +105,10 @@ whole numbers of months and is stored as the global key `data.retention_months`.
 
 Indicator revocation defaults to **7 days** without enrichment, configured by
 `intel.indicator_revocation_days` (positive whole days). Only indicators have a
-platform `revoked` state. Saving a new delay recalculates it immediately; reads
+platform `revoked` state. An explicit STIX `valid_until` takes precedence over
+this inactivity delay. [IP indicator automation](stix.md#local-ip-indicators)
+is enabled by default at risk score 100; configure it in the same Data management
+section before using exports for enforcement. Saving a new delay recalculates it immediately; reads
 and the hourly worker also keep it current. Fresh, unrevoked enrichment resets
 age-based revocation, but source-provided revocation always takes precedence.
 This policy does not delete indicators and is independent of retention.

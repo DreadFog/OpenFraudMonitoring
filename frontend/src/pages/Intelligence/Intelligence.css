@@ -98,6 +98,44 @@
   color: #fff;
 }
 
+.intel-btn-danger {
+  border-color: #da3633;
+  color: #f85149;
+}
+
+.intel-btn-danger:hover:not(:disabled) {
+  background: rgba(248, 81, 73, 0.15);
+}
+
+.intel-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.intel-edit-text {
+  min-height: 320px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: monospace;
+  font-size: 12px;
+  resize: vertical;
+}
+
+.intel-edit-error {
+  color: #f85149;
+  font-size: 13px;
+}
+
+.intel-edit-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .intel-back-btn {
   margin-bottom: 12px;
 }

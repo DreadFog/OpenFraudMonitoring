@@ -64,6 +64,14 @@ When a session matches, the worker:
 
 ## API
 
+After periodic scoring, the worker also runs the configurable
+[IP indicator automation](stix.md#local-ip-indicators). By default, IPv4/IPv6
+observables linked to sessions active in the last 60 minutes with risk score
+at least 100 create or renew indicators for 24 hours after the latest activity.
+This is separate from rule definitions and runs even without periodic rules.
+Administrators can disable it or change the threshold/window/duration in
+**Administration > Data management**.
+
 ### List rules
 
 ```

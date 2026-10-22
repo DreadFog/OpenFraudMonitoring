@@ -362,6 +362,7 @@ All `/api/*` endpoints except the ingestion ones require an `Authorization: Bear
 | GET | `/api/intel/entities?type=&limit=` | List latest entities of a type |
 | GET | `/api/intel/entity?type=&value=` | Full entity detail (relationships, AS, country, session count) |
 | GET | `/api/intel/filter-schema?type=` | Filterable field schema for an entity type |
+| POST | `/api/intel/indicators` | Create/renew indicators based on an IPv4/IPv6 observable (admin) |
 | GET | `/api/intel/ip/<value>` | IP-specific lookup (used by the popover) |
 | POST | `/api/intel/lookup` | Enqueue enrichment request to a connector |
 | POST | `/api/intel/ingest` | Direct STIX bundle ingest (connector auth) |

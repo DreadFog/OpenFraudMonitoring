@@ -21,6 +21,7 @@ class StixIndicator(StixObjectBase, db.Model):
         data = super().to_dict()
         data.update(name=self.name, description=self.description, revoked=self.revoked)
         data["platform"]["revoked"] = self.revoked
+        data["platform"]["revoked_explicitly"] = (self.raw or {}).get("revoked") is True
         data["stix_object"] = {**(self.raw or {}), "revoked": bool(self.revoked or (self.raw or {}).get("revoked"))}
         data["raw"] = data["stix_object"]
         return data

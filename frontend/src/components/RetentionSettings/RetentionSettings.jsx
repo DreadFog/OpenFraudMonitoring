@@ -104,6 +104,8 @@ export default function RetentionSettings() {
       )}
       <p className="cors-description">
         Deletion is permanent. Policy changes apply at the next hourly cleanup.
+        Indicators with an explicit valid-until date expire at that date instead
+        of using the inactivity delay.
       </p>
     </section>
   );

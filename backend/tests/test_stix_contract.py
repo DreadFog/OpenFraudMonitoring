@@ -189,6 +189,14 @@ class IndicatorRevocationTests(unittest.TestCase):
         apply_indicator_revocation([self.row], days=7, now=self.now)
         self.assertTrue(self.row.revoked)
 
+    def test_explicit_valid_until_controls_expiry_not_inactivity(self):
+        self.row.raw = {"valid_until": "2026-10-11T00:00:00Z"}
+        apply_indicator_revocation([self.row], days=1, now=self.now)
+        self.assertFalse(self.row.revoked)
+        self.row.raw = {"valid_until": "2026-10-10T00:00:00Z"}
+        apply_indicator_revocation([self.row], days=30, now=self.now)
+        self.assertTrue(self.row.revoked)
+
     def test_configured_delay_and_non_indicator_models(self):
         from models import StixRelationship, StixMalware
         ip = StixIPv4Addr(stix_id="ipv4-addr--test", raw={})

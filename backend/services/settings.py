@@ -28,6 +28,7 @@ DASHBOARD_DEFAULT_TIME_RANGE_KEY = "dashboard.default_time_range"
 CONTENT_WIDTH_PERCENT_KEY = "layout.content_width_percent"
 DATA_RETENTION_MONTHS_KEY = "data.retention_months"
 INDICATOR_REVOCATION_DAYS_KEY = "intel.indicator_revocation_days"
+INDICATOR_AUTOMATION_KEY = "intel.indicator_automation"
 SERVER_LOCATION_KEY = "server.location"
 SERVER_TIMEZONE_KEY = "server.timezone"
 
@@ -38,6 +39,10 @@ GLOBAL_DEFAULTS = {
     CONTENT_WIDTH_PERCENT_KEY: 100,
     DATA_RETENTION_MONTHS_KEY: 6,
     INDICATOR_REVOCATION_DAYS_KEY: 7,
+    INDICATOR_AUTOMATION_KEY: {
+        "enabled": True, "risk_threshold": 100, "lookback_minutes": 60,
+        "validity_hours": 24,
+    },
     SERVER_LOCATION_KEY: {"name": "", "latitude": None, "longitude": None},
     SERVER_TIMEZONE_KEY: "UTC",
 }
@@ -76,6 +81,24 @@ def validate_retention_months(value):
     if isinstance(value, bool) or not isinstance(value, int) or value < 1:
         return None
     return value
+
+
+def validate_indicator_automation(value):
+    if not isinstance(value, dict) or set(value) != {
+        "enabled", "risk_threshold", "lookback_minutes", "validity_hours",
+    }:
+        return None
+    if not isinstance(value["enabled"], bool):
+        return None
+    for key, minimum, maximum in (
+        ("risk_threshold", 0, 100),
+        ("lookback_minutes", 1, 10080),
+        ("validity_hours", 1, 8760),
+    ):
+        number = value[key]
+        if isinstance(number, bool) or not isinstance(number, int) or not minimum <= number <= maximum:
+            return None
+    return dict(value)
 
 
 def get_global_setting(key: str):

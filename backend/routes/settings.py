@@ -23,6 +23,8 @@ from services.settings import (
     CONTENT_WIDTH_PERCENT_KEY,
     DATA_RETENTION_MONTHS_KEY,
     INDICATOR_REVOCATION_DAYS_KEY,
+    INDICATOR_AUTOMATION_KEY,
+    validate_indicator_automation,
     validate_retention_months,
     SERVER_LOCATION_KEY,
     SERVER_TIMEZONE_KEY,
@@ -64,6 +66,7 @@ _ALLOWED_GLOBAL_KEYS = {
     CONTENT_WIDTH_PERCENT_KEY: lambda v: int(v) if 25 <= int(v) <= 100 else None,
     DATA_RETENTION_MONTHS_KEY: validate_retention_months,
     INDICATOR_REVOCATION_DAYS_KEY: validate_retention_months,
+    INDICATOR_AUTOMATION_KEY: validate_indicator_automation,
     SERVER_LOCATION_KEY: validate_server_location,
     SERVER_TIMEZONE_KEY: validate_server_timezone,
 }

@@ -18,6 +18,7 @@ Self-hosted browser fingerprinting, behavioral analysis, and fraud monitoring pl
 - **Custom dashboards** — drag-and-drop widgets (stats, pie charts, ranked histograms, bar charts, world maps) with saved layouts and user appearance preferences
 - **Session filtering** — 50+ filterable fields with autocomplete, composable filter conditions
 - **Threat intelligence** — STIX 2.1 entity store with enrichment connectors (IPinfo, OpenCTI), relationship graph navigation
+- **IP indicators** — manually create indicators from IP observables, or automatically create/renew them from recent high-risk sessions ([policy and feed configuration](docs/stix.md#local-ip-indicators))
 - **Connector architecture** — pluggable enrichment connectors via RabbitMQ, auto/manual trigger modes, health monitoring
 
 ## Quick Start

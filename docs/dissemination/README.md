@@ -85,8 +85,12 @@ appropriate OFM filters.
 
 Indicator names are treated as your authoritative blocking decisions; the script
 does not parse STIX patterns or independently check revocation/expiry. Configure
-the indicator feed filters to exclude revoked indicators (and any other
-indicators you do not intend to block).
+the indicator feed filters with **Revoked = false** (and exclude any other
+indicators you do not intend to block). OFM recalculates effective revocation,
+including `valid_until` expiry, when serving the snapshot. See
+[local IP indicators](../stix.md#local-ip-indicators) for manual creation and
+automatic risk-score-driven renewal. Renewed imported indicators retain their
+original names, which are not necessarily IP addresses.
 
 An IP observable is not automatically malicious. Exporting all observed IPs
 would block legitimate visitors. Current IP export filters are observable fields,
@@ -142,14 +146,24 @@ management access and a blocked test source separately before scheduling.
 After a successful manual test, use `sudo crontab -e`:
 
 ```cron
-*/5 * * * * /usr/bin/python3 /usr/local/sbin/ofm-update-nftables.py >> /var/log/ofm-nftables.log 2>&1
-@reboot /usr/bin/python3 /usr/local/sbin/ofm-update-nftables.py >> /var/log/ofm-nftables.log 2>&1
+*/5 * * * * /usr/bin/python3 /usr/local/sbin/ofm-update-nftables.py >/dev/null 2>&1
+@reboot /usr/bin/python3 /usr/local/sbin/ofm-update-nftables.py >/dev/null 2>&1
 ```
 
 A nonblocking lock at `/run/ofm-nftables.lock` prevents overlapping check/apply
 runs; overlap exits nonzero and logs an explicit error. Do not delete the lock
 file during a run. Logs contain timestamps and success/error status, not the
-token. Monitor and rotate the log with your usual host tooling.
+token.
+
+When run as root (check/apply), the script writes its own log to
+`/var/log/ofm-nftables.log` (`LOG_FILE`) with mode `0600`. It rotates the file
+daily at UTC midnight into `ofm-nftables.log.YYYY-MM-DD`. Each run deletes
+rotated files whose newest entry is older than `LOG_RETENTION_DAYS` (14). Do not
+redirect cron output into the same file, because those writes would bypass
+rotation. Interactive runs also print to the terminal. If the log file cannot be
+opened or is a symlink, messages go to stderr instead. `--dry-run` only uses
+stderr. Read logs with
+`sudo tail -n 30 /var/log/ofm-nftables.log`.
 
 Rules remain in the kernel between cron runs, but **do not survive reboot**.
 The reboot job may fail before networking/OFM is ready; periodic execution will

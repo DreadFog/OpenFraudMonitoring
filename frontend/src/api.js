@@ -419,6 +419,41 @@ export const api = {
     return res.json();
   },
 
+  createObservableIndicator: async (type, stixId) => {
+    const res = await authFetch("/api/intel/indicators", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, stix_id: stixId }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || "Failed to create indicator");
+    }
+    return res.json();
+  },
+
+  revokeIndicator: async (stixId) => {
+    const res = await authFetch(`/api/intel/indicators/${encodeURIComponent(stixId)}/revoke`, { method: "POST" });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || "Failed to revoke indicator");
+    }
+    return res.json();
+  },
+
+  updateEntity: async (stixId, stixObject) => {
+    const res = await authFetch(`/api/intel/entities/${encodeURIComponent(stixId)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stix_object: stixObject }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || "Failed to update entity");
+    }
+    return res.json();
+  },
+
   getEntitySessions: async (type, value, limit = 10) => {
     const res = await authFetch(`/api/intel/entity-sessions?type=${encodeURIComponent(type)}&value=${encodeURIComponent(value)}&limit=${limit}`);
     if (!res.ok) throw new Error("Failed to fetch entity sessions");
