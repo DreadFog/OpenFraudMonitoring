@@ -116,12 +116,18 @@ session list API. It's only shown when browsing devices (`/devices`,
 - `GET /api/devices` — paginated list: id, platform, GPU renderer,
   device type, confidence, session/fsid/IP counts, first/last seen.
   Accepts `filters` (JSON array of `{field, op, value}`) and `logic` (`AND` default, or `OR`).
+  Counts are aggregated in the database for the current device page; distinct
+  IP counts exclude null and empty IPs.
 - `GET /api/devices/schema` — filterable device fields, generated from the
   `Device` model columns (see `services/device_filters.py`) plus linked-session
   aggregates: `sessions_count`, `distinct_fsids`, `distinct_ips`.
 - `GET /api/devices/suggest?field=&q=` — autocomplete values for device string fields.
-- `GET /api/devices/<id>` — full canonical field breakdown (incl. device
-  type) + all linked sessions (fsid, risk score, IP, first/last seen).
+- `GET /api/devices/<id>?page=1&per_page=25` — full canonical field breakdown
+  (incl. device type) + a page of linked sessions (fsid, risk score, IP,
+  first/last seen), ordered by last seen descending, then session ID descending.
+  `per_page` accepts 10, 25, 50, or 100 (default 25); `page` is clamped to the
+  available pages. The response includes `sessions`, `page`, `per_page`,
+  `total` (all linked sessions), and `pages` (at least 1).
 - `GET|DELETE /api/sessions/<session_id>` — read or delete one visit using its
   internal numeric row ID. Session list/detail responses include `id`,
   `visit_id`, and fingerprint metadata `fsid`.
@@ -134,7 +140,7 @@ session list API. It's only shown when browsing devices (`/devices`,
   badge and device type per row, filterable with the same filter builder as
   the session view.
 - **Device detail** (`/device/:id`) — canonical fields grouped by tier
-  (including device type) + table of linked sessions (click-through to
+  (including device type) + paginated table of linked sessions (click-through to
   `/session/:session_id`).
   The hardware overview displays CPU core count and memory (GB); a Matching
   Profile section contains an expandable creation snapshot. Legacy devices
@@ -144,6 +150,15 @@ session list API. It's only shown when browsing devices (`/devices`,
 - **Dashboard** — session table groups by `device_id` ("Group by device"
   toggle) instead of by IP; it does not show device type, since that's
   device-level information (see above).
+
+## Query regression tests
+
+`backend/tests/test_query_optimization.py` checks response shapes, bounded
+event loading, device pagination, SQL bot classification, and query counts
+for session/device pages. Set `QUERY_TEST_DATABASE_URL` to a disposable
+PostgreSQL database and run `python -m unittest tests.test_query_optimization`
+from `backend/`. The suite creates and drops model tables; never point it at
+an application database.
 
 ## Known limitations
 

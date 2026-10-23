@@ -254,8 +254,8 @@ export const api = {
     return res.json();
   },
 
-  getDeviceDetail: async (id) => {
-    const res = await authFetch(`/api/devices/${id}`);
+  getDeviceDetail: async (id, page = 1, perPage = 25) => {
+    const res = await authFetch(`/api/devices/${id}?page=${page}&per_page=${perPage}`);
     if (!res.ok) throw new Error("Failed to fetch device detail");
     return res.json();
   },

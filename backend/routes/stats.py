@@ -5,8 +5,10 @@ Stats endpoint - overall statistics
 from flask import Blueprint, jsonify
 from datetime import datetime
 from models import Session
-from services.bot_detection import has_bot_flag
+from sqlalchemy import func
+from services.bot_detection import bot_flag_expression
 from services.auth import require_auth
+from services.database import db
 
 stats_bp = Blueprint("stats", __name__, url_prefix="/api")
 
@@ -17,12 +19,12 @@ def get_stats():
     """
     Get overall statistics
     """
-    total = Session.query.count()
-    high_risk = Session.query.filter(Session.risk_score >= 60).count()
+    total, high_risk, bots = db.session.query(
+        func.count(Session.id),
+        func.count(Session.id).filter(Session.risk_score >= 60),
+        func.count(Session.id).filter(bot_flag_expression(Session.flags)),
+    ).one()
     low_risk = total - high_risk
-
-    bot_sessions = Session.query.filter(Session.flags != None).all()  # noqa: E711
-    bots = sum(1 for sess in bot_sessions if has_bot_flag(sess.flags))
 
     return jsonify({
         "total_sessions": total,

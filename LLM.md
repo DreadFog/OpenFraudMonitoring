@@ -71,7 +71,9 @@ Dense technical reference for LLMs. Self-hosted browser fingerprinting, behavior
 
 **Overview** `/api/overview` (landing page): `GET ''` → `{current, previous}` 24h-window counts (active sessions by `last_seen`, high risk ≥60, bots via flag keywords, new devices by `first_seen`), `review` (top 8 high-risk sessions 24h), `rules` (per-rule match counts 24h vs previous 24h + 24 hourly buckets + `spike`), `setup` (has_sessions, active origins/domains, healthy connectors, enabled rules). `GET /search?q=` → sessions (fsid/IP prefix), devices (id/cookie prefix), STIX ip/UA/AS entities.
 
-**Devices** `/api`: `GET /devices?page=&per_page=&filters=[...]&logic=AND|OR` (paginated, filterable list), `GET /devices/schema` (device filter fields), `GET /devices/suggest?field=&q=`, `GET /devices/<id>` (canonical fields + linked sessions). See `docs/devices.md`.
+**Devices** `/api`: `GET /devices?page=&per_page=&filters=[...]&logic=AND|OR` (paginated, filterable list with database-aggregated session/fsid/nonempty-IP counts), `GET /devices/schema` (device filter fields), `GET /devices/suggest?field=&q=`, `GET /devices/<id>?page=&per_page=` (canonical fields + paginated linked sessions; default 25, maximum 100; returns `page`, `per_page`, `total`, `pages`). See `docs/devices.md`.
+
+Session list summaries use page-wide grouped counts and window-ranked previews in `services/session_summaries.py`; latest fingerprints, up to 3 URLs, and up to 2 browser-session IDs are returned per visit without per-visit queries. Session detail fetches at most 2000 behavioral rows per event type before merging the latest 2000 oldest-first. Stats and overview count bot sessions in PostgreSQL using `services/bot_detection.py::bot_flag_expression`; matching is case-sensitive against the shared keyword list and counts each session once.
 
 **Filters** `/api`: `GET /schema`, `GET /suggest?field=&q=`.
 

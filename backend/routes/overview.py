@@ -11,7 +11,7 @@ from models import AllowedOrigin, DomainConfig, Rule, RuleMatch, Session
 from models.device import Device
 from routes.connectors import _connector_info, _list_connectors
 from services.auth import require_auth
-from services.bot_detection import has_bot_flag
+from services.bot_detection import bot_flag_expression
 from services.database import db
 from services.stix_filters import TYPE_TO_MODEL
 
@@ -24,11 +24,15 @@ _SEARCH_STIX_TYPES = ("ipv4-addr", "ipv6-addr", "user-agent", "autonomous-system
 
 def _window_counts(start, end):
     active = Session.query.filter(Session.last_seen >= start, Session.last_seen < end)
-    flags = [row[0] for row in active.with_entities(Session.flags).all()]
+    sessions, high_risk, bots = active.with_entities(
+        func.count(Session.id),
+        func.count(Session.id).filter(Session.risk_score >= HIGH_RISK),
+        func.count(Session.id).filter(bot_flag_expression(Session.flags)),
+    ).one()
     return {
-        "sessions": len(flags),
-        "high_risk": active.filter(Session.risk_score >= HIGH_RISK).count(),
-        "bots": sum(1 for f in flags if has_bot_flag(f)),
+        "sessions": sessions,
+        "high_risk": high_risk,
+        "bots": bots,
         "new_devices": Device.query.filter(Device.first_seen >= start, Device.first_seen < end).count(),
     }
 

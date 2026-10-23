@@ -42,6 +42,9 @@ export default function DeviceDetail() {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const [pagination, setPagination] = useState({ id, page: 1 });
+  const [loading, setLoading] = useState(true);
+  const page = pagination.id === id ? pagination.page : 1;
   const [, recordRecent] = useRecentItems();
 
   useEffect(() => {
@@ -56,10 +59,15 @@ export default function DeviceDetail() {
   }, [data?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    api.getDeviceDetail(id)
-      .then(setData)
-      .catch(() => setError("Failed to load device."));
-  }, [id]);
+    let active = true;
+    setLoading(true);
+    setError(null);
+    api.getDeviceDetail(id, page)
+      .then((result) => { if (active) setData(result); })
+      .catch(() => { if (active) setError("Failed to load device."); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [id, page]);
 
   if (error) {
     return (
@@ -70,7 +78,7 @@ export default function DeviceDetail() {
     );
   }
 
-  if (!data) {
+  if (loading || !data) {
     return <div className="sd-container"><p className="sd-loading">Loading…</p></div>;
   }
 
@@ -135,7 +143,7 @@ export default function DeviceDetail() {
         </div>
 
         <div className="sd-col-right">
-          <Section title={`Linked Sessions (${data.sessions.length})`}>
+          <Section title={`Linked Sessions (${data.total})`}>
             <table className="sessions-table">
               <thead>
                 <tr>
@@ -156,6 +164,16 @@ export default function DeviceDetail() {
                 ))}
               </tbody>
             </table>
+            <div className="pagination-bar">
+              <div className="pagination-info">{data.total} linked sessions</div>
+              <div className="pagination-controls">
+                <button className="pagination-btn" disabled={data.page <= 1}
+                  onClick={() => setPagination({ id, page: data.page - 1 })}>‹ Previous</button>
+                <span className="pagination-current">Page {data.page} / {data.pages}</span>
+                <button className="pagination-btn" disabled={data.page >= data.pages}
+                  onClick={() => setPagination({ id, page: data.page + 1 })}>Next ›</button>
+              </div>
+            </div>
           </Section>
         </div>
       </div>

@@ -242,11 +242,13 @@ class DeviceMatchingTests(unittest.TestCase):
             hev_model="", hev_platform="Windows", hev_platform_version="",
             timezone="Europe/Paris", language="en-US", recent_ips=[],
         )
-        with Flask(__name__).app_context(), \
+        with Flask(__name__).test_request_context(), \
                 patch("routes.devices.Device") as devices, \
                 patch("routes.devices.Session") as sessions:
             devices.query.get.return_value = device
-            sessions.query.filter_by.return_value.order_by.return_value.all.return_value = []
+            query = sessions.query.filter_by.return_value
+            query.count.return_value = 0
+            query.order_by.return_value.offset.return_value.limit.return_value.all.return_value = []
             response, status = get_device_detail.__wrapped__(24)
             self.assertEqual(status, 200)
             summary = response.get_json()

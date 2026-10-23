@@ -11,6 +11,7 @@ from models.rule import RuleMatch
 from rules.engine import build_session_query
 from services.auth import require_auth, require_role
 from services.settings import get_global_setting, CLIPBOARD_CENSOR_KEY
+from services.session_summaries import session_summaries
 
 
 def _censor_text(value):
@@ -34,14 +35,13 @@ def _censor_event(evt):
 
 
 def _fetch_typed_events(session_id: int, limit: int = 2000) -> list[dict]:
-    """Return all typed behavioral events for a session, sorted oldest-first.
-
-    Queries all 4 typed tables, merges, sorts by timestamp, and applies the
-    given limit (keeping the most recent *limit* events).
-    """
+    """Merge bounded per-type reads, keeping the latest events oldest-first."""
     rows = []
     for Model in TYPED_EVENT_MODELS.values():
-        rows.extend(Model.query.filter_by(session_id=session_id).all())
+        rows.extend(
+            Model.query.filter_by(session_id=session_id)
+            .order_by(Model.timestamp.desc(), Model.id.asc()).limit(limit).all()
+        )
     rows.sort(key=lambda r: r.timestamp or 0, reverse=True)
     rows = rows[:limit]
     rows.reverse()  # present oldest-first in the timeline
@@ -110,23 +110,16 @@ def get_sessions():
     offset = (page - 1) * per_page
 
     page_sessions = query.offset(offset).limit(per_page).all()
+    summaries = session_summaries([sess.id for sess in page_sessions])
     sessions_list = []
 
     for sess in page_sessions:
-        last_fp_row = sess.fingerprints.order_by(Fingerprint.timestamp.desc()).first()
-        last_fp = last_fp_row.data if last_fp_row else {}
+        summary = summaries[sess.id]
+        last_fp = summary["fingerprint"]
         signals = last_fp.get("signals", {})
         browser = signals.get("browser", {})
         device = signals.get("device", {})
         locale = signals.get("locale", {})
-        urls = [u.url for u in sess.urls.limit(3).all()]
-        urls_count = sess.urls.count()
-        heartbeats_count = sess.heartbeats.count()
-        behavioral_events_count = sum(
-            Model.query.filter_by(session_id=sess.id).count()
-            for Model in TYPED_EVENT_MODELS.values()
-        )
-        session_ids = [bs.browser_session_id for bs in sess.browser_sessions.limit(2).all()]
         fsid = sess.fsid
 
         sessions_list.append({
@@ -141,14 +134,14 @@ def get_sessions():
             "device_id": sess.device_id,
             "authenticated": bool(sess.authenticated),
             "domains": sess.domains or [],
-            "heartbeats": heartbeats_count,
-            "behavioral_events": behavioral_events_count,
-            "urls": urls,
+            "heartbeats": summary["heartbeats"],
+            "behavioral_events": summary["behavioral_events"],
+            "urls": summary["urls"],
             "user_agent": str(browser.get("userAgent", "unknown"))[:60],
             "platform": str(device.get("platform", "unknown")),
             "language": str(locale.get("languages", {}).get("language", "unknown")),
-            "urls_count": urls_count,
-            "session_ids": session_ids,
+            "urls_count": summary["urls_count"],
+            "session_ids": summary["session_ids"],
             "fast_bot_detection": last_fp.get("fastBotDetection", False),
         })
 

@@ -7,18 +7,17 @@ See services/device_matching.py for how sessions are linked to a Device.
 import json
 
 from flask import Blueprint, request, jsonify
+from sqlalchemy import func
 from models import Session
 from models.device import Device
 from services.auth import require_auth
 from services.device_filters import build_device_query, get_device_schema, suggest_device_values
+from services.database import db
 
 devices_bp = Blueprint("devices", __name__, url_prefix="/api")
 
 
-def _device_summary(device):
-    sessions_q = Session.query.filter_by(device_id=device.id)
-    distinct_fsids = {s.fsid for s in sessions_q.all()}
-    distinct_ips = {s.client_ip for s in sessions_q.all() if s.client_ip}
+def _device_summary(device, counts):
     return {
         "id": device.id,
         "platform": device.platform,
@@ -28,9 +27,9 @@ def _device_summary(device):
         "is_mobile": device.is_mobile,
         "confidence": device.confidence,
         "cookie_id": device.cookie_id,
-        "sessions_count": sessions_q.count(),
-        "distinct_fsids": len(distinct_fsids),
-        "distinct_ips": len(distinct_ips),
+        "sessions_count": counts[0],
+        "distinct_fsids": counts[1],
+        "distinct_ips": counts[2],
         "first_seen": device.first_seen,
         "last_seen": device.last_seen,
     }
@@ -66,9 +65,21 @@ def get_devices():
     offset = (page - 1) * per_page
 
     devices = query.offset(offset).limit(per_page).all()
+    counts = {
+        device_id: (sessions, fsids, ips)
+        for device_id, sessions, fsids, ips in (
+            db.session.query(
+                Session.device_id, func.count(Session.id),
+                func.count(func.distinct(Session.fsid)),
+                func.count(func.distinct(func.nullif(Session.client_ip, ""))),
+            )
+            .filter(Session.device_id.in_([device.id for device in devices]))
+            .group_by(Session.device_id).all()
+        )
+    } if devices else {}
 
     return jsonify({
-        "devices": [_device_summary(d) for d in devices],
+        "devices": [_device_summary(d, counts.get(d.id, (0, 0, 0))) for d in devices],
         "page": page,
         "per_page": per_page,
         "total": total,
@@ -92,12 +103,29 @@ def suggest_devices():
 @devices_bp.route("/devices/<int:device_id>", methods=["GET"])
 @require_auth
 def get_device_detail(device_id):
-    """Get a single device's canonical fields + all linked sessions."""
+    """Get canonical fields and a bounded page of linked sessions."""
     device = Device.query.get(device_id)
     if not device:
         return jsonify({"error": "device not found"}), 404
 
-    sessions = Session.query.filter_by(device_id=device.id).order_by(Session.last_seen.desc()).all()
+    try:
+        page = max(1, int(request.args.get("page", "1")))
+    except (ValueError, TypeError):
+        page = 1
+    try:
+        per_page = int(request.args.get("per_page", "25"))
+    except (ValueError, TypeError):
+        per_page = 25
+    if per_page not in (10, 25, 50, 100):
+        per_page = 25
+    query = Session.query.filter_by(device_id=device.id)
+    total = query.count()
+    pages = max(1, -(-total // per_page))
+    page = min(page, pages)
+    sessions = (
+        query.order_by(Session.last_seen.desc(), Session.id.desc())
+        .offset((page - 1) * per_page).limit(per_page).all()
+    )
 
     return jsonify({
         "id": device.id,
@@ -128,6 +156,10 @@ def get_device_detail(device_id):
         "recent_ips": device.recent_ips or [],
         "first_seen": device.first_seen,
         "last_seen": device.last_seen,
+        "page": page,
+        "per_page": per_page,
+        "total": total,
+        "pages": pages,
         "sessions": [
             {
                 "id": s.id,
