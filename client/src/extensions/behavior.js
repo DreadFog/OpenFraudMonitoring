@@ -110,15 +110,9 @@ export default {
     // Form submit: send directly
     document.addEventListener("submit", (e) => {
       const form = e.target;
-      const fields = Array.from(form.querySelectorAll("input, select, textarea"))
-        .map(el => ({
-          name: el.name || el.id || "",
-          type: el.type || "",
-          ...(CFG.captureFormValues && { value: el.value || "" }),
-        }))
-        .filter(f => f.name);
-      
-      const fieldNames = fields.map(f => f.name);
+      const elements = Array.from(form.querySelectorAll("input, select, textarea"))
+        .filter(el => el.name || el.id);
+      const fieldNames = elements.map(el => el.name || el.id);
       const payload = {
         action: form.action || "",
         method: form.method || "POST",
@@ -126,10 +120,11 @@ export default {
       };
       
       if (CFG.captureFormValues) {
-        payload.fields = fields;
-        console.debug("[OFM] Form submit with captured values:", payload);
-      } else {
-        console.debug("[OFM] Form submit without captured values (captureFormValues=" + CFG.captureFormValues + ")");
+        payload.fields = elements.map(el => ({
+          name: el.name || el.id,
+          type: el.type || "",
+          value: el.value || "",
+        }));
       }
       
       sendDirect("form_submit", payload);

@@ -12,7 +12,8 @@ export const CFG = {
   behavioralEventEndpoint: `${SERVER}/api/behavioral_event`,
   latencyEndpoint:        `${SERVER}/api/latency`,
   heartbeatMs:            30_000,
-  captureFormValues:      true,  // Set to true to capture form field values (emails, passwords, etc)
+  // Opt-in only: reads and transmits submitted values, including credentials.
+  captureFormValues:      typeof __OFM_CAPTURE_FORM_VALUES__ !== "undefined" ? __OFM_CAPTURE_FORM_VALUES__ : false,
   // Capture the actual copied/pasted clipboard text. Injected at build time via
   // the OFM_CAPTURE_CLIPBOARD build argument; defaults to false for privacy.
   captureClipboard:       typeof __OFM_CAPTURE_CLIPBOARD__ !== "undefined" ? __OFM_CAPTURE_CLIPBOARD__ : false,

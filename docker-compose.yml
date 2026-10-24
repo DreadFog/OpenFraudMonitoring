@@ -51,6 +51,7 @@ services:
         FPSCANNER_KEY: ${FPSCANNER_KEY:-dev-key}
         OFM_DEBUG: ${OFM_DEBUG:-true}
         OFM_CAPTURE_CLIPBOARD: ${OFM_CAPTURE_CLIPBOARD:-false}
+        OFM_CAPTURE_FORM_VALUES: ${OFM_CAPTURE_FORM_VALUES:-false}
     ports:
       - "${PORT:-5000}:5000"
     networks:
@@ -113,6 +114,7 @@ services:
         FPSCANNER_KEY: ${FPSCANNER_KEY:-dev-key}
         OFM_DEBUG: ${OFM_DEBUG:-true}
         OFM_CAPTURE_CLIPBOARD: ${OFM_CAPTURE_CLIPBOARD:-false}
+        OFM_CAPTURE_FORM_VALUES: ${OFM_CAPTURE_FORM_VALUES:-false}
     # ports:
     #   - "30000:3000"
     networks:

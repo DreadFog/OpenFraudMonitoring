@@ -10,6 +10,7 @@ export default defineConfig({
     __OFM_DEBUG__: process.env.OFM_DEBUG === "true",
     // Capture the actual copied/pasted clipboard text (off by default for privacy)
     __OFM_CAPTURE_CLIPBOARD__: process.env.OFM_CAPTURE_CLIPBOARD === "true",
+    __OFM_CAPTURE_FORM_VALUES__: process.env.OFM_CAPTURE_FORM_VALUES === "true",
   },
   resolve: {
     alias: {
